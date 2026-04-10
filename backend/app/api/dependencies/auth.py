@@ -1,29 +1,54 @@
-"""FastAPI dependencies for authentication and authorization."""
+"""FastAPI dependencies for authentication and authorization.
+
+Supports two token sources (checked in order):
+1. HttpOnly cookie ``access_token`` — used by the React frontend
+2. Authorization: Bearer header — used by Swagger, API clients, mobile
+
+The frontend never touches the token directly — the browser sends the
+cookie automatically on every request.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import get_settings
 from app.core.security import TokenPayload, decode_access_token
 from app.domain.entities.user import Role
 
-#: Simple Bearer token scheme — Swagger shows one "Bearer token" input field.
-bearer_scheme = HTTPBearer(auto_error=True)
+#: Bearer scheme with auto_error=False so we can fall back to cookie.
+bearer_scheme = HTTPBearer(auto_error=False)
+
+COOKIE_NAME = "access_token"
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> TokenPayload:
-    """Decode the JWT and return the payload. Raises 401 on invalid/expired token."""
+    """Extract JWT from cookie or Authorization header. Raises 401 if missing/invalid."""
     settings = get_settings()
+
+    # 1. Try HttpOnly cookie first (frontend)
+    token = request.cookies.get(COOKIE_NAME)
+
+    # 2. Fall back to Authorization header (Swagger, API clients)
+    if not token and credentials:
+        token = credentials.credentials
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
+
     try:
         return decode_access_token(
-            credentials.credentials,
+            token,
             secret_key=settings.APP_SECRET_KEY.get_secret_value(),
         )
     except jwt.ExpiredSignatureError as exc:

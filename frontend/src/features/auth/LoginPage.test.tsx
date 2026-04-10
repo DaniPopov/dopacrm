@@ -8,6 +8,12 @@ vi.mock("./api", () => ({
   login: vi.fn(),
 }))
 
+vi.mock("./auth-provider", () => ({
+  useAuth: () => ({ login: mockAuthLogin }),
+}))
+
+const mockAuthLogin = vi.fn()
+
 import { login } from "./api"
 const mockLogin = vi.mocked(login)
 
@@ -27,7 +33,6 @@ function renderLogin() {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  localStorage.clear()
 })
 
 describe("LoginPage", () => {
@@ -39,13 +44,14 @@ describe("LoginPage", () => {
     expect(screen.getByRole("button", { name: "התחברות" })).toBeInTheDocument()
   })
 
-  it("stores token and navigates on successful login", async () => {
+  it("calls login API and refreshes auth on success", async () => {
     const user = userEvent.setup()
     mockLogin.mockResolvedValue({
       access_token: "jwt-123",
       token_type: "bearer",
       expires_in: 28800,
     })
+    mockAuthLogin.mockResolvedValue(undefined)
 
     renderLogin()
     await user.type(screen.getByLabelText("אימייל"), "admin@dopacrm.com")
@@ -56,7 +62,8 @@ describe("LoginPage", () => {
       email: "admin@dopacrm.com",
       password: "Admin@12345",
     })
-    expect(localStorage.getItem("token")).toBe("jwt-123")
+    // No localStorage — cookie is set by browser
+    expect(mockAuthLogin).toHaveBeenCalled()
     expect(mockNavigate).toHaveBeenCalledWith("/dashboard")
   })
 
@@ -70,7 +77,6 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: "התחברות" }))
 
     expect(await screen.findByText("Invalid credentials")).toBeInTheDocument()
-    expect(localStorage.getItem("token")).toBeNull()
   })
 
   it("shows loading state while submitting", async () => {

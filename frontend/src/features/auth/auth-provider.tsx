@@ -14,6 +14,7 @@ interface AuthContextValue {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
+  login: () => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -24,28 +25,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    const token = localStorage.getItem("token")
-    if (!token) {
+  const fetchUser = useCallback(async () => {
+    try {
+      const u = await getMe()
+      setUser(u)
+    } catch {
+      setUser(null)
+    } finally {
       setIsLoading(false)
-      return
     }
-
-    getMe()
-      .then(setUser)
-      .catch(() => {
-        localStorage.removeItem("token")
-      })
-      .finally(() => setIsLoading(false))
   }, [])
+
+  useEffect(() => {
+    fetchUser()
+  }, [fetchUser])
+
+  const loginRefresh = useCallback(async () => {
+    // Called after login() succeeds — refetch user from cookie
+    await fetchUser()
+  }, [fetchUser])
 
   const logout = useCallback(async () => {
     try {
       await apiLogout()
     } catch {
-      // Server logout failed — clear locally anyway
+      // Server logout failed — continue anyway
     }
-    localStorage.removeItem("token")
     setUser(null)
     navigate("/login")
   }, [navigate])
@@ -56,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isAuthenticated: !!user,
         isLoading,
+        login: loginRefresh,
         logout,
       }}
     >

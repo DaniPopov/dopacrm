@@ -1,7 +1,8 @@
 """Auth routes — ``/api/v1/auth``.
 
-- ``POST /login`` — JSON email + password → access token
-- ``GET /me`` — return current user info from token
+- ``POST /login`` — email + password → JWT in HttpOnly cookie + response body
+- ``POST /logout`` — clears the HttpOnly cookie
+- ``GET /me`` — current user profile from token
 """
 
 from __future__ import annotations
@@ -9,10 +10,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from app.adapters.storage.postgres.user.repositories import UserRepository
-from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.auth import COOKIE_NAME, get_current_user
 from app.api.dependencies.database import get_session
 from app.api.dependencies.rate_limit import login_rate_limit
 from app.api.v1.auth.schemas import LoginRequest, TokenResponse
@@ -31,33 +32,50 @@ if TYPE_CHECKING:
 router = APIRouter()
 
 
+def _set_token_cookie(response: Response, token: str, *, is_production: bool) -> None:
+    """Set the JWT as an HttpOnly cookie."""
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=is_production,
+        samesite="lax",
+        max_age=int(ACCESS_TOKEN_EXPIRE.total_seconds()),
+        path="/",
+    )
+
+
+def _clear_token_cookie(response: Response, *, is_production: bool) -> None:
+    """Clear the JWT cookie."""
+    response.delete_cookie(
+        key=COOKIE_NAME,
+        httponly=True,
+        secure=is_production,
+        samesite="lax",
+        path="/",
+    )
+
+
 @router.post(
     "/login",
     response_model=TokenResponse,
     summary="Login with email and password",
-    description="Returns a JWT access token. Copy it and paste in the "
-    "**Authorize** button (lock icon, top-right) to authenticate. "
+    description="Returns a JWT access token in an HttpOnly cookie (for the frontend) "
+    "and in the response body (for Swagger / API clients). "
     "Rate limited: 10 requests per minute per IP.",
     dependencies=login_rate_limit,
 )
 async def login(
     body: LoginRequest,
+    response: Response,
     session: AsyncSession = Depends(get_session),
 ) -> TokenResponse:
     settings = get_settings()
     repo = UserRepository(session)
 
-    # Look up user by email. For company-scoped users, the frontend
-    # will eventually pass tenant_id (or we resolve it from a subdomain).
-    # For now: try super_admin first, then search by email WITH tenant_id
-    # attached to the user row — never query without tenant scoping.
+    # Look up user by email. Try super_admin first (tenant_id IS NULL),
+    # then search across all tenants.
     result = await repo.find_with_credentials(body.email, tenant_id=None)
-
-    # If not super_admin, try company-scoped lookup.
-    # find_with_credentials with tenant_id=None uses WHERE tenant_id IS NULL.
-    # For company users, we need to find which company they belong to.
-    # Safe approach: look up by email across all companies via the repo
-    # (still parameterized SQL, still returns one user).
     if result is None:
         result = await repo.find_any_by_email_with_credentials(body.email)
 
@@ -94,6 +112,10 @@ async def login(
         secret_key=settings.APP_SECRET_KEY.get_secret_value(),
     )
 
+    # Set HttpOnly cookie for the frontend
+    _set_token_cookie(response, token, is_production=settings.is_production)
+
+    # Also return in body for Swagger / API clients
     return TokenResponse(
         access_token=token,
         token_type="bearer",
@@ -105,16 +127,14 @@ async def login(
     "/logout",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Logout",
-    description="Invalidates the current session. Currently client-side only "
-    "(frontend removes the token). When refresh tokens are implemented, "
-    "this will revoke them server-side.",
+    description="Clears the HttpOnly auth cookie.",
 )
 async def logout(
+    response: Response,
     _caller: TokenPayload = Depends(get_current_user),
 ) -> None:
-    # v1: stateless JWT — real invalidation happens client-side.
-    # Future: revoke refresh token in DB, add access token to Redis blacklist.
-    return None
+    settings = get_settings()
+    _clear_token_cookie(response, is_production=settings.is_production)
 
 
 @router.get(
@@ -130,7 +150,10 @@ async def me(
     repo = UserRepository(session)
     user = await repo.find_by_id(UUID(caller.sub))
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
     return UserResponse(
         id=user.id,
         email=user.email,

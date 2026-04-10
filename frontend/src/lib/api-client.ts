@@ -1,24 +1,27 @@
+/**
+ * Centralized API client.
+ *
+ * Uses HttpOnly cookies for auth — the browser sends the cookie
+ * automatically. No token management in JavaScript.
+ *
+ * `credentials: "include"` tells fetch to send cookies on every request.
+ */
+
 const API_BASE = "/api/v1"
 
 class ApiClient {
-  private getToken(): string | null {
-    return localStorage.getItem("token")
-  }
-
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = { "Content-Type": "application/json" }
-    const token = this.getToken()
-    if (token) headers["Authorization"] = `Bearer ${token}`
 
     const res = await fetch(`${API_BASE}${path}`, {
       method,
       headers,
+      credentials: "include",
       body: body ? JSON.stringify(body) : undefined,
     })
 
     if (res.status === 401) {
-      localStorage.removeItem("token")
-      window.location.href = "/login"
+      // Don't redirect for auth-check calls — let the caller handle it
       throw new Error("Unauthorized")
     }
 

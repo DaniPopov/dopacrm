@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom"
 import dopaIcon from "@/app/assets/dopa-icon.png"
 import gymImage from "@/app/assets/dopamineogym-image.png"
 import { login } from "./api"
+import { useAuth } from "./auth-provider"
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const { login: refreshAuth } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -18,8 +20,9 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const data = await login({ email, password })
-      localStorage.setItem("token", data.access_token)
+      await login({ email, password })
+      // Cookie is set by the browser. Refresh auth context to pick up the user.
+      await refreshAuth()
       navigate("/dashboard")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to connect to server")

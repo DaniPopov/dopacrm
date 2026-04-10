@@ -39,20 +39,23 @@ describe("login", () => {
     mockFetch.mockReset()
   })
 
-  it("sends JSON to /api/v1/auth/login", async () => {
+  it("sends JSON to /api/v1/auth/login with credentials: include", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ access_token: "jwt", token_type: "bearer", expires_in: 28800 }),
     })
 
-    // Re-import to get a fresh copy that uses our mocked fetch
     const { login } = await import("./api")
     const result = await login({ email: "a@b.com", password: "pass" })
 
-    expect(mockFetch).toHaveBeenCalledWith("/api/v1/auth/login", expect.objectContaining({
-      method: "POST",
-      body: JSON.stringify({ email: "a@b.com", password: "pass" }),
-    }))
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/v1/auth/login",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({ email: "a@b.com", password: "pass" }),
+      }),
+    )
     expect(result.access_token).toBe("jwt")
   })
 

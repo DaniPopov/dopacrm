@@ -1,24 +1,16 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 
-// We test the ApiClient behavior by mocking fetch
 const mockFetch = vi.fn()
 vi.stubGlobal("fetch", mockFetch)
 
-// Must import after mocking fetch
 const { apiClient } = await import("./api-client")
 
 beforeEach(() => {
   mockFetch.mockReset()
-  localStorage.clear()
-})
-
-afterEach(() => {
-  localStorage.clear()
 })
 
 describe("ApiClient", () => {
-  it("sends GET request with auth header when token exists", async () => {
-    localStorage.setItem("token", "test-jwt-token")
+  it("sends GET request with credentials: include", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       status: 200,
@@ -31,29 +23,13 @@ describe("ApiClient", () => {
       "/api/v1/tenants",
       expect.objectContaining({
         method: "GET",
-        headers: expect.objectContaining({
-          Authorization: "Bearer test-jwt-token",
-        }),
+        credentials: "include",
       }),
     )
     expect(result).toEqual([{ id: "1", name: "Test" }])
   })
 
-  it("sends request without auth header when no token", async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve({}),
-    })
-
-    await apiClient.get("/test")
-
-    const headers = mockFetch.mock.calls[0][1].headers
-    expect(headers.Authorization).toBeUndefined()
-  })
-
-  it("sends POST with JSON body", async () => {
-    localStorage.setItem("token", "jwt")
+  it("sends POST with JSON body and credentials", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       status: 201,
@@ -66,6 +42,7 @@ describe("ApiClient", () => {
       "/api/v1/tenants",
       expect.objectContaining({
         method: "POST",
+        credentials: "include",
         body: JSON.stringify({ slug: "gym", name: "Gym" }),
       }),
     )
@@ -91,9 +68,7 @@ describe("ApiClient", () => {
     await expect(apiClient.post("/tenants", {})).rejects.toThrow("Request failed: 422")
   })
 
-  it("clears token and redirects on 401", async () => {
-    localStorage.setItem("token", "expired-token")
-    // Mock window.location
+  it("redirects to login on 401", async () => {
     const originalHref = window.location.href
     Object.defineProperty(window, "location", {
       value: { href: originalHref },
@@ -107,11 +82,9 @@ describe("ApiClient", () => {
     })
 
     await expect(apiClient.get("/me")).rejects.toThrow("Unauthorized")
-    expect(localStorage.getItem("token")).toBeNull()
   })
 
   it("handles 204 No Content (logout)", async () => {
-    localStorage.setItem("token", "jwt")
     mockFetch.mockResolvedValue({
       ok: true,
       status: 204,
