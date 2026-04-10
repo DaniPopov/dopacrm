@@ -511,12 +511,23 @@ Versioned under `/api/v1/`. RESTful. JSON request/response bodies.
 
 ## 7. Frontend Stack
 
-- **Framework:** React + TypeScript + Vite (SPA, no SSR)
+- **Framework:** React 19 + TypeScript + Vite (SPA, no SSR)
 - **UI components:** shadcn/ui (Tailwind-based primitives)
 - **Server state:** TanStack Query (React Query) — caching, invalidation, loading/error states, deduplication
 - **Routing:** React Router
-- **API client:** typed fetch wrapper with auth token injection; feature-level `api.ts` files wrapped by TanStack Query hooks
-- **Structure:** feature-based — each feature (`auth`, `tenants`, `members`, `dashboard`) owns its pages, API calls, types, and hooks
+- **Testing:** Vitest + Testing Library
+- **API client:** typed fetch wrapper (`lib/api-client.ts`) with auth token injection and 401 auto-redirect; feature-level `api.ts` files wrapped by TanStack Query hooks
+- **Structure:** feature-based — each feature (`auth`, `tenants`, `members`, `dashboard`, `landing`) owns its pages, API calls, types, hooks, and tests
+- **Auth:** `AuthProvider` context + `useAuth()` hook; token stored in `localStorage`; `ProtectedRoute` guards authenticated pages
+- **Landing page:** Hebrew (`he-IL`), gym CRM positioning, "כניסה לפורטל" → login
+
+### User flow
+```
+Landing (/) → Login (/login) → Dashboard (/dashboard)
+                                  ├── /tenants (future)
+                                  ├── /members (future)
+                                  └── /leads (future)
+```
 
 See [`docs/frontend.md`](./frontend.md) for the full architecture and conventions.
 

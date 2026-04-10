@@ -101,6 +101,22 @@ async def login(
     )
 
 
+@router.post(
+    "/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Logout",
+    description="Invalidates the current session. Currently client-side only "
+    "(frontend removes the token). When refresh tokens are implemented, "
+    "this will revoke them server-side.",
+)
+async def logout(
+    _caller: TokenPayload = Depends(get_current_user),
+) -> None:
+    # v1: stateless JWT — real invalidation happens client-side.
+    # Future: revoke refresh token in DB, add access token to Redis blacklist.
+    return None
+
+
 @router.get(
     "/me",
     response_model=UserResponse,

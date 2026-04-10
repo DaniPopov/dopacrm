@@ -14,7 +14,8 @@
 | Routing | React Router |
 | Server state | TanStack Query (React Query) |
 | UI components | shadcn/ui (Tailwind CSS) |
-| HTTP | Typed fetch wrapper (generated from OpenAPI in the future) |
+| HTTP | Typed fetch wrapper (`lib/api-client.ts`) |
+| Testing | Vitest + Testing Library |
 
 ---
 
@@ -37,45 +38,48 @@ We use TanStack Query for all server-state management. It replaces manual `useSt
 ```
 frontend/src/
 ├── app/                          # App shell
-│   ├── App.tsx                   # Router + providers
-│   ├── routes.tsx                # Route definitions (lazy-loaded)
-│   └── providers.tsx             # QueryClientProvider, AuthProvider
+│   ├── App.tsx                   # Routes + page imports
+│   └── providers.tsx             # QueryClientProvider + BrowserRouter + AuthProvider
 │
 ├── components/                   # Shared, reusable components
-│   ├── ui/                       # shadcn/ui primitives (button, input, card, table, etc.)
-│   └── layout/                   # Shell: Sidebar, TopBar, PageHeader, ProtectedRoute
+│   ├── ui/                       # shadcn/ui primitives (button, input, card, label)
+│   └── layout/                   # ProtectedRoute, DashboardLayout (header + logout)
 │
 ├── features/                     # Feature modules (the core of the app)
 │   ├── auth/
-│   │   ├── api.ts                # login(), getMe()
-│   │   ├── hooks.ts              # useAuth(), useLogin()
-│   │   ├── auth-provider.tsx     # AuthContext + token management
+│   │   ├── api.ts                # login(), getMe(), logout()
+│   │   ├── api.test.ts           # Tests for API functions
+│   │   ├── auth-provider.tsx     # AuthContext + useAuth() hook
 │   │   ├── LoginPage.tsx         # Login form
+│   │   ├── LoginPage.test.tsx    # Tests for login page
 │   │   └── types.ts              # LoginRequest, TokenResponse, User
 │   │
 │   ├── tenants/
 │   │   ├── api.ts                # listTenants(), createTenant(), updateTenant(), suspendTenant()
+│   │   ├── api.test.ts           # Tests for API functions
 │   │   ├── hooks.ts              # useTenants(), useCreateTenant(), useSuspendTenant()
-│   │   ├── TenantListPage.tsx    # Table of all gyms (super_admin)
-│   │   ├── TenantForm.tsx        # Create / edit form
-│   │   ├── TenantDetail.tsx      # Single tenant view
 │   │   └── types.ts              # Tenant, CreateTenantRequest, UpdateTenantRequest
+│   │   # Pages (TenantListPage, TenantForm, etc.) — to be built
 │   │
-│   ├── users/
-│   │   ├── api.ts
-│   │   ├── hooks.ts
-│   │   ├── UserListPage.tsx
-│   │   └── types.ts
+│   ├── landing/
+│   │   ├── LandingPage.tsx       # Hebrew landing page for gym CRM
+│   │   └── LandingPage.test.tsx  # Tests for landing page
 │   │
+│   ├── dashboard/
+│   │   └── DashboardPage.tsx     # Widget grid (placeholders for now)
+│   │
+│   ├── users/                    # (future)
 │   ├── members/                  # (future)
 │   ├── plans/                    # (future)
-│   ├── leads/                    # (future)
-│   │
-│   └── dashboard/
-│       ├── api.ts                # fetchDashboardMetrics()
-│       ├── hooks.ts              # useDashboardMetrics()
-│       ├── DashboardPage.tsx     # Widget grid
-│       └── widgets/              # MRR card, member count, churn chart, etc.
+│   └── leads/                    # (future)
+│
+├── lib/                          # Utilities (not feature-specific)
+│   ├── api-client.ts             # Fetch wrapper: base URL, auth headers, error handling
+│   ├── api-client.test.ts        # Tests for API client
+│   └── utils.ts                  # cn() helper for Tailwind class merging
+│
+├── test/
+│   └── setup.ts                  # Vitest setup (jest-dom matchers)
 │
 ├── lib/                          # Utilities (not feature-specific)
 │   ├── api-client.ts             # Fetch wrapper: base URL, auth headers, error handling
@@ -253,28 +257,63 @@ All features go through this. Token injection, 401 redirect, error parsing — o
 ## Routing
 
 ```typescript
-// app/routes.tsx
+// app/App.tsx
+<Route path="/" element={<LandingPage />} />        {/* Hebrew landing */}
 <Route path="/login" element={<LoginPage />} />
-<Route element={<ProtectedRoute />}>        {/* checks auth */}
-  <Route element={<DashboardLayout />}>     {/* sidebar + topbar */}
+<Route element={<ProtectedRoute />}>                 {/* checks auth */}
+  <Route element={<DashboardLayout />}>              {/* header + logout */}
     <Route path="/dashboard" element={<DashboardPage />} />
+    {/* Future:
     <Route path="/tenants" element={<TenantListPage />} />
-    <Route path="/tenants/:id" element={<TenantDetail />} />
     <Route path="/users" element={<UserListPage />} />
     <Route path="/members" element={<MemberListPage />} />
     <Route path="/leads" element={<LeadListPage />} />
+    */}
   </Route>
 </Route>
 ```
 
 ---
 
+## Testing
+
+**Tool:** Vitest + Testing Library + jsdom
+
+**Pattern:** tests live next to the code they test.
+
+```
+features/auth/
+├── api.ts
+├── api.test.ts          ← tests the API functions
+├── LoginPage.tsx
+└── LoginPage.test.tsx   ← tests the page component
+```
+
+**What to test per feature:**
+- `api.test.ts` — correct endpoints called, request body shape, error handling
+- `*.test.tsx` — renders correctly, user interactions work, navigation on success/error
+
+**Current test count:** 25 tests across 5 files
+
+| File | Tests | What it covers |
+|------|-------|----------------|
+| `lib/api-client.test.ts` | 7 | Auth header injection, 401 redirect, 204, error parsing |
+| `features/auth/api.test.ts` | 4 | login(), getMe(), logout(), login error |
+| `features/auth/LoginPage.test.tsx` | 4 | Render, success, error, loading state |
+| `features/tenants/api.test.ts` | 5 | list, get, create, update, suspend |
+| `features/landing/LandingPage.test.tsx` | 5 | Hebrew content, cards, navigation |
+
+**Run:** `make test-frontend` or `cd frontend && npx vitest run`
+
+---
+
 ## Conventions
 
-- **One feature, one folder.** Pages, hooks, API, types — all co-located.
+- **One feature, one folder.** Pages, hooks, API, types, and tests — all co-located.
 - **api.ts is pure.** No React imports, no hooks. Just typed fetch calls.
 - **hooks.ts wraps api.ts.** TanStack Query handles caching/invalidation.
 - **Pages are thin.** Call hooks, handle loading/error, render components.
+- **Tests live next to code.** `Foo.tsx` → `Foo.test.tsx`, `api.ts` → `api.test.ts`.
 - **Shared components in `components/`.** Feature-specific components in the feature folder.
 - **Types mirror backend schemas.** Eventually auto-generated from OpenAPI.
 - **No prop drilling for auth.** Use `useAuth()` hook from anywhere.
@@ -285,3 +324,4 @@ All features go through this. Token injection, 401 redirect, error parsing — o
 
 - [`specs.md`](./specs.md) — product specification (§7 Frontend Stack)
 - [`backend.md`](./backend.md) — backend architecture (what the frontend talks to)
+- [`features/auth.md`](./features/auth.md) — auth feature doc (backend + frontend)

@@ -10,8 +10,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { login } from "./api"
 
-export default function Login() {
+export default function LoginPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -24,24 +25,11 @@ export default function Login() {
     setLoading(true)
 
     try {
-      const res = await fetch("/api/v1/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      })
-
-      if (!res.ok) {
-        const data = await res.json()
-        const detail = data.detail
-        setError(typeof detail === "string" ? detail : "Invalid credentials")
-        return
-      }
-
-      const data = await res.json()
+      const data = await login({ email, password })
       localStorage.setItem("token", data.access_token)
       navigate("/dashboard")
-    } catch {
-      setError("Unable to connect to server")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to connect to server")
     } finally {
       setLoading(false)
     }

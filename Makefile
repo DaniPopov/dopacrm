@@ -13,7 +13,9 @@ export SEED_PASSWORD
         logs-mongo-express-dev logs-flower-dev \
         logs-loki-dev logs-promtail-dev logs-grafana-dev \
         migrate-up-dev migrate-down-dev migrate-status-dev migrate-history-dev \
-        seed-super-admin-dev
+        seed-super-admin-dev \
+        test-backend-unit test-backend-integration-dev test-backend-e2e-dev \
+        test-backend-all-dev test-frontend test-all-dev
 
 # The awk parser matches two patterns:
 #   ##@ Section     → prints a bold section header
@@ -122,6 +124,30 @@ logs-grafana-dev:  ## Tail logs — grafana
 # Catch-all: `make logs-<any-service>-dev`
 logs-%-dev:
 	$(COMPOSE_DEV) logs -f $*
+
+##@ Testing
+
+test-backend-unit:  ## Backend unit tests (no DB needed)
+	uv run pytest backend/tests/unit/ backend/tests/test_health.py -v
+
+test-backend-integration-dev:  ## Backend integration tests (needs Postgres)
+	uv run pytest backend/tests/integration/ -v
+
+test-backend-e2e-dev:  ## Backend E2E tests (needs Postgres + Redis)
+	uv run pytest backend/tests/e2e/ -v
+
+test-backend-all-dev:  ## All backend tests (needs Postgres + Redis)
+	uv run pytest backend/tests/ -v
+
+test-frontend:  ## Frontend tests (Vitest)
+	cd frontend && npx vitest run
+
+test-all-dev:  ## ALL tests — backend + frontend
+	@echo "── Backend ──"
+	@uv run pytest backend/tests/ -v
+	@echo ""
+	@echo "── Frontend ──"
+	@cd frontend && npx vitest run
 
 ##@ Load Testing
 

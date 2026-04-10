@@ -46,6 +46,29 @@ def test_me_with_token(client: TestClient, auth_headers: dict) -> None:
     assert data["role"] == "super_admin"
 
 
+# ── Logout ────────────────────────────────────────────────────────────────────
+
+
+def test_logout_with_token(client: TestClient, auth_headers: dict) -> None:
+    response = client.post("/api/v1/auth/logout", headers=auth_headers)
+    assert response.status_code == 204
+
+
+def test_logout_without_token(client: TestClient) -> None:
+    """Logout without auth should be rejected."""
+    response = client.post("/api/v1/auth/logout")
+    assert response.status_code in (401, 403)
+
+
+def test_logout_with_invalid_token(client: TestClient) -> None:
+    """Logout with a garbage token should be rejected."""
+    response = client.post(
+        "/api/v1/auth/logout",
+        headers={"Authorization": "Bearer invalid-garbage-token"},
+    )
+    assert response.status_code == 401
+
+
 # ── SQL injection ─────────────────────────────────────────────────────────────
 
 

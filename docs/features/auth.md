@@ -3,16 +3,18 @@
 ## Summary
 
 Email + password authentication for the dashboard. Returns a JWT access
-token that authenticates all subsequent API requests. super_admin users
-can log in without a company scope. OAuth (Google/Microsoft) is planned
-for Phase 2 — the database schema supports it but no routes exist yet.
+token that authenticates all subsequent API requests. Logout endpoint
+clears the session. super_admin users can log in without a tenant scope.
+OAuth (Google/Microsoft) is planned for Phase 2 — the database schema
+supports it but no routes exist yet.
 
 ## API Endpoints
 
 | Method | Route | Auth | Rate limit | Description |
 |--------|-------|------|------------|-------------|
 | POST | `/api/v1/auth/login` | None | 10/min/IP | Email + password → JWT access token |
-| GET | `/api/v1/auth/me` | Bearer | — | Current user profile from token |
+| POST | `/api/v1/auth/logout` | Bearer | 60/min/user | Invalidate session (client-side token removal) |
+| GET | `/api/v1/auth/me` | Bearer | 60/min/user | Current user profile from token |
 
 ## Domain (Layer 3)
 
@@ -27,19 +29,18 @@ for Phase 2 — the database schema supports it but no routes exist yet.
 ## Service (Layer 2)
 
 Auth orchestration currently lives inline in the route handler (no
-separate auth_service.py — was deleted because it was just a re-export
-wrapper). When refresh tokens and logout are added, create
+separate auth_service.py). When refresh tokens are added, create
 `services/auth_service.py` with:
 
-- `login(email, password, company_id)` → validate credentials, return token pair
+- `login(email, password, tenant_id)` → validate credentials, return token pair
 - `refresh(refresh_token)` → validate, rotate, return new access token
-- `logout(refresh_token)` → revoke token in DB
+- `logout(refresh_token)` → revoke token in DB + add access token to Redis blacklist
 
 ## Adapter (Layer 4)
 
 ### Repository methods used
 
-- `UserRepository.find_with_credentials(email, company_id)` — returns
+- `UserRepository.find_with_credentials(email, tenant_id)` — returns
   `(User, password_hash)` tuple. The hash leaves the repo here but the
   route verifies and discards it immediately.
 
@@ -49,9 +50,9 @@ File: `core/security.py`
 
 - `hash_password(plain) → str` — argon2id hash
 - `verify_password(plain, hashed) → bool` — constant-time comparison
-- `create_access_token(user_id, role, company_id, secret_key) → str` — HS256 JWT, 8h expiry
+- `create_access_token(user_id, role, tenant_id, secret_key) → str` — HS256 JWT, 8h expiry
 - `decode_access_token(token, secret_key) → TokenPayload` — decodes + validates
-- `TokenPayload` — Pydantic model: sub (user ID), role, company_id, type
+- `TokenPayload` — Pydantic model: sub (user ID), role, tenant_id, type
 
 ### JWT details
 
@@ -60,7 +61,7 @@ File: `core/security.py`
 | Algorithm | HS256 |
 | Signing key | `APP_SECRET_KEY` (min 32 chars, SecretStr) |
 | Access token expiry | 8 hours |
-| Payload fields | sub (user UUID), role, company_id, type ("access"), iat, exp |
+| Payload fields | sub (user UUID), role, tenant_id, type ("access"), iat, exp |
 
 ## API (Layer 1)
 
@@ -69,8 +70,12 @@ File: `core/security.py`
 File: `api/v1/auth/router.py`
 
 - **POST `/login`** — accepts JSON `{email, password}`. Looks up user by
-  email (tries super_admin first, then any user). Verifies password with
-  argon2. Returns `{access_token, token_type, expires_in}`.
+  email (tries super_admin first, then any tenant user). Verifies password
+  with argon2. Returns `{access_token, token_type, expires_in}`.
+- **POST `/logout`** — requires valid Bearer token. Returns 204. Currently
+  client-side only (frontend removes the token from localStorage). When
+  refresh tokens are implemented, this will revoke them server-side and
+  add the access token to a Redis blacklist.
 - **GET `/me`** — decodes JWT from `Authorization: Bearer` header, fetches
   user from DB, returns `UserResponse`.
 
@@ -101,64 +106,94 @@ File: `api/v1/auth/schemas.py`
   - `bearer_scheme` — `HTTPBearer(auto_error=True)`, extracts token from header
   - `get_current_user` — decodes JWT → `TokenPayload`, raises 401 on invalid/expired
   - `require_role(*roles)` — checks `TokenPayload.role` against allowed roles
-  - Shortcuts: `require_super_admin`, `require_admin`, `require_manager`
+  - Shortcuts: `require_super_admin`, `require_owner`, `require_staff`
 
 ### Rate limiting
 
 - `/login` → `login_rate_limit` (10 requests/min per IP) — brute-force protection
-- `/me` → no rate limit (already requires a valid token)
+- `/logout`, `/me` → standard API rate limit (60/min per user)
+
+## Frontend
+
+### Auth flow
+
+1. **Landing** (`/`) → user clicks "כניסה לפורטל"
+2. **Login** (`/login`) → `features/auth/LoginPage.tsx` → calls `features/auth/api.ts → login()`
+3. On success → stores JWT in `localStorage`, navigates to `/dashboard`
+4. **AuthProvider** (`features/auth/auth-provider.tsx`) wraps the app:
+   - On mount: reads token from `localStorage`, calls `getMe()` to validate
+   - Provides `useAuth()` hook: `{ user, isAuthenticated, isLoading, logout }`
+5. **ProtectedRoute** (`components/layout/ProtectedRoute.tsx`) — redirects to `/login` if not authenticated
+6. **Logout** — calls `POST /auth/logout`, clears `localStorage`, redirects to `/login`
+7. **API client** (`lib/api-client.ts`) — auto-injects Bearer token, auto-redirects to `/login` on 401
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `features/auth/api.ts` | `login()`, `getMe()`, `logout()` — pure fetch functions |
+| `features/auth/types.ts` | `LoginRequest`, `TokenResponse`, `User` |
+| `features/auth/auth-provider.tsx` | `AuthProvider` + `useAuth()` hook |
+| `features/auth/LoginPage.tsx` | Login form page |
+| `lib/api-client.ts` | Shared fetch wrapper (token injection, 401 handling) |
+| `components/layout/ProtectedRoute.tsx` | Auth guard for routes |
+| `components/layout/DashboardLayout.tsx` | Header with logout button |
 
 ## Tests
+
+### Backend
 
 | Type | File | What it covers |
 |------|------|----------------|
 | Unit | `tests/unit/test_security.py` | argon2 hash format, uniqueness, verify match/mismatch, needs_rehash |
-| E2E | `tests/e2e/test_auth.py` | login success, wrong password (401), nonexistent email (401), /me with/without token, SQL injection in email/password/UNION SELECT |
+| E2E | `tests/e2e/test_auth.py` | login success, wrong password, nonexistent email, /me, logout (valid/invalid/no token), SQL injection |
 
-### Test count
+- Unit: 5 tests
+- E2E: 11 tests
+- **Backend total: 16 auth tests**
 
-- Unit: 5 tests (password hashing + verification)
-- E2E: 8 tests (login flow + SQL injection security)
-- **Total: 13 auth-related tests, all passing**
+### Frontend
 
-### Security tests (across auth + users E2E)
+| File | What it covers |
+|------|----------------|
+| `features/auth/api.test.ts` | login(), getMe(), logout() — correct endpoints + error handling |
+| `features/auth/LoginPage.test.tsx` | Renders form, success stores token + navigates, failure shows error, loading state |
+
+- Frontend total: 8 auth tests
+
+### Security tests
 
 | Test | What it proves |
 |------|---------------|
 | SQL injection in email | Rejected (401/422), no 500 |
 | SQL injection in password | 401, no auth bypass |
 | UNION SELECT injection | Rejected, no data leak |
-| XSS in email | 422, Pydantic rejects |
+| Logout without token | 401/403, rejected |
+| Logout with invalid token | 401, rejected |
 | Tampered JWT (wrong signature) | 401 |
 | Forged role escalation (wrong key) | 401 |
-| Worker creating user (super_admin only) | 403 |
-| Manager deleting user (admin+ only) | 403 |
-| Admin with null company_id listing users | 403, not all users |
+| Sales creating user (super_admin only) | 403 |
+| Staff deleting user (owner+ only) | 403 |
+| Owner with null tenant_id listing users | 403, not all users |
+| API client 401 → clears token + redirects | Frontend test |
 
 ## Decisions
 
-- **JWT over session cookies** — the dashboard is a React SPA (Phase 2).
-  SPAs work better with Bearer tokens than cookies (no CSRF issues, works
-  across origins, mobile-friendly). Cookies can be added later if needed.
+- **JWT over session cookies** — the dashboard is a React SPA. SPAs work
+  better with Bearer tokens (no CSRF issues, works across origins).
 
 - **HS256 over RS256** — single service, no need for asymmetric keys.
-  HS256 is simpler (one shared secret). Switch to RS256 if/when multiple
-  services need to verify tokens independently.
+  Switch to RS256 if/when multiple services verify tokens independently.
 
-- **8-hour access token** — balances security (shorter = safer) with UX
-  (users don't want to re-login every hour). Refresh tokens (30-day,
-  stored in DB) are planned but not implemented yet.
+- **8-hour access token** — balances security with UX. Refresh tokens
+  (30-day, stored in DB) are planned but not implemented yet.
 
-- **HTTPBearer over OAuth2PasswordBearer** — simpler Swagger UI. Shows
-  one "Bearer token" input instead of the confusing OAuth2 form with
-  grant_type/scope/client_id fields. OAuth2 is for Phase 2.
+- **Logout is client-side in v1** — JWT is stateless; real server-side
+  invalidation requires Redis blacklist (planned for when refresh tokens land).
 
-- **No separate auth_service.py** — login logic is simple enough to live
-  in the route handler for now. Create the service when refresh/logout
-  flows arrive (they need to coordinate user_repo + token_repo + security).
-
-- **Rate limiting on /login only** — brute-force protection at the entry
-  point. Other endpoints require a valid JWT, which is its own protection.
+- **TanStack Query not used for auth** — auth state is managed via
+  `AuthProvider` context because it needs to be available before any
+  queries run. TanStack Query is used for everything else (tenants, members, etc.).
 
 ## Swagger
 
@@ -166,12 +201,13 @@ File: `api/v1/auth/schemas.py`
 2. **POST `/api/v1/auth/login`** → enter email + password → Execute
 3. Copy the `access_token` from the response
 4. Click **Authorize** (lock icon, top-right) → paste token → Authorize
-5. All protected endpoints now work with "Try it out"
+5. **POST `/api/v1/auth/logout`** → Execute → 204
+6. All protected endpoints now work with "Try it out"
 
 ## Planned (Phase 2)
 
-- **Refresh tokens** — POST `/api/v1/auth/refresh` with refresh token → new access token
-- **Logout** — POST `/api/v1/auth/logout` → revoke refresh token in DB
+- **Refresh tokens** — POST `/api/v1/auth/refresh` with refresh token → new access token + rotation
+- **Server-side token blacklist** — Redis set of revoked access token JTIs, checked on every request
 - **Google OAuth** — redirect flow → callback → JWT
 - **Microsoft OAuth** — same pattern
 - **Password reset** — email link → reset form → update hash
