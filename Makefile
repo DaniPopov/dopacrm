@@ -131,6 +131,9 @@ load-test-auth:  ## Load test auth endpoints (Locust → http://localhost:8089)
 load-test-users:  ## Load test users CRUD (Locust → http://localhost:8089)
 	uv run locust -f loadtests/test_users_load.py --host=http://localhost:8000
 
+load-test-tenants:  ## Load test tenants CRUD (Locust → http://localhost:8089)
+	uv run locust -f loadtests/test_tenants_load.py --host=http://localhost:8000
+
 ##@ Info
 
 urls-dev:  ## Show URLs for all dev services
