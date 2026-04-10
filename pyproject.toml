@@ -1,0 +1,83 @@
+[project]
+name = "dopacrm"
+version = "0.1.0"
+description = "Multi-tenant SaaS CRM for gyms and fitness studios"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.6.0",
+    "celery[redis]>=5.4.0",
+    "redis[hiredis]>=5.2.0",
+    "structlog>=24.4.0",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    "alembic>=1.14.0",
+    "argon2-cffi>=23.1.0",
+    "PyJWT>=2.9.0",
+    "email-validator>=2.2.0",
+    "python-multipart>=0.0.12",
+    "psycopg2-binary>=2.9.11",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.7.0",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.27.0",
+    "pre-commit>=4.0.0",
+    "locust>=2.31.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend/app"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "TC"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.ruff.lint.flake8-type-checking]
+# Pydantic / SQLAlchemy / FastAPI evaluate type hints at runtime — keep
+# their imports eager so ruff doesn't push them into TYPE_CHECKING blocks.
+runtime-evaluated-base-classes = [
+    "pydantic.BaseModel",
+    "pydantic_settings.BaseSettings",
+    "sqlalchemy.orm.DeclarativeBase",
+]
+runtime-evaluated-decorators = [
+    "pydantic.validate_call",
+    "fastapi.params.Depends",
+]
+quote-annotations = true
+
+[tool.ruff.lint.per-file-ignores]
+# Tests don't benefit from lazy imports — pytest loads everything anyway.
+"backend/tests/**/*.py" = ["TC001", "TC002", "TC003"]
+# Alembic migrations are short-lived scripts — lazy imports add noise.
+"backend/migrations/versions/*.py" = ["TC001", "TC002", "TC003"]
+# SQLAlchemy ORM models need stdlib types (datetime, UUID) at runtime via
+# get_type_hints() — moving them into TYPE_CHECKING breaks Mapped[] resolution.
+"backend/app/adapters/storage/postgres/**/models.py" = ["TC001", "TC002", "TC003"]
+# FastAPI routes use Depends() in argument defaults — that's the framework's
+# DI pattern, not a bug. Also routes need UUID at runtime for path params.
+"backend/app/api/**/*.py" = ["B008", "TC001", "TC002", "TC003"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+asyncio_mode = "auto"
+pythonpath = ["backend"]

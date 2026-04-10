@@ -1,0 +1,108 @@
+"""Request/response schemas for the Users API.
+
+Each schema has ``json_schema_extra`` so Swagger's "Try it out" button
+shows a realistic pre-filled example.
+"""
+
+from __future__ import annotations
+
+import re
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+from app.domain.entities.user import Role
+
+
+class CreateUserRequest(BaseModel):
+    """POST /api/v1/users — create a new user."""
+
+    email: EmailStr
+    password: str | None = Field(
+        default=None,
+        min_length=8,
+        description="Min 8 chars, at least 1 uppercase and 1 special character",
+    )
+
+    @field_validator("password")
+    @classmethod
+    def password_complexity(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        if not re.search(r"[A-Z]", v):
+            msg = "Password must contain at least one uppercase letter"
+            raise ValueError(msg)
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", v):
+            msg = "Password must contain at least one special character (!@#$%^&*...)"
+            raise ValueError(msg)
+        return v
+
+    role: Role
+    tenant_id: UUID | None = Field(
+        default=None, description="Required for owner/staff/sales. Null for super_admin."
+    )
+    oauth_provider: str | None = None
+    oauth_id: str | None = None
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "email": "owner@dopagym.com",
+                    "password": "SecureP@ss123",
+                    "role": "owner",
+                    "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
+                }
+            ]
+        }
+    }
+
+
+class UpdateUserRequest(BaseModel):
+    """PATCH /api/v1/users/{user_id} — partial update."""
+
+    email: EmailStr | None = None
+    role: Role | None = None
+    is_active: bool | None = None
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "role": "staff",
+                    "is_active": True,
+                }
+            ]
+        }
+    }
+
+
+class UserResponse(BaseModel):
+    """Standard user response — never includes password_hash."""
+
+    id: UUID
+    email: str
+    role: Role
+    tenant_id: UUID | None
+    is_active: bool
+    oauth_provider: str | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "id": "bb22240d-f00d-47fc-ac60-aa5b08f550aa",
+                    "email": "owner@dopagym.com",
+                    "role": "owner",
+                    "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "is_active": True,
+                    "oauth_provider": None,
+                    "created_at": "2026-04-09T12:00:00+03:00",
+                    "updated_at": "2026-04-09T12:00:00+03:00",
+                }
+            ]
+        }
+    }
