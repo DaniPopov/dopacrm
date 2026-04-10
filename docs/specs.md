@@ -436,8 +436,11 @@ Versioned under `/api/v1/`. RESTful. JSON request/response bodies.
 ### Auth
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
-| POST | `/api/v1/auth/login` | None | Email + password → JWT |
-| GET | `/api/v1/auth/me` | Bearer | Current user profile |
+| POST | `/api/v1/auth/login` | None | Email + password → JWT (HttpOnly cookie + response body) |
+| POST | `/api/v1/auth/logout` | Cookie/Bearer | Clears cookie + blacklists token in Redis |
+| GET | `/api/v1/auth/me` | Cookie/Bearer | Current user profile |
+
+**Auth security:** JWT stored in HttpOnly cookie (XSS-immune). Redis blacklist on logout (token can't be reused). Dual support: cookie (frontend) + Bearer header (Swagger/API clients).
 
 ### Tenants
 | Method | Route | Auth | Description |

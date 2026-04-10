@@ -103,10 +103,29 @@ File: `api/v1/auth/schemas.py`
 ### Dependencies
 
 - `api/dependencies/auth.py`:
-  - `bearer_scheme` — `HTTPBearer(auto_error=True)`, extracts token from header
-  - `get_current_user` — decodes JWT → `TokenPayload`, raises 401 on invalid/expired
+  - `bearer_scheme` — `HTTPBearer(auto_error=False)`, extracts token from header (fallback)
+  - `get_current_user` — reads HttpOnly cookie first, falls back to Bearer header. Decodes JWT → `TokenPayload`. Checks Redis blacklist. Raises 401 on invalid/expired/revoked.
   - `require_role(*roles)` — checks `TokenPayload.role` against allowed roles
   - Shortcuts: `require_super_admin`, `require_owner`, `require_staff`
+
+### Token storage & security
+
+- **HttpOnly cookie** — JWT stored in an HttpOnly cookie (`access_token`), not in `localStorage`. JavaScript cannot read it → immune to XSS token theft.
+- **Cookie settings:** `HttpOnly=true`, `SameSite=Lax`, `Secure=true` (prod only), `Path=/`
+- **Dual auth support** — cookie (frontend) + Bearer header (Swagger, API clients, mobile). Cookie is checked first.
+- **Redis blacklist** — on logout, the token's `jti` is stored in Redis with TTL = remaining expiry. Every auth check queries Redis. Fail-open if Redis is down.
+
+### Token blacklist flow
+
+```
+Login → JWT created with jti (uuid) → HttpOnly cookie + response body
+   ↓
+Every request → read cookie/header → decode JWT → check Redis blacklist → allow/deny
+   ↓
+Logout → jti stored in Redis (TTL = remaining expiry) → cookie cleared
+   ↓
+Same token reused → Redis says blacklisted → 401 "Token has been revoked"
+```
 
 ### Rate limiting
 
@@ -119,13 +138,13 @@ File: `api/v1/auth/schemas.py`
 
 1. **Landing** (`/`) → user clicks "כניסה לפורטל"
 2. **Login** (`/login`) → `features/auth/LoginPage.tsx` → calls `features/auth/api.ts → login()`
-3. On success → stores JWT in `localStorage`, navigates to `/dashboard`
+3. On success → browser stores HttpOnly cookie (set by backend), `AuthProvider.login()` refetches user
 4. **AuthProvider** (`features/auth/auth-provider.tsx`) wraps the app:
-   - On mount: reads token from `localStorage`, calls `getMe()` to validate
-   - Provides `useAuth()` hook: `{ user, isAuthenticated, isLoading, logout }`
+   - On mount: calls `getMe()` (cookie sent automatically by browser)
+   - Provides `useAuth()` hook: `{ user, isAuthenticated, isLoading, login, logout }`
 5. **ProtectedRoute** (`components/layout/ProtectedRoute.tsx`) — redirects to `/login` if not authenticated
-6. **Logout** — calls `POST /auth/logout`, clears `localStorage`, redirects to `/login`
-7. **API client** (`lib/api-client.ts`) — auto-injects Bearer token, auto-redirects to `/login` on 401
+6. **Logout** — calls `POST /auth/logout` (blacklists token in Redis + clears cookie), redirects to `/login`
+7. **API client** (`lib/api-client.ts`) — `credentials: "include"` sends cookie automatically. No token handling in JavaScript.
 
 ### Files
 
@@ -149,15 +168,15 @@ File: `api/v1/auth/schemas.py`
 | E2E | `tests/e2e/test_auth.py` | login success, wrong password, nonexistent email, /me, logout (valid/invalid/no token), SQL injection |
 
 - Unit: 5 tests
-- E2E: 11 tests
-- **Backend total: 16 auth tests**
+- E2E: 14 tests
+- **Backend total: 19 auth tests**
 
 ### Frontend
 
 | File | What it covers |
 |------|----------------|
-| `features/auth/api.test.ts` | login(), getMe(), logout() — correct endpoints + error handling |
-| `features/auth/LoginPage.test.tsx` | Renders form, success stores token + navigates, failure shows error, loading state |
+| `features/auth/api.test.ts` | login() sends credentials:include, getMe(), logout(), error handling |
+| `features/auth/LoginPage.test.tsx` | Renders form, success calls refreshAuth + navigates, failure shows error, loading state |
 
 - Frontend total: 8 auth tests
 
@@ -165,6 +184,9 @@ File: `api/v1/auth/schemas.py`
 
 | Test | What it proves |
 |------|---------------|
+| Login sets HttpOnly cookie | Cookie present in response |
+| /me works via cookie | Full frontend auth flow |
+| Token rejected after logout | Redis blacklist works — 401 "Token has been revoked" |
 | SQL injection in email | Rejected (401/422), no 500 |
 | SQL injection in password | 401, no auth bypass |
 | UNION SELECT injection | Rejected, no data leak |
@@ -175,21 +197,24 @@ File: `api/v1/auth/schemas.py`
 | Sales creating user (super_admin only) | 403 |
 | Staff deleting user (owner+ only) | 403 |
 | Owner with null tenant_id listing users | 403, not all users |
-| API client 401 → clears token + redirects | Frontend test |
 
 ## Decisions
 
-- **JWT over session cookies** — the dashboard is a React SPA. SPAs work
-  better with Bearer tokens (no CSRF issues, works across origins).
+- **HttpOnly cookie over localStorage** — `localStorage` is vulnerable to XSS
+  (any injected script can steal the token). HttpOnly cookies can't be read by
+  JavaScript. The browser sends them automatically — no token management in JS.
+
+- **Dual auth (cookie + header)** — the frontend uses cookies, but Swagger and
+  API clients use Bearer headers. The auth dependency checks both, cookie first.
+
+- **Redis blacklist over "just clear the cookie"** — clearing the cookie only
+  works if the attacker didn't copy the token first. The Redis blacklist ensures
+  the token is actually dead server-side. Fail-open if Redis is down.
 
 - **HS256 over RS256** — single service, no need for asymmetric keys.
-  Switch to RS256 if/when multiple services verify tokens independently.
 
-- **8-hour access token** — balances security with UX. Refresh tokens
-  (30-day, stored in DB) are planned but not implemented yet.
-
-- **Logout is client-side in v1** — JWT is stateless; real server-side
-  invalidation requires Redis blacklist (planned for when refresh tokens land).
+- **8-hour access token** — balances security with UX. Refresh tokens (30-day)
+  are planned but not implemented yet.
 
 - **TanStack Query not used for auth** — auth state is managed via
   `AuthProvider` context because it needs to be available before any
@@ -207,7 +232,6 @@ File: `api/v1/auth/schemas.py`
 ## Planned (Phase 2)
 
 - **Refresh tokens** — POST `/api/v1/auth/refresh` with refresh token → new access token + rotation
-- **Server-side token blacklist** — Redis set of revoked access token JTIs, checked on every request
 - **Google OAuth** — redirect flow → callback → JWT
 - **Microsoft OAuth** — same pattern
 - **Password reset** — email link → reset form → update hash
