@@ -509,7 +509,20 @@ Versioned under `/api/v1/`. RESTful. JSON request/response bodies.
 
 ---
 
-## 7. Conventions
+## 7. Frontend Stack
+
+- **Framework:** React + TypeScript + Vite (SPA, no SSR)
+- **UI components:** shadcn/ui (Tailwind-based primitives)
+- **Server state:** TanStack Query (React Query) — caching, invalidation, loading/error states, deduplication
+- **Routing:** React Router
+- **API client:** typed fetch wrapper with auth token injection; feature-level `api.ts` files wrapped by TanStack Query hooks
+- **Structure:** feature-based — each feature (`auth`, `tenants`, `members`, `dashboard`) owns its pages, API calls, types, and hooks
+
+See [`docs/frontend.md`](./frontend.md) for the full architecture and conventions.
+
+---
+
+## 8. Conventions
 
 - **UUIDs** as primary keys everywhere
 - **Timestamps** as `timestamptz`, stored in UTC, displayed in tenant timezone
@@ -519,7 +532,7 @@ Versioned under `/api/v1/`. RESTful. JSON request/response bodies.
 
 ---
 
-## 8. Roadmap
+## 9. Roadmap
 
 1. **Phase 1 — Foundation** *(now)*: Tenants, Users, Auth, basic CRUD
 2. **Phase 2 — Core CRM**: Members, Membership Plans, Subscriptions, Payments
@@ -530,7 +543,7 @@ Versioned under `/api/v1/`. RESTful. JSON request/response bodies.
 
 ---
 
-## 9. Open Questions
+## 10. Open Questions
 
 - **Pricing model** — per-gym flat fee, per-active-member, or tiered?
 - **Self-serve signup** vs. sales-led onboarding for first gyms?
