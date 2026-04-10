@@ -33,6 +33,25 @@ services:
     cpus: 0.5
     restart: unless-stopped
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dopacrm-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+    depends_on:
+      backend:
+        condition: service_started
+    mem_limit: 256m
+    cpus: 0.2
+    restart: unless-stopped
+
   worker:
     build:
       context: .
