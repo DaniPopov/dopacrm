@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
-import dopaIcon from "@/app/assets/dopa-icon.png"
-import gymImage from "@/app/assets/dopamineogym-image.png"
 import { login } from "./api"
+
+const dopaIcon = "/dopa-icon.png"
+const gymImage = "/dopamineogym-image.png"
 import { useAuth } from "./auth-provider"
 
 export default function LoginPage() {

@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom"
-import dopaIcon from "@/app/assets/dopa-icon.png"
-import crmImage from "@/app/assets/dopamineocrm-image.png"
-import gymImage from "@/app/assets/dopamineogym-image.png"
+
+const dopaIcon = "/dopa-icon.png"
+const crmImage = "/dopamineocrm-image.png"
+const gymImage = "/dopamineogym-image.png"
 
 export default function LandingPage() {
   const navigate = useNavigate()

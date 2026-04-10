@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom"
 import { useAuth } from "@/features/auth/auth-provider"
-import dopaIcon from "@/app/assets/dopa-icon.png"
+
+const dopaIcon = "/dopa-icon.png"
 
 export default function DashboardLayout() {
   const { user, logout } = useAuth()
