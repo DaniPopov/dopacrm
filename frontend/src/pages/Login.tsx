@@ -26,13 +26,14 @@ export default function Login() {
     try {
       const res = await fetch("/api/v1/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ username: email, password }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       })
 
       if (!res.ok) {
         const data = await res.json()
-        setError(data.detail ?? "Invalid credentials")
+        const detail = data.detail
+        setError(typeof detail === "string" ? detail : "Invalid credentials")
         return
       }
 

@@ -8,7 +8,7 @@ export SEED_PASSWORD
 .PHONY: help \
         up-dev build-dev rebuild-dev restart-dev stop-dev down-dev \
         logs-dev urls-dev \
-        logs-backend-dev logs-worker-dev logs-worker-beat-dev \
+        logs-backend-dev logs-frontend-dev logs-worker-dev logs-worker-beat-dev \
         logs-mongo-dev logs-postgres-dev logs-redis-dev logs-rabbitmq-dev \
         logs-mongo-express-dev logs-flower-dev \
         logs-loki-dev logs-promtail-dev logs-grafana-dev \
@@ -83,6 +83,9 @@ logs-dev:  ## Tail logs from all services
 logs-backend-dev:  ## Tail logs — backend
 	$(COMPOSE_DEV) logs -f backend
 
+logs-frontend-dev:  ## Tail logs — frontend
+	$(COMPOSE_DEV) logs -f frontend
+
 logs-worker-dev:  ## Tail logs — worker
 	$(COMPOSE_DEV) logs -f worker
 
@@ -132,6 +135,8 @@ load-test-users:  ## Load test users CRUD (Locust → http://localhost:8089)
 
 urls-dev:  ## Show URLs for all dev services
 	@echo "DopaCRM — dev service URLs:"
+	@echo ""
+	@echo "  Frontend (React+Vite)  http://localhost:5173"
 	@echo ""
 	@echo "  Backend (FastAPI)      http://localhost:8000"
 	@echo "  Backend health         http://localhost:8000/health"
