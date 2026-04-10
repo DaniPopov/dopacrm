@@ -1,6 +1,6 @@
 [extend]
 useDefault = true
 
-[[allowlist]]
-description = "Test fake/invalid JWT tokens used in security tests"
+[allowlist]
+description = "Allow test files with fake tokens"
 paths = ['backend/tests/']
