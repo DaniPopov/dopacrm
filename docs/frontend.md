@@ -196,61 +196,60 @@ export default function TenantListPage() {
 
 ## API client
 
-`lib/api-client.ts` is the single point for all HTTP communication:
+`lib/api-client.ts` is the single point for all HTTP communication. Uses HttpOnly cookies — **no token handling in JavaScript**.
 
 ```typescript
 const API_BASE = "/api/v1"
 
 class ApiClient {
-  private getToken(): string | null {
-    return localStorage.getItem("token")
-  }
-
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = { "Content-Type": "application/json" }
-    const token = this.getToken()
-    if (token) headers["Authorization"] = `Bearer ${token}`
 
     const res = await fetch(`${API_BASE}${path}`, {
       method,
       headers,
+      credentials: "include",  // sends HttpOnly cookie automatically
       body: body ? JSON.stringify(body) : undefined,
     })
 
-    if (res.status === 401) {
-      localStorage.removeItem("token")
-      window.location.href = "/login"
-      throw new Error("Unauthorized")
-    }
+    if (res.status === 401) throw new Error("Unauthorized")
+    if (res.status === 204) return undefined as T
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
-      throw new Error(data.detail ?? `Request failed: ${res.status}`)
+      throw new Error(
+        typeof data.detail === "string" ? data.detail : `Request failed: ${res.status}`,
+      )
     }
 
     return res.json()
   }
 
-  get<T>(path: string): Promise<T>          { return this.request("GET", path) }
-  post<T>(path: string, body?: unknown): Promise<T>  { return this.request("POST", path, body) }
+  get<T>(path: string): Promise<T>                    { return this.request("GET", path) }
+  post<T>(path: string, body?: unknown): Promise<T>   { return this.request("POST", path, body) }
   patch<T>(path: string, body?: unknown): Promise<T>  { return this.request("PATCH", path, body) }
-  delete<T>(path: string): Promise<T>       { return this.request("DELETE", path) }
+  delete<T>(path: string): Promise<T>                 { return this.request("DELETE", path) }
 }
 
 export const apiClient = new ApiClient()
 ```
 
-All features go through this. Token injection, 401 redirect, error parsing — one place.
+Key points:
+- `credentials: "include"` tells the browser to send the HttpOnly cookie on every request
+- No `localStorage`, no token injection, no `Authorization` header in the frontend
+- 401 throws an error — `ProtectedRoute` handles the redirect to `/login`
+- The backend sets/clears the cookie; JavaScript never touches it
 
 ---
 
 ## Auth flow
 
-1. **Login** — `POST /auth/login` → store JWT in `localStorage`
-2. **AuthProvider** — wraps the app, provides `useAuth()` hook with `user`, `isAuthenticated`, `logout()`
-3. **ProtectedRoute** — layout component that redirects to `/login` if not authenticated
-4. **API client** — reads token from `localStorage`, injects as `Bearer` header
-5. **401 handling** — API client clears token and redirects to login
+1. **Login** — `POST /auth/login` → backend sets HttpOnly cookie. Frontend calls `refreshAuth()` to fetch user.
+2. **AuthProvider** — wraps the app. On mount, calls `GET /auth/me` (cookie sent by browser). Provides `useAuth()` hook: `{ user, isAuthenticated, isLoading, login, logout }`.
+3. **ProtectedRoute** — redirects to `/login` if `isAuthenticated` is false.
+4. **API client** — `credentials: "include"` sends cookie automatically. No token handling in JS.
+5. **Logout** — `POST /auth/logout` → backend blacklists token in Redis + clears cookie. Frontend sets `user = null`, navigates to `/login`.
+6. **Security** — token stored in HttpOnly cookie (XSS-immune). Redis blacklist prevents reuse after logout. No `localStorage` anywhere.
 
 ---
 
