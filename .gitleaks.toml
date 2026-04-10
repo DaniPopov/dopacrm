@@ -1,0 +1,6 @@
+[extend]
+useDefault = true
+
+[[allowlist]]
+description = "Test fake/invalid JWT tokens used in security tests"
+paths = ['backend/tests/']
