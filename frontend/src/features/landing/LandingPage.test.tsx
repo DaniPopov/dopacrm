@@ -19,9 +19,9 @@ function renderLanding() {
 }
 
 describe("LandingPage", () => {
-  it("renders Hebrew content", () => {
+  it("renders Hebrew hero content", () => {
     renderLanding()
-    expect(screen.getByText("מערכת ניהול חדר כושר")).toBeInTheDocument()
+    expect(screen.getByText(/נהלו את חדר הכושר/)).toBeInTheDocument()
     expect(screen.getByText("כניסה לפורטל")).toBeInTheDocument()
   })
 
@@ -30,7 +30,7 @@ describe("LandingPage", () => {
     expect(screen.getByText("ניהול מנויים")).toBeInTheDocument()
     expect(screen.getByText("מעקב הכנסות")).toBeInTheDocument()
     expect(screen.getByText("ניהול לידים")).toBeInTheDocument()
-    expect(screen.getByText("דשבורד חכם")).toBeInTheDocument()
+    expect(screen.getByText("דשבורד מותאם אישית")).toBeInTheDocument()
   })
 
   it("navigates to login when portal button clicked", async () => {
@@ -43,12 +43,18 @@ describe("LandingPage", () => {
   it("navigates to login when CTA clicked", async () => {
     const user = userEvent.setup()
     renderLanding()
-    await user.click(screen.getByText("התחילו עכשיו"))
+    await user.click(screen.getByText("התחילו בחינם"))
     expect(mockNavigate).toHaveBeenCalledWith("/login")
   })
 
   it("shows Dopamineo in footer", () => {
     renderLanding()
     expect(screen.getByText(/Dopamineo/)).toBeInTheDocument()
+  })
+
+  it("displays brand images", () => {
+    renderLanding()
+    expect(screen.getByAltText("DopamineoCRM")).toBeInTheDocument()
+    expect(screen.getByAltText("DopamineoGym")).toBeInTheDocument()
   })
 })

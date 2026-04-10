@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom"
 import LandingPage from "@/features/landing/LandingPage"
 import LoginPage from "@/features/auth/LoginPage"
 import DashboardPage from "@/features/dashboard/DashboardPage"
+import TenantListPage from "@/features/tenants/TenantListPage"
 import ProtectedRoute from "@/components/layout/ProtectedRoute"
 import DashboardLayout from "@/components/layout/DashboardLayout"
 
@@ -13,8 +14,8 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
-          {/* Future routes:
           <Route path="/tenants" element={<TenantListPage />} />
+          {/* Future:
           <Route path="/users" element={<UserListPage />} />
           <Route path="/members" element={<MemberListPage />} />
           <Route path="/leads" element={<LeadListPage />} />

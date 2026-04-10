@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event"
 import { MemoryRouter } from "react-router-dom"
 import LoginPage from "./LoginPage"
 
-// Mock the auth api
 vi.mock("./api", () => ({
   login: vi.fn(),
 }))
@@ -32,12 +31,12 @@ beforeEach(() => {
 })
 
 describe("LoginPage", () => {
-  it("renders the login form", () => {
+  it("renders the login form in Hebrew", () => {
     renderLogin()
-    expect(screen.getByText("DopaCRM")).toBeInTheDocument()
-    expect(screen.getByLabelText("Email")).toBeInTheDocument()
-    expect(screen.getByLabelText("Password")).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument()
+    expect(screen.getByText("כניסה לפורטל")).toBeInTheDocument()
+    expect(screen.getByLabelText("אימייל")).toBeInTheDocument()
+    expect(screen.getByLabelText("סיסמה")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "התחברות" })).toBeInTheDocument()
   })
 
   it("stores token and navigates on successful login", async () => {
@@ -49,9 +48,9 @@ describe("LoginPage", () => {
     })
 
     renderLogin()
-    await user.type(screen.getByLabelText("Email"), "admin@dopacrm.com")
-    await user.type(screen.getByLabelText("Password"), "Admin@12345")
-    await user.click(screen.getByRole("button", { name: "Sign in" }))
+    await user.type(screen.getByLabelText("אימייל"), "admin@dopacrm.com")
+    await user.type(screen.getByLabelText("סיסמה"), "Admin@12345")
+    await user.click(screen.getByRole("button", { name: "התחברות" }))
 
     expect(mockLogin).toHaveBeenCalledWith({
       email: "admin@dopacrm.com",
@@ -66,9 +65,9 @@ describe("LoginPage", () => {
     mockLogin.mockRejectedValue(new Error("Invalid credentials"))
 
     renderLogin()
-    await user.type(screen.getByLabelText("Email"), "bad@email.com")
-    await user.type(screen.getByLabelText("Password"), "wrong")
-    await user.click(screen.getByRole("button", { name: "Sign in" }))
+    await user.type(screen.getByLabelText("אימייל"), "bad@email.com")
+    await user.type(screen.getByLabelText("סיסמה"), "wrong")
+    await user.click(screen.getByRole("button", { name: "התחברות" }))
 
     expect(await screen.findByText("Invalid credentials")).toBeInTheDocument()
     expect(localStorage.getItem("token")).toBeNull()
@@ -76,14 +75,23 @@ describe("LoginPage", () => {
 
   it("shows loading state while submitting", async () => {
     const user = userEvent.setup()
-    // Never resolve — keeps the form in loading state
     mockLogin.mockReturnValue(new Promise(() => {}))
 
     renderLogin()
-    await user.type(screen.getByLabelText("Email"), "admin@dopacrm.com")
-    await user.type(screen.getByLabelText("Password"), "Admin@12345")
-    await user.click(screen.getByRole("button", { name: "Sign in" }))
+    await user.type(screen.getByLabelText("אימייל"), "admin@dopacrm.com")
+    await user.type(screen.getByLabelText("סיסמה"), "Admin@12345")
+    await user.click(screen.getByRole("button", { name: "התחברות" }))
 
-    expect(screen.getByRole("button", { name: "Signing in..." })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "מתחבר..." })).toBeDisabled()
+  })
+
+  it("has link back to landing page", () => {
+    renderLogin()
+    expect(screen.getByText("חזרה לעמוד הראשי")).toBeInTheDocument()
+  })
+
+  it("shows brand logo", () => {
+    renderLogin()
+    expect(screen.getByAltText("DopaCRM")).toBeInTheDocument()
   })
 })
