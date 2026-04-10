@@ -6,12 +6,15 @@ for orchestration and by ``api/dependencies/auth.py`` for token validation.
 
 Password hashing: argon2id (OWASP recommended).
 JWT: HS256 signed with APP_SECRET_KEY, 8-hour access tokens.
+Each token carries a ``jti`` (JWT ID) — a unique identifier used for
+the Redis blacklist on logout.
 """
 
 from __future__ import annotations
 
 from datetime import timedelta
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import jwt
 from argon2 import PasswordHasher
@@ -63,7 +66,9 @@ class TokenPayload(BaseModel):
     sub: str  # user ID (UUID as string)
     role: str
     tenant_id: str | None = None
+    jti: str | None = None  # JWT ID — used for blacklist on logout
     type: str = "access"  # access | refresh
+    exp: int | None = None  # expiry timestamp (epoch seconds)
 
 
 def create_access_token(
@@ -74,13 +79,14 @@ def create_access_token(
     secret_key: str,
     expires_delta: timedelta = ACCESS_TOKEN_EXPIRE,
 ) -> str:
-    """Create a signed HS256 JWT access token."""
+    """Create a signed HS256 JWT access token with a unique jti."""
     now = utcnow()
     payload = {
         "sub": str(user_id),
         "role": role,
         "tenant_id": str(tenant_id) if tenant_id else None,
         "type": "access",
+        "jti": uuid4().hex,
         "iat": now,
         "exp": now + expires_delta,
     }
@@ -98,6 +104,7 @@ def create_refresh_token(
     payload = {
         "sub": str(user_id),
         "type": "refresh",
+        "jti": uuid4().hex,
         "iat": now,
         "exp": now + expires_delta,
     }

@@ -4,8 +4,8 @@ Supports two token sources (checked in order):
 1. HttpOnly cookie ``access_token`` — used by the React frontend
 2. Authorization: Bearer header — used by Swagger, API clients, mobile
 
-The frontend never touches the token directly — the browser sends the
-cookie automatically on every request.
+On every request, the token's ``jti`` is checked against the Redis
+blacklist. Logged-out tokens are rejected even before expiry.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import get_settings
 from app.core.security import TokenPayload, decode_access_token
+from app.core.token_blacklist import is_blacklisted
 from app.domain.entities.user import Role
 
 #: Bearer scheme with auto_error=False so we can fall back to cookie.
@@ -30,7 +31,7 @@ async def get_current_user(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> TokenPayload:
-    """Extract JWT from cookie or Authorization header. Raises 401 if missing/invalid."""
+    """Extract JWT from cookie or header. Raises 401 if missing/invalid/blacklisted."""
     settings = get_settings()
 
     # 1. Try HttpOnly cookie first (frontend)
@@ -47,7 +48,7 @@ async def get_current_user(
         )
 
     try:
-        return decode_access_token(
+        payload = decode_access_token(
             token,
             secret_key=settings.APP_SECRET_KEY.get_secret_value(),
         )
@@ -61,6 +62,15 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
         ) from exc
+
+    # 3. Check Redis blacklist (logged-out tokens)
+    if payload.jti and await is_blacklisted(payload.jti):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+        )
+
+    return payload
 
 
 def require_role(*allowed_roles: Role) -> Callable:

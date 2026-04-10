@@ -127,13 +127,21 @@ async def login(
     "/logout",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Logout",
-    description="Clears the HttpOnly auth cookie.",
+    description="Clears the HttpOnly cookie and blacklists the token in Redis "
+    "so it can't be reused even if intercepted.",
 )
 async def logout(
     response: Response,
-    _caller: TokenPayload = Depends(get_current_user),
+    caller: TokenPayload = Depends(get_current_user),
 ) -> None:
+    from app.core.token_blacklist import blacklist_token
+
     settings = get_settings()
+
+    # Blacklist the token in Redis until it expires
+    if caller.jti and caller.exp:
+        await blacklist_token(caller.jti, caller.exp)
+
     _clear_token_cookie(response, is_production=settings.is_production)
 
 
