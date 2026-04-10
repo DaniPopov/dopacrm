@@ -13,13 +13,11 @@ Routes NEVER call the repository directly.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from uuid import UUID
 
 from app.adapters.storage.postgres.tenant.repositories import (
     TenantAlreadyExistsError,
     TenantRepository,
 )
-from app.core.security import TokenPayload
 from app.domain.entities.tenant import Tenant, TenantStatus
 from app.domain.exceptions import (
     InsufficientPermissionsError,
@@ -27,7 +25,11 @@ from app.domain.exceptions import (
 )
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from sqlalchemy.ext.asyncio import AsyncSession
+
+    from app.core.security import TokenPayload
 
 
 class TenantService:

@@ -31,7 +31,11 @@ class TenantORM(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     phone: Mapped[str | None] = mapped_column(String, nullable=True)
     status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'active'"))
-    timezone: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'Asia/Jerusalem'"))
+    timezone: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        server_default=text("'Asia/Jerusalem'"),
+    )
     currency: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'ILS'"))
     locale: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'he-IL'"))
     trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
