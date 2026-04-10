@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, String, UniqueConstraint, text
+from sqlalchemy import CheckConstraint, DateTime, String, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -17,8 +17,7 @@ class TenantORM(Base):
     """Tenants (gyms) are the top-level account entity.
 
     The ``slug`` links to the matching tenant config document in
-    MongoDB. ``status`` is a boolean (active / inactive) — soft-delete by
-    flipping it rather than removing the row.
+    MongoDB. ``status`` is a text enum (trial/active/suspended/cancelled).
     """
 
     __tablename__ = "tenants"
@@ -31,7 +30,11 @@ class TenantORM(Base):
     slug: Mapped[str] = mapped_column(String, nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     phone: Mapped[str | None] = mapped_column(String, nullable=True)
-    status: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'active'"))
+    timezone: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'Asia/Jerusalem'"))
+    currency: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'ILS'"))
+    locale: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'he-IL'"))
+    trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -42,4 +45,10 @@ class TenantORM(Base):
         onupdate=func.now(),
     )
 
-    __table_args__ = (UniqueConstraint("slug", name="uq_tenants_slug"),)
+    __table_args__ = (
+        UniqueConstraint("slug", name="uq_tenants_slug"),
+        CheckConstraint(
+            "status IN ('trial', 'active', 'suspended', 'cancelled')",
+            name="ck_tenants_status",
+        ),
+    )

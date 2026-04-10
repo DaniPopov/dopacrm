@@ -47,16 +47,18 @@ A tenant is a gym. Everything else belongs to a tenant.
 | Field | Type | Notes |
 |-------|------|-------|
 | id | uuid | PK. Cross-DB reference key |
-| slug | text | URL-safe (`dopagym`). Unique. Mutable |
+| slug | text | URL-safe (`ironfit-tlv`). Unique. Mutable |
 | name | text | Display name |
-| status | text | `trial`, `active`, `suspended`, `cancelled` |
-| saas_plan_id | uuid | FK → `saas_plans`. Which DopaCRM tier |
-| timezone | text | IANA (`Europe/Sofia`) |
-| currency | text | ISO 4217 (`USD`, `EUR`, `BGN`) |
-| locale | text | BCP 47 (`en-US`) |
-| trial_ends_at | timestamptz | Nullable |
+| phone | text | Nullable. Contact number |
+| status | text | `trial`, `active`, `suspended`, `cancelled`. Default: `active`. CHECK constraint |
+| timezone | text | IANA. Default: `Asia/Jerusalem` |
+| currency | text | ISO 4217. Default: `ILS` |
+| locale | text | BCP 47. Default: `he-IL` |
+| trial_ends_at | timestamptz | Nullable. Set when status = trial |
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
+
+> **Deferred:** `saas_plan_id` (FK → `saas_plans`) will be added when we build the billing/plan module. For now, tenant limits live in MongoDB config only.
 
 **Tenant config** is stored in **MongoDB** (`tenant_configs` collection, keyed by `tenant_id`). Contains feature flags, operational limits, and plan-specific settings:
 
@@ -436,6 +438,15 @@ Versioned under `/api/v1/`. RESTful. JSON request/response bodies.
 |--------|-------|------|-------------|
 | POST | `/api/v1/auth/login` | None | Email + password → JWT |
 | GET | `/api/v1/auth/me` | Bearer | Current user profile |
+
+### Tenants
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| POST | `/api/v1/tenants` | super_admin | Onboard a new gym |
+| GET | `/api/v1/tenants` | super_admin | List all tenants |
+| GET | `/api/v1/tenants/{id}` | Bearer | Get tenant by ID |
+| PATCH | `/api/v1/tenants/{id}` | super_admin | Update tenant |
+| POST | `/api/v1/tenants/{id}/suspend` | super_admin | Suspend tenant |
 
 ### Users
 | Method | Route | Auth | Description |

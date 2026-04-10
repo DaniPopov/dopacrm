@@ -28,6 +28,7 @@ _STATUS_MAP: dict[str, int] = {
     # Tenant
     "TENANT_NOT_FOUND": 404,
     "TENANT_SUSPENDED": 403,
+    "TENANT_SLUG_TAKEN": 409,
 }
 
 #: Fallback for unmapped codes.
