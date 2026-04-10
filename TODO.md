@@ -14,8 +14,10 @@
 - [ ] Subscriptions (member ↔ plan assignment)
 - [ ] Payments (recorded income events)
 - [ ] Leads pipeline (capture → contacted → trial → converted/lost)
-- [ ] Dashboard API (metrics: MRR, active members, churn, leads)
-- [ ] Refresh tokens (POST /auth/refresh, POST /auth/logout, revoke in DB)
+- [ ] Dashboard: Admin dashboard (platform metrics) + Gym dashboard (tenant metrics)
+- [ ] Dashboard: customizable widget layout (v2 — MongoDB config per user)
+- [ ] Users frontend: full CRUD page (currently placeholder)
+- [ ] Refresh tokens (POST /auth/refresh — short-lived access + long-lived refresh)
 - [ ] Google OAuth login
 - [ ] Microsoft OAuth login
 - [ ] Password reset flow (email link → reset form)
@@ -46,6 +48,12 @@
 - [ ] Test concurrent duplicate slug creation (race condition)
 - [ ] Test update tenant_id in user PATCH (should not allow tenant transfer via PATCH)
 
+### Security / Hardening — Auth
+- [ ] Test blacklisted token can't access any endpoint (not just /me)
+- [ ] Test Redis down → blacklist check skipped (fail-open)
+- [ ] Test cookie not sent cross-origin (SameSite=Lax enforcement)
+- [ ] Test expired cookie is rejected
+
 ### Security / Hardening — General
 - [ ] X-Forwarded-For validation (trust only nginx proxy, reject spoofed headers)
 - [ ] Bump password complexity (12+ chars, digits required) before first paying customer
@@ -64,8 +72,12 @@
 - [x] Project scaffold (FastAPI, Docker Compose, CI, pre-commit)
 - [x] Postgres: ORM models, Alembic migrations, per-entity folder layout
 - [x] Domain: User entity, Role enum, Tenant entity, TenantStatus enum, AppError exceptions
-- [x] Auth: JWT (PyJWT HS256), argon2 password hashing, HTTPBearer
-- [x] API: v1/auth (login, me) + v1/users (CRUD) + v1/tenants (CRUD + suspend)
+- [x] Auth: JWT (PyJWT HS256), argon2 password hashing
+- [x] Auth: HttpOnly cookie storage (XSS-immune, replaces localStorage)
+- [x] Auth: Redis token blacklist on logout (jti-based, TTL = remaining expiry)
+- [x] Auth: dual support — cookie (frontend) + Bearer header (Swagger/API clients)
+- [x] Auth: POST /logout endpoint (clears cookie + blacklists token)
+- [x] API: v1/auth (login, logout, me) + v1/users (CRUD) + v1/tenants (CRUD + suspend)
 - [x] Service layer: UserService + TenantService with permission checks
 - [x] Rate limiting: Redis-backed, 10/min/IP on login, 60/min/user on API
 - [x] Rate limiter graceful degradation (fail-open if Redis is down)
@@ -74,13 +86,22 @@
 - [x] Celery: worker + worker-beat containers, 4 queues configured
 - [x] Resource limits: t3.medium budget (2 vCPU, 4 GB)
 - [x] Dockerfile: non-root user, uv, python:3.13-slim
-- [x] Frontend: React + TypeScript + Vite + shadcn/ui (login + dashboard shell)
-- [x] Tests: 64 total (unit + integration + E2E with security checks)
+- [x] Frontend: React + TypeScript + Vite + TanStack Query + shadcn/ui
+- [x] Frontend: feature-based architecture (auth, tenants, dashboard, landing, users)
+- [x] Frontend: Hebrew landing page with brand assets
+- [x] Frontend: login page (split layout, password toggle, brand images)
+- [x] Frontend: tenant management page (create, list, suspend — super_admin)
+- [x] Frontend: RTL sidebar with role-based navigation
+- [x] Frontend: AuthProvider + ProtectedRoute + DashboardLayout
+- [x] Tests: 89+ backend (unit + integration + E2E) + 34 frontend (Vitest)
 - [x] Security: SQL injection, XSS, JWT tampering, role escalation, tenant isolation
+- [x] Security: cookie auth tests, token blacklist after logout verified
 - [x] Tenant expand: status enum, timezone, currency, locale (Israel defaults)
 - [x] Rename: company → tenant, roles (admin→owner, manager→staff, worker→sales)
 - [x] CORS configured (dev origins whitelist, prod domain)
 - [x] Password complexity (min 8, 1 uppercase, 1 special char)
-- [x] Load testing: Locust (auth + users scenarios)
+- [x] Load testing: Locust (auth, users, tenants scenarios)
 - [x] Seed script: create_super_admin via Make target
-- [x] Docs: CLAUDE.md, README, specs.md, feature docs (users, auth, tenants), standards
+- [x] Makefile: test targets (backend unit/integration/e2e/all, frontend, all)
+- [x] CI: backend lint+test, frontend lint+test, gitleaks, pip-audit, docker build
+- [x] Docs: CLAUDE.md, README, specs.md, backend.md, frontend.md, feature docs, standards
