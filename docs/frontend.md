@@ -66,9 +66,16 @@ frontend/src/
 │   │   └── LandingPage.test.tsx  # Tests for landing page
 │   │
 │   ├── dashboard/
-│   │   └── DashboardPage.tsx     # Widget grid (placeholders for now)
+│   │   ├── DashboardPage.tsx     # Role check → renders AdminDashboard or GymDashboard
+│   │   ├── AdminDashboard.tsx    # super_admin: platform metrics (tenants, users, health)
+│   │   ├── GymDashboard.tsx      # owner/staff/sales: members, revenue, leads, churn
+│   │   └── widgets/              # Reusable stat cards, charts
+│   │       ├── StatCard.tsx      # Shared: number + label + trend
+│   │       ├── admin/            # super_admin-only widgets
+│   │       └── gym/              # gym-only widgets
 │   │
-│   ├── users/                    # (future)
+│   ├── users/
+│   │   └── UserListPage.tsx      # Placeholder (to be built)
 │   ├── members/                  # (future)
 │   ├── plans/                    # (future)
 │   └── leads/                    # (future)
@@ -260,17 +267,37 @@ Key points:
 <Route path="/" element={<LandingPage />} />        {/* Hebrew landing */}
 <Route path="/login" element={<LoginPage />} />
 <Route element={<ProtectedRoute />}>                 {/* checks auth */}
-  <Route element={<DashboardLayout />}>              {/* header + logout */}
+  <Route element={<DashboardLayout />}>              {/* sidebar + logout */}
     <Route path="/dashboard" element={<DashboardPage />} />
-    {/* Future:
     <Route path="/tenants" element={<TenantListPage />} />
     <Route path="/users" element={<UserListPage />} />
+    {/* Future:
     <Route path="/members" element={<MemberListPage />} />
     <Route path="/leads" element={<LeadListPage />} />
     */}
   </Route>
 </Route>
 ```
+
+---
+
+## Role-based rendering
+
+**One route, different content.** The `/dashboard` page checks the user's role and renders a different view:
+
+```tsx
+// features/dashboard/DashboardPage.tsx
+export default function DashboardPage() {
+  const { user } = useAuth()
+  if (user?.role === "super_admin") return <AdminDashboard />
+  return <GymDashboard />
+}
+```
+
+- **super_admin** sees platform metrics: total tenants, total users, onboarding velocity
+- **owner/staff/sales** sees gym metrics: members, MRR, churn, leads
+
+The sidebar also shows/hides links based on role (e.g., "חדרי כושר" only for super_admin).
 
 ---
 

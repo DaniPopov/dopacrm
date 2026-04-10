@@ -328,49 +328,37 @@ new → contacted → trial → converted
 
 ### 3.9 Dashboard
 
-The owner's Monday-morning view — **customizable by each gym owner.**
+**One route (`/dashboard`), role-based content.** The page checks the user's role and renders the appropriate view. No separate routes for admin vs gym dashboards.
 
-#### Core design principle: owner-configurable dashboards
+#### Super Admin Dashboard
 
-DopaCRM's dashboard is not a fixed layout. Gym owners can choose:
-- **Which graphs/widgets to show** — pick from a library of available metrics
-- **What date range to see** — today, this week, this month, custom range, comparisons (this month vs. last)
-- **How to arrange them** — drag-and-drop layout, save per-user preferences
+Platform-level overview. Only visible to `super_admin`.
 
-This flexibility is stored in MongoDB as part of the tenant config / user preferences (document-shaped, varies per user, not queried relationally).
+| Widget | What it shows |
+|--------|--------------|
+| Total tenants | Count by status (active / trial / suspended / cancelled) |
+| Total users | Count across the entire platform |
+| New tenants this month | Onboarding velocity |
+| Platform revenue | Sum across all tenants (when billing is implemented) |
 
-#### Available metrics (widget library)
+#### Gym Dashboard (owner / staff / sales)
 
-**Revenue**
-- Revenue this period (with date picker)
-- MRR (Monthly Recurring Revenue)
-- Revenue per plan breakdown
-- Revenue trend (line chart over time)
-- MoM / WoW / YoY change percentage
-- Average revenue per member
+Tenant-scoped. Each gym sees only their own data.
 
-**Members**
-- Active member count
-- New members this period
-- Churn this period + churn rate
-- Member growth trend
-- Member lifetime value (average)
-- Members by plan (breakdown)
+| Widget | What it shows |
+|--------|--------------|
+| Active members | Count with `status = active` |
+| MRR | Sum of active recurring subscription prices |
+| New members this month | Members with `join_date` in current month |
+| Churn this month | Members who cancelled + churn rate |
+| Revenue this month | Sum of payments with `paid_at` in current month |
+| Revenue last month | Previous month + MoM change % |
+| Leads in pipeline | Count by status (new, contacted, trial) |
+| Lead conversion rate | Converted / total leads this month |
 
-**Leads**
-- Leads in pipeline (by status)
-- Lead conversion rate
-- Lead source effectiveness (which sources produce the most conversions)
-- New leads this period
+#### Customizable dashboards (future)
 
-**Operations** *(v2+)*
-- Attendance trends
-- Peak hours
-- Upcoming expirations (members whose plan expires soon)
-
-#### Dashboard config storage
-
-Per-user dashboard layout is stored in **MongoDB** (`user_dashboard_configs`):
+Gym owners will be able to choose which widgets to show, set date ranges, and arrange layout. Config stored in MongoDB (`user_dashboard_configs`):
 
 ```json
 {
@@ -382,12 +370,11 @@ Per-user dashboard layout is stored in **MongoDB** (`user_dashboard_configs`):
     { "widget": "churn_rate", "position": { "x": 9, "y": 0, "w": 3, "h": 4 } },
     { "widget": "leads_pipeline", "position": { "x": 0, "y": 4, "w": 12, "h": 4 } }
   ],
-  "default_date_range": "this_month",
-  "updated_at": "2026-04-10T10:00:00Z"
+  "default_date_range": "this_month"
 }
 ```
 
-Gym owners who don't configure anything get a sensible default layout. Power users can build exactly the view they need.
+Not implemented in v1 — gym owners get the default layout above. Customization comes in v2.
 
 ---
 
