@@ -23,7 +23,7 @@ _DEFAULT_DB_URL = "postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm"
 def _get_db_url() -> str:
     url = os.getenv("NEON_DATABASE_URL", _DEFAULT_DB_URL)
     if url.startswith("postgresql://"):
-        url = "postgresql+asyncpg://" + url[len("postgresql://"):]
+        url = "postgresql+asyncpg://" + url[len("postgresql://") :]
     return url
 
 

@@ -46,9 +46,7 @@ async def test_create_user_returns_domain_entity(repo: UserRepository) -> None:
     assert user.id is not None
 
 
-async def test_create_user_with_tenant(
-    repo: UserRepository, tenant_repo: TenantRepository
-) -> None:
+async def test_create_user_with_tenant(repo: UserRepository, tenant_repo: TenantRepository) -> None:
     tenant = await _create_tenant(tenant_repo)
     user = await repo.create(
         email="owner@dopagym.com",
