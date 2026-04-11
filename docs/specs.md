@@ -1,6 +1,6 @@
 # DopaCRM — Product Specification
 
-> Living document. Last updated: 2026-04-10.
+> Living document. Last updated: 2026-04-11.
 >
 > This is the source of truth for what DopaCRM does, who it serves, and how the domain is modeled. Architecture and coding conventions live in `CLAUDE.md` and `docs/standards/`. Per-feature implementation details live in `docs/features/`.
 
@@ -8,18 +8,32 @@
 
 ## 1. Vision
 
-**DopaCRM is a SaaS CRM built specifically for gyms and fitness studios.**
+**DopaCRM is a SaaS CRM built specifically for gyms and fitness studios — and the most flexible one on the market.**
 
 Most general-purpose CRMs treat a gym like any other small business — a contact list with a pipeline bolted on. They miss the rhythms that actually run a gym: recurring memberships, class attendance, drop-ins, trial passes, freezes, churn at month-end, and the constant churn-and-replace of leads coming through the door.
 
-DopaCRM gives gym owners **one place to run their business**: who their members are, how much each one is worth, where their leads are coming from, and what is happening to revenue this month versus last.
+But even gym-specific CRMs have a second problem: **they're rigid**. You get the features the vendor built, the roles the vendor defined, the fields the vendor chose. A gym with three trainers, a front-desk cashier, and a separate sales team has to twist their workflow to match the software.
+
+DopaCRM flips that. It gives gym owners **one place to run their business** — members, revenue, leads, plans — and lets them **shape the software to fit how their gym actually operates**, not the other way around.
 
 ### Guiding principles
 
 1. **Built for gyms, not adapted to them.** Every concept (member, lead, plan, freeze, drop-in) maps directly to how a gym operates.
-2. **Owner-first.** The primary user is the person who runs the gym. Features answer Monday-morning questions: *"How much did we make? Who's about to churn? Which leads haven't been called?"*
-3. **Boring where it matters.** Billing, member records, and revenue numbers must be correct and auditable.
-4. **Fast to onboard.** A new gym should see real data the same day they sign up.
+2. **Owner-configurable by default.** Roles, fields, plans, workflows, dashboards — the owner defines their world. Only `super_admin` and `owner` are system-defined; everything else is customizable per-tenant. This is the product's core differentiator, not a v2 feature.
+3. **Owner-first.** The primary user is the person who runs the gym. Features answer Monday-morning questions: *"How much did we make? Who's about to churn? Which leads haven't been called?"*
+4. **Boring where it matters.** Billing, member records, and revenue numbers must be correct and auditable.
+5. **Fast to onboard.** A new gym should see real data the same day they sign up — with sensible defaults that the owner can customize later.
+
+### What "flexible" means concretely
+
+| Area | Rigid CRMs | DopaCRM |
+|---|---|---|
+| **Roles** | Fixed: Admin / Staff / Sales | `super_admin` + `owner` are system. Every other role is owner-created with custom feature grants. See [`docs/features/roles.md`](./features/roles.md). |
+| **Member fields** | Hardcoded schema | JSONB `custom_fields` — owner adds "belt color", "injury notes", "referral source" without a migration |
+| **Plan attributes** | Fixed columns | JSONB `custom_attrs` — owner defines per-plan extras (PT sessions included, valid days, guest passes) |
+| **Feature visibility** | All users see all features their role allows | Owner picks which features each non-owner role can see |
+| **Dashboards** | Same for everyone | Widget layout per user (v2) |
+| **Pricing tiers, billing cadences** | Vendor-defined | Owner-defined per tenant |
 
 ---
 
@@ -131,24 +145,33 @@ Staff members who log in. A user belongs to exactly one tenant (except `super_ad
 | hashed_password | text | Argon2 |
 | first_name | text | |
 | last_name | text | |
-| role | text | `super_admin`, `owner`, `staff`, `sales` |
+| role | text | *Current:* enum literal. *Planned:* FK to `tenant_roles.id`. See below. |
 | status | text | `invited`, `active`, `disabled` |
 | last_login_at | timestamptz | |
 
-**Roles & permissions:**
+**Roles & permissions — current state (transitional):**
+
+Today `users.role` is a text column holding one of four literals: `super_admin`, `owner`, `staff`, `sales`. This is a temporary shape — the real model is dynamic, per-tenant, owner-configurable (see below).
 
 | Role | Scope | Can do |
 |------|-------|--------|
 | `super_admin` | Platform | Onboard gyms, create first user per tenant, manage SaaS plans |
 | `owner` | Tenant | Everything within their gym: config, billing, users, members, leads |
-| `staff` | Tenant | Member management, check-in, payments, view dashboard |
-| `sales` | Tenant | Lead pipeline, trials, conversions, view dashboard |
+| `staff` | Tenant | Default "operations" role — seeded for new tenants, editable by owner |
+| `sales` | Tenant | Default "lead pipeline" role — seeded for new tenants, editable by owner |
+
+**Planned: dynamic roles (see [`docs/features/roles.md`](./features/roles.md)):**
+
+In line with the flexibility principle, only `super_admin` and `owner` are system-defined. Every other role is a row in `tenant_roles` that the owner creates, names, and assigns feature grants to. New tenants are seeded with "Staff" and "Sales" as starting points; owners can rename, delete, or add new roles like "Receptionist", "Trainer", "Night Shift Manager", "Cashier".
+
+When this lands, `users.role` becomes `users.role_id UUID REFERENCES tenant_roles(id)`, and `/auth/me` returns the role as an object (`{name, features, is_system}`) so the frontend can permission-check without a hardcoded role list.
 
 **Business rules:**
 - Only `super_admin` creates tenants and first-users
 - `owner` can create other users within their tenant
 - Non-super_admin roles always require `tenant_id`
 - Each tenant should have at least one `owner`
+- `super_admin` and `owner` roles cannot be renamed or deleted (system roles)
 
 ---
 
@@ -548,12 +571,14 @@ See [`docs/frontend.md`](./frontend.md) for the full architecture and convention
 
 ## 9. Roadmap
 
-1. **Phase 1 — Foundation** *(now)*: Tenants, Users, Auth, basic CRUD
-2. **Phase 2 — Core CRM**: Members, Membership Plans, Subscriptions, Payments
-3. **Phase 3 — Growth**: Leads, Pipeline, Dashboard
-4. **Phase 4 — Frontend**: React + Vite dashboard
+1. **Phase 1 — Foundation** *(done)*: Tenants, Users, Auth, basic CRUD, Hebrew dashboard shell
+2. **Phase 2 — Core CRM** *(now)*: Members, Membership Plans, Subscriptions, Payments
+3. **Phase 3 — Growth**: Leads, Pipeline, Dashboard with real metrics
+4. **Phase 4 — Flexibility**: Dynamic roles system (see `docs/features/roles.md`), owner settings page, per-tenant feature visibility, custom fields UI
 5. **Phase 5 — Integrations**: Stripe/payment processing, CSV import/export
-6. **Phase 6 — Advanced**: Class scheduling, trainer workflows, mobile, marketing automation
+6. **Phase 6 — Advanced**: Class scheduling, trainer workflows, mobile, marketing automation, customizable dashboards
+
+**Why Flexibility is Phase 4, not Phase 1:** The flexibility thesis (owner configures everything) is the product's core differentiator, but we can only design the permission grid after 2-3 real gym-scoped features exist to permission. Building it earlier means designing in the dark and rebuilding the grid as features land. In the meantime, the frontend's `permissions.canAccess(user, feature)` module uses a hardcoded baseline that will be swapped for backend-driven config — call sites won't change.
 
 ---
 

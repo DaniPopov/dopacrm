@@ -308,23 +308,87 @@ Key points:
 <Route path="/" element={<LandingPage />} />        {/* Hebrew landing */}
 <Route path="/login" element={<LoginPage />} />
 <Route element={<ProtectedRoute />}>                 {/* checks auth */}
-  <Route element={<DashboardLayout />}>              {/* sidebar + logout */}
+  <Route element={<DashboardLayout />}>              {/* sidebar + outlet */}
     <Route path="/dashboard" element={<DashboardPage />} />
-    <Route path="/tenants" element={<TenantListPage />} />
-    <Route path="/users" element={<UserListPage />} />
-    {/* Future:
-    <Route path="/members" element={<MemberListPage />} />
-    <Route path="/leads" element={<LeadListPage />} />
-    */}
+
+    {/* Permission-gated routes — typing the URL doesn't bypass the sidebar */}
+    <Route element={<RequireFeature feature="tenants" />}>
+      <Route path="/tenants" element={<TenantListPage />} />
+    </Route>
+    <Route element={<RequireFeature feature="platform_users" />}>
+      <Route path="/users" element={<UserListPage />} />
+    </Route>
   </Route>
 </Route>
 ```
 
+**Two guard layers:**
+- `ProtectedRoute` — is the user logged in? No → redirect to `/login`
+- `RequireFeature` — does the user have access to this feature? No → redirect to `/dashboard`
+
 ---
 
-## Role-based rendering
+## Permissions (role-based feature visibility)
 
-**One route, different content.** The `/dashboard` page checks the user's role and renders a different view:
+The golden rule: **never write `user.role === "super_admin"` in a component.** Always go through `canAccess(user, feature)`.
+
+### Why this matters
+
+Hardcoding role checks in 50 components means that the day you add a new role (or make roles owner-configurable — see `docs/features/roles.md`), you're hunting through the codebase. Centralizing in one module means you change one file.
+
+### The module
+
+`features/auth/permissions.ts` is the single source of truth.
+
+```ts
+// Named features — add new ones here as you build them
+export type Feature =
+  | "dashboard"
+  | "tenants" | "platform_users"       // platform admin
+  | "members" | "plans" | "leads" | "payments" | "reports" | "settings"
+
+// The one function everyone calls
+export function canAccess(user: User | null, feature: Feature): boolean
+```
+
+Internally it holds a `BASELINE: Record<Role, Feature[]>` dict that maps each role to its allowed features. **This is a placeholder** — when the dynamic roles system lands (see `docs/features/roles.md`), `canAccess` collapses to `user?.role.features.includes(feature)` and the dict goes away. Call sites don't change.
+
+### Using it — sidebar
+
+```tsx
+// components/layout/Sidebar.tsx
+const NAV_ITEMS = [
+  { to: "/dashboard", label: "דשבורד", icon: "📊", feature: "dashboard" },
+  { to: "/tenants",   label: "חדרי כושר", icon: "🏢", feature: "tenants" },
+  { to: "/users",     label: "משתמשים",  icon: "👤", feature: "platform_users" },
+]
+
+const visibleItems = NAV_ITEMS.filter((item) => canAccess(user, item.feature))
+```
+
+Adding a link = one array entry. No inline conditionals, no role checks.
+
+### Using it — route guard
+
+```tsx
+// components/layout/RequireFeature.tsx
+export default function RequireFeature({ feature }: { feature: Feature }) {
+  const { user } = useAuth()
+  if (!canAccess(user, feature)) return <Navigate to="/dashboard" replace />
+  return <Outlet />
+}
+```
+
+Wrap any route group with it:
+```tsx
+<Route element={<RequireFeature feature="members" />}>
+  <Route path="/members" element={<MemberListPage />} />
+</Route>
+```
+
+### Role-based page dispatch (the dashboard pattern)
+
+`/dashboard` is one route that dispatches to different components based on who's viewing:
 
 ```tsx
 // features/dashboard/DashboardPage.tsx
@@ -335,10 +399,12 @@ export default function DashboardPage() {
 }
 ```
 
-- **super_admin** sees platform metrics: total tenants, total users, onboarding velocity
-- **owner/staff/sales** sees gym metrics: members, MRR, churn, leads
+- **super_admin** sees `AdminDashboard` — platform metrics: total tenants, users, new gyms
+- **owner/staff/sales** sees `GymDashboard` — gym metrics: active members, MRR, leads, quick actions
 
-The sidebar also shows/hides links based on role (e.g., "חדרי כושר" only for super_admin).
+Both share the `StatCard` widget (`features/dashboard/StatCard.tsx`). All values show `"בקרוב"` until backend metrics land.
+
+*(This one `user.role === "super_admin"` check is the single intentional exception to the rule above — the dashboard dispatcher is a layout decision, not a permission check. Everything else goes through `canAccess`.)*
 
 ---
 

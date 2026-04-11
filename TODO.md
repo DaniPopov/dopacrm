@@ -6,16 +6,31 @@
 
 ## Backlog
 
-### Features
-- [ ] Tenant CRUD: add `saas_plan_id` FK when SaaS Plans table is built
-- [ ] SaaS Plans CRUD (DopaCRM pricing tiers — Free/Starter/Pro)
+### Features — Core CRM (next up)
 - [ ] Members CRUD (gym customers — profiles, status, custom fields)
 - [ ] Membership Plans CRUD (what the gym sells — monthly, annual, drop-in)
 - [ ] Subscriptions (member ↔ plan assignment)
 - [ ] Payments (recorded income events)
 - [ ] Leads pipeline (capture → contacted → trial → converted/lost)
-- [ ] Dashboard: Admin dashboard (platform metrics) + Gym dashboard (tenant metrics)
-- [ ] Dashboard: customizable widget layout (v2 — MongoDB config per user)
+- [ ] Dashboard: real metrics (replaces "בקרוב" placeholders in AdminDashboard/GymDashboard)
+
+### Features — Flexibility (Phase 4 — after Core CRM)
+- [ ] **Dynamic roles system** — `tenant_roles` table, owner creates/edits/deletes roles per tenant. Spec: `docs/features/roles.md`.
+  - [ ] Backend: `tenant_roles` table + migration + seed defaults ("Staff", "Sales") on tenant creation
+  - [ ] Backend: Role entity, RoleRepository, tenant_roles CRUD API (owner-scoped)
+  - [ ] Backend: `users.role_id` FK replaces `users.role` text column
+  - [ ] Backend: `/auth/me` returns role as object `{id, name, features, is_system}`
+  - [ ] Frontend: `permissions.ts` — delete hardcoded BASELINE, read from `user.role.features` directly
+  - [ ] Frontend: `/settings/roles` page — owner-only, CRUD with feature checkbox grid
+  - [ ] Frontend: user form role dropdown pulls from `useRoles()` instead of hardcoded list
+  - [ ] Frontend: prevent editing/deleting system roles (owner/super_admin)
+- [ ] Custom fields UI for members (owner adds/renames fields in `members.custom_fields`)
+- [ ] Custom attrs UI for membership plans (owner edits `membership_plans.custom_attrs`)
+- [ ] Per-tenant dashboard widget layout (v2 — MongoDB `user_dashboard_configs`)
+
+### Features — Misc
+- [ ] Tenant CRUD: add `saas_plan_id` FK when SaaS Plans table is built
+- [ ] SaaS Plans CRUD (DopaCRM pricing tiers — Free/Starter/Pro)
 - [ ] Users frontend: full CRUD page (currently placeholder)
 - [ ] Refresh tokens (POST /auth/refresh — short-lived access + long-lived refresh)
 - [ ] Google OAuth login
@@ -91,8 +106,12 @@
 - [x] Frontend: Hebrew landing page with brand assets
 - [x] Frontend: login page (split layout, password toggle, brand images)
 - [x] Frontend: tenant management page (create, list, suspend — super_admin)
-- [x] Frontend: RTL sidebar with role-based navigation
+- [x] Frontend: RTL sidebar with declarative role-based nav + extracted `Sidebar` component
 - [x] Frontend: AuthProvider + ProtectedRoute + DashboardLayout
+- [x] Frontend: Hebrew dashboard — role dispatcher + AdminDashboard + GymDashboard + StatCard
+- [x] Frontend: central `permissions.canAccess(user, feature)` module (ready for dynamic roles)
+- [x] Frontend: `RequireFeature` route guard (URL-typing doesn't bypass sidebar)
+- [x] Frontend: `User.role` typed as `Role` union instead of `string`
 - [x] Tests: 89+ backend (unit + integration + E2E) + 34 frontend (Vitest)
 - [x] Security: SQL injection, XSS, JWT tampering, role escalation, tenant isolation
 - [x] Security: cookie auth tests, token blacklist after logout verified

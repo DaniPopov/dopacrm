@@ -4,11 +4,14 @@
 
 **DopaCRM** — a multi-tenant SaaS CRM built for gyms and fitness studios. Gym owners manage members, membership plans, revenue, and leads from one platform. Each gym is an isolated tenant configured via database records, not code changes. Built on a template from "Assets Agent" — infrastructure file names will be renamed over time.
 
+**Core product thesis — read this before designing anything.** DopaCRM's differentiator is **owner-level flexibility**, not feature count. Most gym CRMs are rigid — you take what the vendor built. DopaCRM flips that: gym owners customize roles, fields, workflows, feature visibility, and dashboards to match how their specific gym actually operates. When faced with a choice between "ship a standard fixed thing" vs "make it owner-configurable", **default to configurable**. Push back on designs that hardcode business rules (role names, field schemas, workflow steps) — those belong in tenant config, not code. Full vision in `docs/specs.md` §1.
+
 ## Architecture
 
 - **Modular Monolith** — single codebase, internal separation by service module
 - **Queue-first** — FastAPI only receives/validates, background work goes to Celery workers via RabbitMQ
 - **Config-driven tenancy** — new gym = new tenant record + config
+- **Owner-configurable over hardcoded** — roles, fields, feature visibility, dashboards live in tenant config; code provides defaults, not constraints
 - **4-Layer Hexagonal** — API → Services → Domain ← Adapters. Domain is pure, imports nothing.
 
 ## Stack
@@ -40,10 +43,15 @@
 
 ## Roles
 
+**System roles (hardcoded, immutable):**
 - `super_admin` — platform level, `tenant_id = null`, onboards gyms, creates first users
-- `owner` — full tenant access, billing, configuration
-- `staff` — day-to-day operations (check-in, payments, member management)
-- `sales` — lead pipeline, trials, conversions
+- `owner` — full tenant access, billing, configuration, user management
+
+**Custom roles (owner-configured, per tenant) — planned, currently hardcoded as defaults:**
+- `staff` — default "operations" role (check-in, payments, member management)
+- `sales` — default "lead pipeline" role (trials, conversions)
+
+Today `staff`/`sales` are enum literals for speed. The real model is dynamic — owners create, rename, and configure their own roles per tenant (e.g., "Receptionist", "Trainer", "Night Shift Manager"). New tenants are seeded with "Staff" and "Sales" as starting points. See `docs/features/roles.md` for the planned `tenant_roles` table + owner UI. Until that lands, frontend permission checks go through `canAccess(user, feature)` in `frontend/src/features/auth/permissions.ts` — that function is the single swap point.
 
 ## Project Structure — 4-Layer Hexagonal
 
@@ -116,12 +124,20 @@ All authenticated endpoints pass through `api_rate_limit` (60/min/user). Login h
 - **Shared form components** — `TenantForm` is used by both "Create" card and "Edit" dialog. Reuse > duplicate.
 - **Row actions** — tables use a "פעולות" dropdown per row with role-gated actions (Edit, Activate, Suspend, Cancel). Destructive actions (Cancel) open a `ConfirmDialog`.
 - **Images** — all static images in `frontend/public/`, referenced as URL strings (`"/dopa-icon.png"`). No module imports.
+- **Permissions** — NEVER use inline `user.role === "..."` checks. Always go through `canAccess(user, feature)` from `features/auth/permissions.ts`. This module owns the role→feature map today (hardcoded baseline) and will become backend-driven when the dynamic roles system lands — call sites don't change. Features are named (`"members"`, `"leads"`, etc.), not role lists.
+- **Route guards** — platform-admin or owner-only pages wrap with `<RequireFeature feature="tenants" />` in `app/App.tsx`. The sidebar hides links, but this guard blocks direct URL access too.
+- **Dashboard** — one `/dashboard` route, `DashboardPage.tsx` dispatches to `AdminDashboard` (super_admin) or `GymDashboard` (everyone else) based on role. Both use the shared `StatCard` widget. All placeholder values say "בקרוב" until backend metrics land.
+- **Sidebar** — `components/layout/Sidebar.tsx` owns role-based nav via a declarative `NAV_ITEMS` array. Each item declares a `feature`; visibility is decided by `canAccess`, not inline role conditionals. Adding a link = one array entry.
 
 See `docs/frontend.md` for the full architecture guide.
 
 ## Current Phase
 
-Early development — building the core platform: tenants, users, members, plans, revenue, leads, dashboard.
+**Phase 1 (Foundation) done.** Shipped: tenants CRUD + suspend/activate/cancel + S3 logos, users CRUD, auth with HttpOnly cookies + Redis blacklist, Hebrew dashboard shell, role-based sidebar, central permissions module, route guards, rate limiting.
+
+**Phase 2 (Core CRM) next.** Members, membership plans, subscriptions, payments, leads. Dashboard switches from "בקרוב" placeholders to real metrics as each feature lands.
+
+**Phase 4 (Flexibility)** is the big differentiator — dynamic roles, owner settings UI, custom fields, configurable dashboards. Deferred until 2-3 real gym-scoped features exist so the permission grid has something to configure. See `docs/specs.md` Roadmap.
 
 ## Documentation
 
