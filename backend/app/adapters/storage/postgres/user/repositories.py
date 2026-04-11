@@ -31,6 +31,9 @@ def _to_domain(orm: UserORM) -> User:
         email=orm.email,
         role=Role(orm.role),
         is_active=orm.is_active,
+        first_name=orm.first_name,
+        last_name=orm.last_name,
+        phone=orm.phone,
         oauth_provider=orm.oauth_provider,
         created_at=orm.created_at,
         updated_at=orm.updated_at,
@@ -53,6 +56,9 @@ class UserRepository:
         oauth_provider: str | None = None,
         oauth_id: str | None = None,
         is_active: bool = True,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        phone: str | None = None,
     ) -> User:
         """Insert a new user.
 
@@ -68,6 +74,9 @@ class UserRepository:
             oauth_id=oauth_id,
             role=role.value,
             is_active=is_active,
+            first_name=first_name,
+            last_name=last_name,
+            phone=phone,
         )
         self._session.add(orm)
         try:

@@ -201,51 +201,92 @@ export default function TenantListPage() {
 
 ---
 
-## API client
+## API client + error handling
 
-`lib/api-client.ts` is the single point for all HTTP communication. Uses HttpOnly cookies — **no token handling in JavaScript**.
+Two pieces work together: `lib/api-client.ts` (HTTP wrapper) and `lib/api-errors.ts` (error → Hebrew message translators).
+
+### `lib/api-client.ts`
+
+Single point for all HTTP. Uses HttpOnly cookies — **no token handling in JavaScript**.
+
+Every failure throws an `ApiError` with the HTTP status, so callers can localize messages based on status code:
 
 ```typescript
-const API_BASE = "/api/v1"
+import { ApiError } from "./api-errors"
 
 class ApiClient {
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    const headers: Record<string, string> = { "Content-Type": "application/json" }
+    let res: Response
+    try {
+      res = await fetch(`/api/v1${path}`, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",       // sends HttpOnly cookie automatically
+        body: body ? JSON.stringify(body) : undefined,
+      })
+    } catch {
+      throw new ApiError("network", 0)   // fetch rejected → treat as status 0
+    }
 
-    const res = await fetch(`${API_BASE}${path}`, {
-      method,
-      headers,
-      credentials: "include",  // sends HttpOnly cookie automatically
-      body: body ? JSON.stringify(body) : undefined,
-    })
-
-    if (res.status === 401) throw new Error("Unauthorized")
     if (res.status === 204) return undefined as T
+    if (res.status === 401) throw new ApiError("Unauthorized", 401)
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
-      throw new Error(
+      throw new ApiError(
         typeof data.detail === "string" ? data.detail : `Request failed: ${res.status}`,
+        res.status,
       )
     }
 
     return res.json()
   }
+  // ... get/post/patch/delete
+}
+```
 
-  get<T>(path: string): Promise<T>                    { return this.request("GET", path) }
-  post<T>(path: string, body?: unknown): Promise<T>   { return this.request("POST", path, body) }
-  patch<T>(path: string, body?: unknown): Promise<T>  { return this.request("PATCH", path, body) }
-  delete<T>(path: string): Promise<T>                 { return this.request("DELETE", path) }
+### `lib/api-errors.ts` — Hebrew humanizers
+
+Every page translates `ApiError` → user-facing Hebrew via domain-specific functions. Never show raw backend `detail` strings.
+
+```typescript
+export class ApiError extends Error {
+  constructor(message: string, public readonly status: number) { ... }
 }
 
-export const apiClient = new ApiClient()
+// Login-specific — 401 becomes "שגיאה במייל או סיסמה"
+export function humanizeLoginError(err: unknown): string
+
+// Tenant CRUD — 409 becomes "מזהה URL (slug) כבר תפוס"
+export function humanizeTenantError(err: unknown): string
+
+// Uploads — 413 becomes "הלוגו גדול מדי (מקסימום 2MB)"
+export function humanizeUploadError(err: unknown): string
+```
+
+### Pattern in a page
+
+```tsx
+import { humanizeTenantError } from "@/lib/api-errors"
+
+function TenantListPage() {
+  const create = useCreateTenant()
+  return (
+    <TenantForm
+      error={create.error ? humanizeTenantError(create.error) : null}
+      submitting={create.isPending}
+      onSubmit={...}
+    />
+  )
+}
 ```
 
 Key points:
-- `credentials: "include"` tells the browser to send the HttpOnly cookie on every request
+- `credentials: "include"` sends the HttpOnly cookie on every request
 - No `localStorage`, no token injection, no `Authorization` header in the frontend
-- 401 throws an error — `ProtectedRoute` handles the redirect to `/login`
-- The backend sets/clears the cookie; JavaScript never touches it
+- 401 throws `ApiError(401)` — `ProtectedRoute` handles the redirect
+- Every HTTP status maps to a specific Hebrew message via the humanizers
+- Adding a new status code = one line in the helper, updates everywhere
 
 ---
 
@@ -339,6 +380,11 @@ features/auth/
 - **api.ts is pure.** No React imports, no hooks. Just typed fetch calls.
 - **hooks.ts wraps api.ts.** TanStack Query handles caching/invalidation.
 - **Pages are thin.** Call hooks, handle loading/error, render components.
+- **Errors go through humanizers.** Every page catches `ApiError` and calls a `humanize*Error` function from `lib/api-errors.ts`. Never show raw backend `detail` to users.
+- **Shared forms.** Create + Edit use the same form component (`TenantForm`), passed different `initial` props and `submitLabel`.
+- **Row actions.** Tables use a "פעולות" dropdown menu per row, with conditionally-shown items based on status. Destructive actions (Cancel/Delete) open a `ConfirmDialog`.
+- **Modal dialogs.** Use fixed-positioned overlays with backdrop click to close. Edit uses a scrollable dialog that reuses the form component.
+- **Static images in `public/`.** Referenced as URL strings (`"/dopa-icon.png"`). No module imports.
 - **Tests live next to code.** `Foo.tsx` → `Foo.test.tsx`, `api.ts` → `api.test.ts`.
 - **Shared components in `components/`.** Feature-specific components in the feature folder.
 - **Types mirror backend schemas.** Eventually auto-generated from OpenAPI.
@@ -351,3 +397,5 @@ features/auth/
 - [`specs.md`](./specs.md) — product specification (§7 Frontend Stack)
 - [`backend.md`](./backend.md) — backend architecture (what the frontend talks to)
 - [`features/auth.md`](./features/auth.md) — auth feature doc (backend + frontend)
+- [`skills/build-frontend-feature.md`](./skills/build-frontend-feature.md) — step-by-step recipe for a new frontend feature
+- [`skills/build-backend-feature.md`](./skills/build-backend-feature.md) — step-by-step recipe for a new backend feature

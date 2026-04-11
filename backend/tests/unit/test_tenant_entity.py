@@ -13,6 +13,7 @@ def _make_tenant(*, status: TenantStatus = TenantStatus.ACTIVE) -> Tenant:
         slug="test-gym",
         name="Test Gym",
         status=status,
+        saas_plan_id=uuid4(),
         timezone="Asia/Jerusalem",
         currency="ILS",
         locale="he-IL",
@@ -47,6 +48,7 @@ def test_default_status_is_active() -> None:
         id=uuid4(),
         slug="x",
         name="X",
+        saas_plan_id=uuid4(),
         created_at=now,
         updated_at=now,
     )
@@ -59,9 +61,11 @@ def test_default_timezone_currency_locale() -> None:
         id=uuid4(),
         slug="x",
         name="X",
+        saas_plan_id=uuid4(),
         created_at=now,
         updated_at=now,
     )
     assert tenant.timezone == "Asia/Jerusalem"
     assert tenant.currency == "ILS"
     assert tenant.locale == "he-IL"
+    assert tenant.address_country == "IL"

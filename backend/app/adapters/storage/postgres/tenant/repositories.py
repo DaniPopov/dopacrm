@@ -17,6 +17,7 @@ from app.domain.entities.tenant import Tenant, TenantStatus
 from app.domain.exceptions import TenantNotFoundError
 
 if TYPE_CHECKING:
+    from datetime import datetime
     from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,6 +39,16 @@ def _to_domain(orm: TenantORM) -> Tenant:
         name=orm.name,
         phone=orm.phone,
         status=TenantStatus(orm.status),
+        saas_plan_id=orm.saas_plan_id,
+        logo_url=orm.logo_url,
+        email=orm.email,
+        website=orm.website,
+        address_street=orm.address_street,
+        address_city=orm.address_city,
+        address_country=orm.address_country,
+        address_postal_code=orm.address_postal_code,
+        legal_name=orm.legal_name,
+        tax_id=orm.tax_id,
         timezone=orm.timezone,
         currency=orm.currency,
         locale=orm.locale,
@@ -58,11 +69,22 @@ class TenantRepository:
         *,
         slug: str,
         name: str,
+        saas_plan_id: UUID,
         phone: str | None = None,
         status: str = "active",
+        logo_url: str | None = None,
+        email: str | None = None,
+        website: str | None = None,
+        address_street: str | None = None,
+        address_city: str | None = None,
+        address_country: str | None = "IL",
+        address_postal_code: str | None = None,
+        legal_name: str | None = None,
+        tax_id: str | None = None,
         timezone: str = "Asia/Jerusalem",
         currency: str = "ILS",
         locale: str = "he-IL",
+        trial_ends_at: datetime | None = None,
     ) -> Tenant:
         """Insert a new tenant and return the domain entity."""
         orm = TenantORM(
@@ -70,9 +92,20 @@ class TenantRepository:
             name=name,
             phone=phone,
             status=status,
+            saas_plan_id=saas_plan_id,
+            logo_url=logo_url,
+            email=email,
+            website=website,
+            address_street=address_street,
+            address_city=address_city,
+            address_country=address_country,
+            address_postal_code=address_postal_code,
+            legal_name=legal_name,
+            tax_id=tax_id,
             timezone=timezone,
             currency=currency,
             locale=locale,
+            trial_ends_at=trial_ends_at,
         )
         self._session.add(orm)
         try:
@@ -98,14 +131,14 @@ class TenantRepository:
     async def list_all(self, *, limit: int = 50, offset: int = 0) -> list[Tenant]:
         """Return all tenants. Paginated. For super_admin only."""
         result = await self._session.execute(
-            select(TenantORM).order_by(TenantORM.created_at.desc()).limit(limit).offset(offset)
+            select(TenantORM).order_by(TenantORM.created_at.desc()).limit(limit).offset(offset),
         )
         return [_to_domain(orm) for orm in result.scalars()]
 
     async def update(self, tenant_id: UUID, **fields) -> Tenant:
         """Update specific fields on a tenant row. Returns the updated entity."""
         await self._session.execute(
-            update(TenantORM).where(TenantORM.id == tenant_id).values(**fields)
+            update(TenantORM).where(TenantORM.id == tenant_id).values(**fields),
         )
         await self._session.flush()
         result = await self._session.execute(select(TenantORM).where(TenantORM.id == tenant_id))

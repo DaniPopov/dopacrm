@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
+import { humanizeLoginError } from "@/lib/api-errors"
 import { login } from "./api"
+import { useAuth } from "./auth-provider"
 
 const dopaIcon = "/dopa-icon.png"
 const gymImage = "/dopamineogym-image.png"
-import { useAuth } from "./auth-provider"
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -26,7 +27,7 @@ export default function LoginPage() {
       await refreshAuth()
       navigate("/dashboard")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to connect to server")
+      setError(humanizeLoginError(err))
     } finally {
       setLoading(false)
     }

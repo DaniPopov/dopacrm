@@ -1,10 +1,44 @@
 import { useState } from "react"
-import { useTenants, useCreateTenant, useSuspendTenant } from "./hooks"
-import type { Tenant, CreateTenantRequest } from "./types"
+import { humanizeTenantError } from "@/lib/api-errors"
+import TenantForm, { type TenantFormValues } from "./TenantForm"
+import {
+  useActivateTenant,
+  useCancelTenant,
+  useCreateTenant,
+  useSuspendTenant,
+  useTenants,
+  useUpdateTenant,
+} from "./hooks"
+import type { Tenant } from "./types"
 
 export default function TenantListPage() {
   const { data: tenants, isLoading, error } = useTenants()
   const [showCreate, setShowCreate] = useState(false)
+  const [editing, setEditing] = useState<Tenant | null>(null)
+  const create = useCreateTenant()
+  const update = useUpdateTenant()
+
+  function handleCreate(values: TenantFormValues) {
+    create.mutate(values, {
+      onSuccess: () => {
+        setShowCreate(false)
+        create.reset()
+      },
+    })
+  }
+
+  function handleUpdate(values: TenantFormValues) {
+    if (!editing) return
+    update.mutate(
+      { id: editing.id, data: values },
+      {
+        onSuccess: () => {
+          setEditing(null)
+          update.reset()
+        },
+      },
+    )
+  }
 
   return (
     <div>
@@ -22,9 +56,46 @@ export default function TenantListPage() {
         </button>
       </div>
 
-      {/* Create form */}
+      {/* Create form — inline card */}
       {showCreate && (
-        <CreateTenantForm onClose={() => setShowCreate(false)} />
+        <div className="mb-8 rounded-xl border border-blue-200 bg-blue-50/30 p-6">
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="text-lg font-bold text-gray-900">חדר כושר חדש</h3>
+            <button
+              onClick={() => {
+                setShowCreate(false)
+                create.reset()
+              }}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+          </div>
+          <TenantForm
+            submitting={create.isPending}
+            error={create.error ? humanizeTenantError(create.error) : null}
+            submitLabel="צור חדר כושר"
+            onSubmit={handleCreate}
+            onCancel={() => {
+              setShowCreate(false)
+              create.reset()
+            }}
+          />
+        </div>
+      )}
+
+      {/* Edit dialog — modal overlay */}
+      {editing && (
+        <EditDialog
+          tenant={editing}
+          submitting={update.isPending}
+          error={update.error ? humanizeTenantError(update.error) : undefined}
+          onSubmit={handleUpdate}
+          onClose={() => {
+            setEditing(null)
+            update.reset()
+          }}
+        />
       )}
 
       {/* Table */}
@@ -41,11 +112,10 @@ export default function TenantListPage() {
           <table className="w-full text-right text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/50">
-                <th className="px-5 py-3 font-medium text-gray-500">שם</th>
-                <th className="px-5 py-3 font-medium text-gray-500">Slug</th>
+                <th className="px-5 py-3 font-medium text-gray-500">חדר כושר</th>
                 <th className="px-5 py-3 font-medium text-gray-500">סטטוס</th>
                 <th className="px-5 py-3 font-medium text-gray-500">טלפון</th>
-                <th className="px-5 py-3 font-medium text-gray-500">אזור זמן</th>
+                <th className="px-5 py-3 font-medium text-gray-500">עיר</th>
                 <th className="px-5 py-3 font-medium text-gray-500">מטבע</th>
                 <th className="px-5 py-3 font-medium text-gray-500">תאריך הצטרפות</th>
                 <th className="px-5 py-3 font-medium text-gray-500">פעולות</th>
@@ -53,7 +123,7 @@ export default function TenantListPage() {
             </thead>
             <tbody>
               {tenants?.map((tenant) => (
-                <TenantRow key={tenant.id} tenant={tenant} />
+                <TenantRow key={tenant.id} tenant={tenant} onEdit={() => setEditing(tenant)} />
               ))}
             </tbody>
           </table>
@@ -75,143 +145,239 @@ const statusConfig = {
 function StatusBadge({ status }: { status: Tenant["status"] }) {
   const config = statusConfig[status]
   return (
-    <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${config.className}`}>
+    <span
+      className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${config.className}`}
+    >
       {config.label}
     </span>
   )
 }
 
-/* ── Table row ────────────────────────────────────────────────── */
+/* ── Table row with actions ──────────────────────────────────── */
 
-function TenantRow({ tenant }: { tenant: Tenant }) {
+function TenantRow({ tenant, onEdit }: { tenant: Tenant; onEdit: () => void }) {
   const suspend = useSuspendTenant()
-  const canSuspend = tenant.status === "active" || tenant.status === "trial"
+  const activate = useActivateTenant()
+  const cancel = useCancelTenant()
+  const [confirmCancel, setConfirmCancel] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
-  return (
-    <tr className="border-b border-gray-50 transition-colors hover:bg-gray-50/50">
-      <td className="px-5 py-3.5 font-medium text-gray-900">{tenant.name}</td>
-      <td className="px-5 py-3.5 font-mono text-xs text-gray-500">{tenant.slug}</td>
-      <td className="px-5 py-3.5"><StatusBadge status={tenant.status} /></td>
-      <td className="px-5 py-3.5 text-gray-600" dir="ltr">{tenant.phone || "—"}</td>
-      <td className="px-5 py-3.5 text-gray-600" dir="ltr">{tenant.timezone}</td>
-      <td className="px-5 py-3.5 text-gray-600">{tenant.currency}</td>
-      <td className="px-5 py-3.5 text-gray-500" dir="ltr">
-        {new Date(tenant.created_at).toLocaleDateString("he-IL")}
-      </td>
-      <td className="px-5 py-3.5">
-        {canSuspend ? (
-          <button
-            onClick={() => suspend.mutate(tenant.id)}
-            disabled={suspend.isPending}
-            className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50"
-          >
-            {suspend.isPending ? "..." : "השהה"}
-          </button>
-        ) : (
-          <span className="text-xs text-gray-400">—</span>
-        )}
-      </td>
-    </tr>
-  )
-}
+  const isBusy = suspend.isPending || activate.isPending || cancel.isPending
 
-/* ── Create form ──────────────────────────────────────────────── */
-
-function CreateTenantForm({ onClose }: { onClose: () => void }) {
-  const create = useCreateTenant()
-  const [form, setForm] = useState<CreateTenantRequest>({
-    slug: "",
-    name: "",
-    phone: "",
-    timezone: "Asia/Jerusalem",
-    currency: "ILS",
-    locale: "he-IL",
-  })
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    create.mutate(form, {
-      onSuccess: () => onClose(),
-    })
+  function doAction(fn: () => void) {
+    setMenuOpen(false)
+    fn()
   }
 
   return (
-    <div className="mb-8 rounded-xl border border-blue-200 bg-blue-50/30 p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-bold text-gray-900">חדר כושר חדש</h3>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
-      </div>
-      <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">שם</label>
-          <input
-            type="text"
-            required
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="IronFit Tel Aviv"
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Slug (URL)</label>
-          <input
-            type="text"
-            required
-            value={form.slug}
-            onChange={(e) => setForm({ ...form, slug: e.target.value })}
-            placeholder="ironfit-tlv"
-            dir="ltr"
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">טלפון</label>
-          <input
-            type="text"
-            value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            placeholder="+972-3-555-1234"
-            dir="ltr"
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">מטבע</label>
-          <select
-            value={form.currency}
-            onChange={(e) => setForm({ ...form, currency: e.target.value })}
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-          >
-            <option value="ILS">ILS — שקל</option>
-            <option value="USD">USD — דולר</option>
-            <option value="EUR">EUR — יורו</option>
-          </select>
-        </div>
-
-        {create.error && (
-          <div className="sm:col-span-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
-            {create.error.message}
+    <>
+      <tr className="border-b border-gray-50 transition-colors hover:bg-gray-50/50">
+        <td className="px-5 py-3.5">
+          <div className="flex items-center gap-3">
+            {tenant.logo_presigned_url ? (
+              <img
+                src={tenant.logo_presigned_url}
+                alt=""
+                className="h-9 w-9 rounded-lg border border-gray-200 object-cover"
+              />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-xs font-semibold text-gray-400">
+                {tenant.name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <div className="font-medium text-gray-900">{tenant.name}</div>
+              <div className="font-mono text-xs text-gray-400" dir="ltr">
+                {tenant.slug}
+              </div>
+            </div>
           </div>
-        )}
+        </td>
+        <td className="px-5 py-3.5">
+          <StatusBadge status={tenant.status} />
+        </td>
+        <td className="px-5 py-3.5 text-gray-600" dir="ltr">
+          {tenant.phone || "—"}
+        </td>
+        <td className="px-5 py-3.5 text-gray-600">{tenant.address_city || "—"}</td>
+        <td className="px-5 py-3.5 text-gray-600">{tenant.currency}</td>
+        <td className="px-5 py-3.5 text-gray-500" dir="ltr">
+          {new Date(tenant.created_at).toLocaleDateString("he-IL")}
+        </td>
+        <td className="px-5 py-3.5">
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              disabled={isBusy}
+              className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            >
+              {isBusy ? "..." : "פעולות ▾"}
+            </button>
+            {menuOpen && (
+              <div
+                className="absolute left-0 top-full z-10 mt-1 min-w-[140px] rounded-lg border border-gray-200 bg-white py-1 text-right shadow-lg"
+                onMouseLeave={() => setMenuOpen(false)}
+              >
+                <MenuItem label="עריכה" onClick={() => doAction(onEdit)} />
+                {(tenant.status === "suspended" ||
+                  tenant.status === "trial" ||
+                  tenant.status === "cancelled") && (
+                  <MenuItem
+                    label="הפעל"
+                    onClick={() => doAction(() => activate.mutate(tenant.id))}
+                  />
+                )}
+                {(tenant.status === "active" || tenant.status === "trial") && (
+                  <MenuItem
+                    label="השהה"
+                    onClick={() => doAction(() => suspend.mutate(tenant.id))}
+                  />
+                )}
+                {tenant.status !== "cancelled" && (
+                  <MenuItem
+                    label="ביטול (מחיקה רכה)"
+                    variant="danger"
+                    onClick={() => doAction(() => setConfirmCancel(true))}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        </td>
+      </tr>
 
-        <div className="sm:col-span-2 flex gap-3 justify-end">
+      {/* Confirmation modal for cancel */}
+      {confirmCancel && (
+        <ConfirmDialog
+          title="ביטול חדר כושר"
+          message={`האם לבטל את "${tenant.name}"? הנתונים יישמרו וניתן להפעיל מחדש.`}
+          confirmLabel="כן, בטל"
+          variant="danger"
+          onConfirm={() => {
+            cancel.mutate(tenant.id, {
+              onSuccess: () => setConfirmCancel(false),
+            })
+          }}
+          onCancel={() => setConfirmCancel(false)}
+          loading={cancel.isPending}
+        />
+      )}
+    </>
+  )
+}
+
+function MenuItem({
+  label,
+  onClick,
+  variant = "default",
+}: {
+  label: string
+  onClick: () => void
+  variant?: "default" | "danger"
+}) {
+  const color =
+    variant === "danger" ? "text-red-600 hover:bg-red-50" : "text-gray-700 hover:bg-gray-50"
+  return (
+    <button
+      onClick={onClick}
+      className={`block w-full px-4 py-2 text-sm transition-colors ${color}`}
+    >
+      {label}
+    </button>
+  )
+}
+
+/* ── Edit dialog ─────────────────────────────────────────────── */
+
+function EditDialog({
+  tenant,
+  submitting,
+  error,
+  onSubmit,
+  onClose,
+}: {
+  tenant: Tenant
+  submitting: boolean
+  error: string | undefined
+  onSubmit: (values: TenantFormValues) => void
+  onClose: () => void
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div className="my-8 w-full max-w-3xl rounded-xl bg-white p-6 shadow-2xl">
+        <div className="mb-6 flex items-center justify-between">
+          <h3 className="text-lg font-bold text-gray-900">עריכת {tenant.name}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            ✕
+          </button>
+        </div>
+        <TenantForm
+          initial={tenant}
+          submitting={submitting}
+          error={error ?? null}
+          submitLabel="שמור שינויים"
+          onSubmit={onSubmit}
+          onCancel={onClose}
+        />
+      </div>
+    </div>
+  )
+}
+
+/* ── Confirm dialog ──────────────────────────────────────────── */
+
+function ConfirmDialog({
+  title,
+  message,
+  confirmLabel,
+  variant = "default",
+  loading,
+  onConfirm,
+  onCancel,
+}: {
+  title: string
+  message: string
+  confirmLabel: string
+  variant?: "default" | "danger"
+  loading?: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  const confirmColor =
+    variant === "danger"
+      ? "bg-red-600 hover:bg-red-700"
+      : "bg-blue-600 hover:bg-blue-700"
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCancel()
+      }}
+    >
+      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+        <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+        <p className="mt-2 text-sm text-gray-600">{message}</p>
+        <div className="mt-6 flex justify-end gap-3">
           <button
-            type="button"
-            onClick={onClose}
+            onClick={onCancel}
             className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
           >
             ביטול
           </button>
           <button
-            type="submit"
-            disabled={create.isPending}
-            className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+            onClick={onConfirm}
+            disabled={loading}
+            className={`rounded-lg px-5 py-2 text-sm font-semibold text-white transition-colors disabled:opacity-50 ${confirmColor}`}
           >
-            {create.isPending ? "יוצר..." : "צור חדר כושר"}
+            {loading ? "..." : confirmLabel}
           </button>
         </div>
-      </form>
+      </div>
     </div>
   )
 }

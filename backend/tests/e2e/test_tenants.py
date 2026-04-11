@@ -37,11 +37,14 @@ def test_create_tenant(client: TestClient, auth_headers: dict) -> None:
     data = _create_tenant(client, auth_headers, slug="ironfit-tlv")
     assert data["slug"] == "ironfit-tlv"
     assert data["name"] == "Test Gym (ironfit-tlv)"
-    assert data["status"] == "active"
+    # New tenants start on a 14-day trial, assigned the default SaaS plan
+    assert data["status"] == "trial"
+    assert data["trial_ends_at"] is not None
+    assert data["saas_plan_id"] is not None
     assert data["timezone"] == "Asia/Jerusalem"
     assert data["currency"] == "ILS"
     assert data["locale"] == "he-IL"
-    assert data["trial_ends_at"] is None
+    assert data["address_country"] == "IL"
     assert "id" in data
 
 
@@ -103,7 +106,7 @@ def test_update_tenant(client: TestClient, auth_headers: dict) -> None:
 
 def test_suspend_tenant(client: TestClient, auth_headers: dict) -> None:
     created = _create_tenant(client, auth_headers, slug="suspend-me")
-    assert created["status"] == "active"
+    assert created["status"] == "trial"  # new tenants start in trial
     resp = client.post(
         f"/api/v1/tenants/{created['id']}/suspend",
         headers=auth_headers,

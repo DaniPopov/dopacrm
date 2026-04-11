@@ -28,9 +28,32 @@ class Tenant(BaseModel):
     name: str
     phone: str | None = None
     status: TenantStatus = TenantStatus.ACTIVE
+
+    # SaaS plan — every tenant must be on one
+    saas_plan_id: UUID
+
+    # Branding
+    logo_url: str | None = None
+
+    # Contact
+    email: str | None = None
+    website: str | None = None
+
+    # Address
+    address_street: str | None = None
+    address_city: str | None = None
+    address_country: str | None = Field(default="IL")
+    address_postal_code: str | None = None
+
+    # Legal
+    legal_name: str | None = None
+    tax_id: str | None = None
+
+    # Regional
     timezone: str = Field(default="Asia/Jerusalem", description="IANA timezone")
     currency: str = Field(default="ILS", description="ISO 4217 currency code")
     locale: str = Field(default="he-IL", description="BCP 47 locale")
+
     trial_ends_at: datetime | None = None
     created_at: datetime
     updated_at: datetime

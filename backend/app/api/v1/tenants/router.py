@@ -13,6 +13,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
 
+from app.adapters.storage.s3 import generate_presigned_url
 from app.api.dependencies.auth import get_current_user, require_super_admin
 from app.api.dependencies.database import get_session
 from app.api.v1.tenants.schemas import (
@@ -20,8 +21,11 @@ from app.api.v1.tenants.schemas import (
     TenantResponse,
     UpdateTenantRequest,
 )
+from app.core.logger import get_logger
 from app.core.security import TokenPayload
 from app.services.tenant_service import TenantService
+
+logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,13 +39,35 @@ def _get_service(session: AsyncSession = Depends(get_session)) -> TenantService:
     return TenantService(session)
 
 
+def _presign_logo(logo_url: str | None) -> str | None:
+    """Generate a 1-hour presigned URL for a logo S3 key, or None."""
+    if not logo_url:
+        return None
+    try:
+        return generate_presigned_url(logo_url, expires_in=3600)
+    except Exception:
+        logger.warning("presign_failed", key=logo_url)
+        return None
+
+
 def _to_response(tenant) -> TenantResponse:
     return TenantResponse(
         id=tenant.id,
         slug=tenant.slug,
         name=tenant.name,
-        phone=tenant.phone,
         status=tenant.status,
+        saas_plan_id=tenant.saas_plan_id,
+        logo_url=tenant.logo_url,
+        logo_presigned_url=_presign_logo(tenant.logo_url),
+        phone=tenant.phone,
+        email=tenant.email,
+        website=tenant.website,
+        address_street=tenant.address_street,
+        address_city=tenant.address_city,
+        address_country=tenant.address_country,
+        address_postal_code=tenant.address_postal_code,
+        legal_name=tenant.legal_name,
+        tax_id=tenant.tax_id,
         timezone=tenant.timezone,
         currency=tenant.currency,
         locale=tenant.locale,
@@ -68,6 +94,15 @@ async def create_tenant(
         slug=body.slug,
         name=body.name,
         phone=body.phone,
+        logo_url=body.logo_url,
+        email=body.email,
+        website=body.website,
+        address_street=body.address_street,
+        address_city=body.address_city,
+        address_country=body.address_country,
+        address_postal_code=body.address_postal_code,
+        legal_name=body.legal_name,
+        tax_id=body.tax_id,
         timezone=body.timezone,
         currency=body.currency,
         locale=body.locale,
@@ -134,4 +169,37 @@ async def suspend_tenant(
     service: TenantService = Depends(_get_service),
 ) -> TenantResponse:
     tenant = await service.suspend_tenant(caller=caller, tenant_id=tenant_id)
+    return _to_response(tenant)
+
+
+@router.post(
+    "/{tenant_id}/activate",
+    response_model=TenantResponse,
+    summary="Activate a tenant",
+    description="super_admin only. Moves a tenant to active (from trial, suspended, or cancelled).",
+)
+async def activate_tenant(
+    tenant_id: UUID,
+    caller: TokenPayload = Depends(require_super_admin),
+    service: TenantService = Depends(_get_service),
+) -> TenantResponse:
+    tenant = await service.activate_tenant(caller=caller, tenant_id=tenant_id)
+    return _to_response(tenant)
+
+
+@router.post(
+    "/{tenant_id}/cancel",
+    response_model=TenantResponse,
+    summary="Cancel a tenant (soft delete)",
+    description=(
+        "super_admin only. Sets status to cancelled. Data is preserved; "
+        "this is reversible by calling /activate."
+    ),
+)
+async def cancel_tenant(
+    tenant_id: UUID,
+    caller: TokenPayload = Depends(require_super_admin),
+    service: TenantService = Depends(_get_service),
+) -> TenantResponse:
+    tenant = await service.cancel_tenant(caller=caller, tenant_id=tenant_id)
     return _to_response(tenant)

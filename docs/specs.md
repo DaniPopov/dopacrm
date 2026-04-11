@@ -49,16 +49,29 @@ A tenant is a gym. Everything else belongs to a tenant.
 | id | uuid | PK. Cross-DB reference key |
 | slug | text | URL-safe (`ironfit-tlv`). Unique. Mutable |
 | name | text | Display name |
-| phone | text | Nullable. Contact number |
 | status | text | `trial`, `active`, `suspended`, `cancelled`. Default: `active`. CHECK constraint |
-| timezone | text | IANA. Default: `Asia/Jerusalem` |
-| currency | text | ISO 4217. Default: `ILS` |
-| locale | text | BCP 47. Default: `he-IL` |
-| trial_ends_at | timestamptz | Nullable. Set when status = trial |
+| saas_plan_id | uuid | FK → `saas_plans`. NOT NULL. ON DELETE RESTRICT |
+| logo_url | text | Nullable. S3 key from `/uploads/logo` |
+| phone | text | Nullable. Business phone |
+| email | text | Nullable. Business email |
+| website | text | Nullable |
+| address_street | text | Nullable |
+| address_city | text | Nullable |
+| address_country | text | Nullable. Default: `IL` (ISO 3166-1 alpha-2) |
+| address_postal_code | text | Nullable |
+| legal_name | text | Nullable. Legal business name (may differ from display) |
+| tax_id | text | Nullable. ח.פ / ע.מ for Israeli businesses |
+| timezone | text | NOT NULL. IANA. Default: `Asia/Jerusalem` |
+| currency | text | NOT NULL. ISO 4217. Default: `ILS` |
+| locale | text | NOT NULL. BCP 47. Default: `he-IL` |
+| trial_ends_at | timestamptz | Nullable. Set to `now + 14 days` at signup |
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 
-> **Deferred:** `saas_plan_id` (FK → `saas_plans`) will be added when we build the billing/plan module. For now, tenant limits live in MongoDB config only.
+**Auto-set at signup (not provided by client):**
+- `status = 'trial'` — every new tenant starts on a trial
+- `trial_ends_at = now + 14 days`
+- `saas_plan_id = default plan id` — auto-assigned via `SaasPlanRepository.find_default()`
 
 **Tenant config** is stored in **MongoDB** (`tenant_configs` collection, keyed by `tenant_id`). Contains feature flags, operational limits, and plan-specific settings:
 

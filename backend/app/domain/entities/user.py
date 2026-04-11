@@ -45,9 +45,21 @@ class User(BaseModel):
     email: str
     role: Role
     is_active: bool = True
+
+    # Personal info — nullable for historical rows + OAuth flows
+    first_name: str | None = None
+    last_name: str | None = None
+    phone: str | None = None
+
     oauth_provider: str | None = None
     created_at: datetime
     updated_at: datetime
+
+    @property
+    def full_name(self) -> str:
+        """Best-effort display name. Falls back to email if no names set."""
+        parts = [p for p in (self.first_name, self.last_name) if p]
+        return " ".join(parts) if parts else self.email
 
     def is_super_admin(self) -> bool:
         """Pure logic — true for platform-level users (no company)."""

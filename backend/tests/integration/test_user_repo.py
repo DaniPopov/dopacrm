@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 
+from app.adapters.storage.postgres.saas_plan.repositories import SaasPlanRepository
 from app.adapters.storage.postgres.tenant.repositories import TenantRepository
 from app.adapters.storage.postgres.user.repositories import UserRepository
 from app.core.security import hash_password
@@ -23,9 +24,20 @@ def tenant_repo(session) -> TenantRepository:
     return TenantRepository(session)
 
 
-async def _create_tenant(tenant_repo: TenantRepository) -> ...:
+@pytest.fixture
+async def default_plan_id(session):
+    plan = await SaasPlanRepository(session).find_default()
+    assert plan is not None, "default saas plan must be seeded for tests"
+    return plan.id
+
+
+async def _create_tenant(tenant_repo: TenantRepository, plan_id) -> ...:
     """Helper: create a tenant and return it (for FK references)."""
-    return await tenant_repo.create(slug=f"test-{uuid4().hex[:8]}", name="Test Gym")
+    return await tenant_repo.create(
+        slug=f"test-{uuid4().hex[:8]}",
+        name="Test Gym",
+        saas_plan_id=plan_id,
+    )
 
 
 # ── Create ────────────────────────────────────────────────────────────────────
@@ -46,8 +58,12 @@ async def test_create_user_returns_domain_entity(repo: UserRepository) -> None:
     assert user.id is not None
 
 
-async def test_create_user_with_tenant(repo: UserRepository, tenant_repo: TenantRepository) -> None:
-    tenant = await _create_tenant(tenant_repo)
+async def test_create_user_with_tenant(
+    repo: UserRepository,
+    tenant_repo: TenantRepository,
+    default_plan_id,
+) -> None:
+    tenant = await _create_tenant(tenant_repo, default_plan_id)
     user = await repo.create(
         email="owner@dopagym.com",
         role=Role.OWNER,
@@ -143,9 +159,13 @@ async def test_list_all(repo: UserRepository) -> None:
     assert len(users) >= 3
 
 
-async def test_list_by_tenant(repo: UserRepository, tenant_repo: TenantRepository) -> None:
-    tenant_a = await _create_tenant(tenant_repo)
-    tenant_b = await _create_tenant(tenant_repo)
+async def test_list_by_tenant(
+    repo: UserRepository,
+    tenant_repo: TenantRepository,
+    default_plan_id,
+) -> None:
+    tenant_a = await _create_tenant(tenant_repo, default_plan_id)
+    tenant_b = await _create_tenant(tenant_repo, default_plan_id)
     await repo.create(
         email="a@gym.com",
         role=Role.OWNER,
@@ -167,8 +187,12 @@ async def test_list_by_tenant(repo: UserRepository, tenant_repo: TenantRepositor
 # ── Update ────────────────────────────────────────────────────────────────────
 
 
-async def test_update_user(repo: UserRepository, tenant_repo: TenantRepository) -> None:
-    tenant = await _create_tenant(tenant_repo)
+async def test_update_user(
+    repo: UserRepository,
+    tenant_repo: TenantRepository,
+    default_plan_id,
+) -> None:
+    tenant = await _create_tenant(tenant_repo, default_plan_id)
     user = await repo.create(
         email="update@example.com",
         role=Role.OWNER,

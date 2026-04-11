@@ -1,10 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
-  listTenants,
-  getTenant,
+  activateTenant,
+  cancelTenant,
   createTenant,
-  updateTenant,
+  getTenant,
+  listTenants,
   suspendTenant,
+  updateTenant,
+  uploadLogo,
 } from "./api"
 import type { CreateTenantRequest, UpdateTenantRequest } from "./types"
 
@@ -45,5 +48,27 @@ export function useSuspendTenant() {
   return useMutation({
     mutationFn: (id: string) => suspendTenant(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tenants"] }),
+  })
+}
+
+export function useActivateTenant() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => activateTenant(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tenants"] }),
+  })
+}
+
+export function useCancelTenant() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => cancelTenant(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tenants"] }),
+  })
+}
+
+export function useUploadLogo() {
+  return useMutation({
+    mutationFn: (file: File) => uploadLogo(file),
   })
 }

@@ -3,10 +3,15 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { MemoryRouter } from "react-router-dom"
 import LoginPage from "./LoginPage"
+import { LoginError } from "./api"
 
-vi.mock("./api", () => ({
-  login: vi.fn(),
-}))
+vi.mock("./api", async () => {
+  const actual = await vi.importActual<typeof import("./api")>("./api")
+  return {
+    ...actual,
+    login: vi.fn(),
+  }
+})
 
 vi.mock("./auth-provider", () => ({
   useAuth: () => ({ login: mockAuthLogin }),
@@ -29,6 +34,13 @@ function renderLogin() {
       <LoginPage />
     </MemoryRouter>,
   )
+}
+
+async function submitLogin() {
+  const user = userEvent.setup()
+  await user.type(screen.getByLabelText("אימייל"), "test@example.com")
+  await user.type(screen.getByLabelText("סיסמה"), "whatever")
+  await user.click(screen.getByRole("button", { name: "התחברות" }))
 }
 
 beforeEach(() => {
@@ -62,21 +74,51 @@ describe("LoginPage", () => {
       email: "admin@dopacrm.com",
       password: "Admin@12345",
     })
-    // No localStorage — cookie is set by browser
     expect(mockAuthLogin).toHaveBeenCalled()
     expect(mockNavigate).toHaveBeenCalledWith("/dashboard")
   })
 
-  it("shows error message on failed login", async () => {
-    const user = userEvent.setup()
-    mockLogin.mockRejectedValue(new Error("Invalid credentials"))
-
+  it("shows Hebrew wrong-credentials message on 401", async () => {
+    mockLogin.mockRejectedValue(new LoginError("Invalid credentials", 401))
     renderLogin()
-    await user.type(screen.getByLabelText("אימייל"), "bad@email.com")
-    await user.type(screen.getByLabelText("סיסמה"), "wrong")
-    await user.click(screen.getByRole("button", { name: "התחברות" }))
+    await submitLogin()
+    expect(await screen.findByText("שגיאה במייל או סיסמה")).toBeInTheDocument()
+  })
 
-    expect(await screen.findByText("Invalid credentials")).toBeInTheDocument()
+  it("shows Hebrew rate-limit message on 429", async () => {
+    mockLogin.mockRejectedValue(new LoginError("Rate limit", 429))
+    renderLogin()
+    await submitLogin()
+    expect(
+      await screen.findByText("יותר מדי ניסיונות, נסו שוב בעוד דקה"),
+    ).toBeInTheDocument()
+  })
+
+  it("shows Hebrew system-error message on 500", async () => {
+    mockLogin.mockRejectedValue(new LoginError("boom", 500))
+    renderLogin()
+    await submitLogin()
+    expect(
+      await screen.findByText("שגיאת מערכת, נסו שוב בעוד מספר רגעים"),
+    ).toBeInTheDocument()
+  })
+
+  it("shows Hebrew network-error message on status 0", async () => {
+    mockLogin.mockRejectedValue(new LoginError("network", 0))
+    renderLogin()
+    await submitLogin()
+    expect(
+      await screen.findByText("אין חיבור לשרת, בדקו את החיבור לאינטרנט"),
+    ).toBeInTheDocument()
+  })
+
+  it("shows Hebrew forbidden message on 403", async () => {
+    mockLogin.mockRejectedValue(new LoginError("Account suspended", 403))
+    renderLogin()
+    await submitLogin()
+    expect(
+      await screen.findByText("החשבון מושהה, פנו למנהל המערכת"),
+    ).toBeInTheDocument()
   })
 
   it("shows loading state while submitting", async () => {
