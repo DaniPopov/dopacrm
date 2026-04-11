@@ -10,12 +10,14 @@ ORM class here.
 
 from app.adapters.storage.postgres.database import Base, async_session_factory, get_engine
 from app.adapters.storage.postgres.refresh_token.models import RefreshTokenORM
+from app.adapters.storage.postgres.saas_plan.models import SaasPlanORM
 from app.adapters.storage.postgres.tenant.models import TenantORM
 from app.adapters.storage.postgres.user.models import UserORM
 
 __all__ = [
     "Base",
     "RefreshTokenORM",
+    "SaasPlanORM",
     "TenantORM",
     "UserORM",
     "async_session_factory",

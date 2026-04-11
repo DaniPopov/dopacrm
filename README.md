@@ -208,9 +208,39 @@ Run `make` for the full sectioned list. Summary:
 | Section | Targets |
 |---------|---------|
 | **Stack** | `up-dev`, `build-dev`, `rebuild-dev`, `restart-dev`, `stop-dev`, `down-dev` |
-| **Database** | `migrate-up-dev`, `migrate-down-dev`, `migrate-status-dev`, `migrate-history-dev`, `seed-super-admin-dev` |
+| **Database** | `migrate-up-dev`, `migrate-down-dev`, `migrate-status-dev`, `migrate-history-dev`, `seed-super-admin-dev`, `list-tables-dev`, `clean-database-dev` |
 | **Logs** | `logs-dev`, `logs-<service>-dev` (backend, worker, worker-beat, mongo, postgres, redis, rabbitmq, flower, grafana, loki, promtail, mongo-express) |
+| **Testing** | `test-backend-unit`, `test-backend-integration-dev`, `test-backend-e2e-dev`, `test-backend-all-dev`, `test-frontend`, `test-all-dev` |
 | **Info** | `urls-dev` |
+
+### Cleaning the database
+
+During development you often want to wipe test data without resetting the whole stack.
+
+```bash
+# See what tables exist
+make list-tables-dev
+
+# Truncate a single table (all rows removed, schema preserved)
+make clean-database-dev TABLE=tenants
+make clean-database-dev TABLE=users
+
+# Truncate ALL user data at once
+# Preserved: saas_plans (reference data) + alembic_version (migration history)
+make clean-database-dev TABLE=all
+```
+
+**What's preserved:**
+- `saas_plans` — seeded by migration `0003`, don't wipe it (tenants FK into it)
+- `alembic_version` — Alembic migration history
+
+**Full nuclear reset** (drops schema + volume, re-runs migrations):
+```bash
+make down-dev
+docker volume rm dopacrm_postgres-data
+make up-dev
+make migrate-up-dev
+```
 
 ## Project Layout
 

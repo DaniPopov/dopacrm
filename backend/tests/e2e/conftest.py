@@ -53,9 +53,15 @@ def _clean_db():
     engine = create_engine(_get_sync_url())
     Base.metadata.create_all(engine)
 
+    # Preserve seeded reference data (saas_plans) — integration tests
+    # shouldn't pollute data that the dev DB depends on.
+    _preserved = {"saas_plans", "alembic_version"}
+
     def _clean():
         with engine.begin() as conn:
             for table in reversed(Base.metadata.sorted_tables):
+                if table.name in _preserved:
+                    continue
                 conn.execute(text(f"TRUNCATE TABLE {table.name} CASCADE"))
         # Clear rate limit keys
         r = sync_redis.Redis(host="localhost", port=6379)

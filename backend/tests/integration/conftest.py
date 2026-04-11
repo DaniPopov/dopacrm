@@ -39,9 +39,14 @@ async def session() -> AsyncGenerator[AsyncSession]:
     async with factory() as s:
         yield s
 
-    # Clean all tables after each test (reverse order respects FKs)
+    # Clean all tables after each test (reverse order respects FKs).
+    # Preserve seeded reference data (saas_plans) that migrations inserted —
+    # integration tests shouldn't pollute data that the dev DB depends on.
+    _preserved = {"saas_plans", "alembic_version"}
     async with engine.begin() as conn:
         for table in reversed(Base.metadata.sorted_tables):
+            if table.name in _preserved:
+                continue
             await conn.execute(table.delete())
 
     await engine.dispose()

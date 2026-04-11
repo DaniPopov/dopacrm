@@ -77,6 +77,39 @@ seed-super-admin-dev:  ## Create platform super_admin (SEED_EMAIL=... SEED_PASSW
 	fi
 	@$(COMPOSE_DEV) exec -e SEED_EMAIL -e SEED_PASSWORD backend python -m scripts.create_super_admin
 
+list-tables-dev:  ## List all tables in the dev database
+	@$(COMPOSE_DEV) exec postgres psql -U dopacrm -d dopacrm -c "\dt"
+
+clean-database-dev:  ## Truncate tables (TABLE=<name> or TABLE=all — preserves saas_plans + alembic)
+	@if [ -z "$$TABLE" ]; then \
+		echo "Error: TABLE must be set."; \
+		echo "Examples:"; \
+		echo "  make clean-database-dev TABLE=users    # truncate one table"; \
+		echo "  make clean-database-dev TABLE=all      # truncate ALL user data"; \
+		echo "                                         # (preserves saas_plans + alembic_version)"; \
+		echo ""; \
+		echo "To see available tables: make list-tables-dev"; \
+		exit 1; \
+	fi
+	@if [ "$$TABLE" = "all" ]; then \
+		echo "Truncating all user tables (preserving saas_plans + alembic_version)..."; \
+		$(COMPOSE_DEV) exec postgres psql -U dopacrm -d dopacrm -c "\
+			DO \$$\$$ \
+			DECLARE r RECORD; \
+			BEGIN \
+				FOR r IN SELECT tablename FROM pg_tables \
+					WHERE schemaname = 'public' \
+					AND tablename NOT IN ('saas_plans', 'alembic_version') \
+				LOOP \
+					EXECUTE 'TRUNCATE TABLE ' || quote_ident(r.tablename) || ' CASCADE'; \
+					RAISE NOTICE 'truncated %', r.tablename; \
+				END LOOP; \
+			END \$$\$$;"; \
+	else \
+		echo "Truncating table: $$TABLE"; \
+		$(COMPOSE_DEV) exec postgres psql -U dopacrm -d dopacrm -c "TRUNCATE TABLE $$TABLE CASCADE;"; \
+	fi
+
 ##@ Logs
 
 logs-dev:  ## Tail logs from all services
