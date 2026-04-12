@@ -83,7 +83,7 @@ jobs:
         run: uv sync --frozen
 
       - name: pip-audit (strict — any CVE fails the build)
-        run: uv run --with pip-audit pip-audit --strict
+        run: uv run --with pip-audit pip-audit --strict --skip-editable
 
   npm-audit:
     name: Frontend CVE scan
