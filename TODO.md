@@ -123,4 +123,4 @@
 - [x] Seed script: create_super_admin via Make target
 - [x] Makefile: test targets (backend unit/integration/e2e/all, frontend, all)
 - [x] CI: backend lint+test, frontend lint+test, gitleaks, pip-audit, docker build
-- [x] Docs: CLAUDE.md, README, specs.md, backend.md, frontend.md, feature docs, standards
+- [x] Docs: CLAUDE.md, README, spec.md, backend.md, frontend.md, feature docs, standards

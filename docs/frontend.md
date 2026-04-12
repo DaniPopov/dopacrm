@@ -1,6 +1,6 @@
 # DopaCRM — Frontend Architecture
 
-> Deep dive into the React/TypeScript frontend. For the product spec see [`specs.md`](./specs.md).
+> Deep dive into the React/TypeScript frontend. For the product spec see [`spec.md`](./spec.md).
 
 ---
 
@@ -26,7 +26,7 @@ We use TanStack Query for all server-state management. It replaces manual `useSt
 - **Loading / error / data states** — built in, no boilerplate
 - **Caching** — navigate away and back, data is instant from cache
 - **Background refetching** — stale data shows immediately, fresh data replaces it
-- **Invalidation after mutations** — create a tenant → tenant list auto-refetches
+- **Invalidation after mutations** — create a tenant -> tenant list auto-refetches
 - **Deduplication** — two components using `useTenants()` share one request
 - **Retry on failure** — 3 retries by default
 - **Tab refocus refetch** — data refreshes when the user returns to the tab
@@ -38,70 +38,70 @@ We use TanStack Query for all server-state management. It replaces manual `useSt
 ```
 frontend/src/
 ├── app/                          # App shell
-│   ├── App.tsx                   # Routes + page imports
+│   ├── App.tsx                   # Routes + page imports + guard wrappers
 │   └── providers.tsx             # QueryClientProvider + BrowserRouter + AuthProvider
 │
 ├── components/                   # Shared, reusable components
-│   ├── ui/                       # shadcn/ui primitives (button, input, card, label)
-│   └── layout/                   # ProtectedRoute, DashboardLayout (header + logout)
+│   ├── ui/                       # shadcn/ui primitives (button, input, card, dialog, etc.)
+│   └── layout/                   # App-level layout components
+│       ├── DashboardLayout.tsx   # Shell: Sidebar + routed main content
+│       ├── Sidebar.tsx           # Role-based nav via declarative NAV_ITEMS array
+│       ├── ProtectedRoute.tsx    # Auth guard: logged in? no -> /login
+│       └── RequireFeature.tsx    # Permission guard: canAccess? no -> /dashboard
 │
 ├── features/                     # Feature modules (the core of the app)
 │   ├── auth/
 │   │   ├── api.ts                # login(), getMe(), logout()
-│   │   ├── api.test.ts           # Tests for API functions
+│   │   ├── api.test.ts           # 7 tests
 │   │   ├── auth-provider.tsx     # AuthContext + useAuth() hook
-│   │   ├── LoginPage.tsx         # Login form
-│   │   ├── LoginPage.test.tsx    # Tests for login page
-│   │   └── types.ts              # LoginRequest, TokenResponse, User
+│   │   ├── LoginPage.tsx         # Login form with Hebrew error messages
+│   │   ├── LoginPage.test.tsx    # 10 tests
+│   │   ├── types.ts              # LoginRequest, TokenResponse, User, Role
+│   │   ├── permissions.ts        # canAccess(), accessibleFeatures(), Feature type
+│   │   └── permissions.test.ts   # 16 tests
 │   │
 │   ├── tenants/
-│   │   ├── api.ts                # listTenants(), createTenant(), updateTenant(), suspendTenant()
-│   │   ├── api.test.ts           # Tests for API functions
-│   │   ├── hooks.ts              # useTenants(), useCreateTenant(), useSuspendTenant()
-│   │   └── types.ts              # Tenant, CreateTenantRequest, UpdateTenantRequest
-│   │   # Pages (TenantListPage, TenantForm, etc.) — to be built
-│   │
-│   ├── landing/
-│   │   ├── LandingPage.tsx       # Hebrew landing page for gym CRM
-│   │   └── LandingPage.test.tsx  # Tests for landing page
+│   │   ├── api.ts                # listTenants(), getTenant(), createTenant(), updateTenant(),
+│   │   │                         # suspendTenant(), activateTenant(), cancelTenant(), uploadLogo()
+│   │   ├── api.test.ts           # 5 tests
+│   │   ├── hooks.ts              # useTenants(), useTenant(), useCreateTenant(), useUpdateTenant(),
+│   │   │                         # useSuspendTenant(), useActivateTenant(), useCancelTenant(), useUploadLogo()
+│   │   ├── types.ts              # Tenant, TenantStatus, CreateTenantRequest, UpdateTenantRequest, UploadResponse
+│   │   ├── TenantListPage.tsx    # Full CRUD page: create card, table, row actions, edit dialog
+│   │   ├── TenantListPage.test.tsx  # 12 tests
+│   │   ├── TenantForm.tsx        # Shared form (create + edit)
+│   │   └── ConfirmDialog.tsx     # Destructive action confirmation modal
 │   │
 │   ├── dashboard/
-│   │   ├── DashboardPage.tsx     # Role check → renders AdminDashboard or GymDashboard
-│   │   ├── AdminDashboard.tsx    # super_admin: platform metrics (tenants, users, health)
-│   │   ├── GymDashboard.tsx      # owner/staff/sales: members, revenue, leads, churn
-│   │   └── widgets/              # Reusable stat cards, charts
-│   │       ├── StatCard.tsx      # Shared: number + label + trend
-│   │       ├── admin/            # super_admin-only widgets
-│   │       └── gym/              # gym-only widgets
+│   │   ├── DashboardPage.tsx     # Role dispatcher: super_admin -> Admin, else -> Gym
+│   │   ├── AdminDashboard.tsx    # Hebrew platform metrics (tenants, users)
+│   │   ├── GymDashboard.tsx      # Hebrew gym metrics (members, MRR, leads) + quick actions
+│   │   └── StatCard.tsx          # Shared metric card widget
 │   │
 │   ├── users/
 │   │   └── UserListPage.tsx      # Placeholder (to be built)
-│   ├── members/                  # (future)
-│   ├── plans/                    # (future)
-│   └── leads/                    # (future)
+│   │
+│   └── landing/
+│       ├── LandingPage.tsx       # Hebrew landing page for gym CRM
+│       └── LandingPage.test.tsx  # 6 tests
 │
 ├── lib/                          # Utilities (not feature-specific)
-│   ├── api-client.ts             # Fetch wrapper: base URL, auth headers, error handling
-│   ├── api-client.test.ts        # Tests for API client
+│   ├── api-client.ts             # Fetch wrapper: cookie auth, error handling
+│   ├── api-client.test.ts        # 6 tests
+│   ├── api-errors.ts             # ApiError class + Hebrew humanizer functions
+│   ├── api-errors.test.ts        # 15 tests
 │   └── utils.ts                  # cn() helper for Tailwind class merging
 │
 ├── test/
 │   └── setup.ts                  # Vitest setup (jest-dom matchers)
 │
-├── lib/                          # Utilities (not feature-specific)
-│   ├── api-client.ts             # Fetch wrapper: base URL, auth headers, error handling
-│   ├── utils.ts                  # cn() helper for Tailwind class merging
-│   └── constants.ts              # API_BASE_URL, etc.
-│
-├── hooks/                        # Shared hooks (not feature-specific)
-│
-├── index.css                     # Tailwind + global styles
+├── index.css                     # Tailwind + global styles + Rubik font
 └── main.tsx                      # Entry point
 ```
 
 ---
 
-## Feature module pattern
+## Feature Module Pattern
 
 Every feature follows the same structure:
 
@@ -116,187 +116,264 @@ features/<name>/
 
 ### api.ts — pure fetch functions
 
-```typescript
-// features/tenants/api.ts
-import { apiClient } from "@/lib/api-client"
-import type { Tenant, CreateTenantRequest } from "./types"
-
-export function listTenants(): Promise<Tenant[]> {
-  return apiClient.get("/tenants")
-}
-
-export function createTenant(data: CreateTenantRequest): Promise<Tenant> {
-  return apiClient.post("/tenants", data)
-}
-
-export function suspendTenant(id: string): Promise<Tenant> {
-  return apiClient.post(`/tenants/${id}/suspend`)
-}
-```
-
 No React, no hooks, no state. Just typed HTTP calls. Easy to test in isolation.
 
 ### hooks.ts — TanStack Query wrappers
 
-```typescript
-// features/tenants/hooks.ts
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { listTenants, createTenant, suspendTenant } from "./api"
-import type { CreateTenantRequest } from "./types"
-
-export function useTenants() {
-  return useQuery({
-    queryKey: ["tenants"],
-    queryFn: listTenants,
-  })
-}
-
-export function useCreateTenant() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (data: CreateTenantRequest) => createTenant(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tenants"] }),
-  })
-}
-
-export function useSuspendTenant() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (id: string) => suspendTenant(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tenants"] }),
-  })
-}
-```
-
-Hooks handle caching, loading states, and invalidation. Pages consume them.
+Hooks handle caching, loading states, and invalidation. Pages consume them. Every mutation invalidates the relevant query key on success so lists auto-refresh.
 
 ### Page component — uses hooks
 
-```typescript
-// features/tenants/TenantListPage.tsx
-export default function TenantListPage() {
-  const { data: tenants, isLoading, error } = useTenants()
-  const suspend = useSuspendTenant()
-
-  if (isLoading) return <Spinner />
-  if (error) return <ErrorMessage error={error} />
-
-  return (
-    <table>
-      {tenants?.map((t) => (
-        <tr key={t.id}>
-          <td>{t.name}</td>
-          <td>{t.status}</td>
-          <td>
-            <Button onClick={() => suspend.mutate(t.id)}>
-              {suspend.isPending ? "..." : "Suspend"}
-            </Button>
-          </td>
-        </tr>
-      ))}
-    </table>
-  )
-}
-```
+Pages are thin: call hooks, handle loading/error, render components. Errors go through humanizer functions from `lib/api-errors.ts`.
 
 ---
 
-## API client + error handling
+## API Reference
 
-Two pieces work together: `lib/api-client.ts` (HTTP wrapper) and `lib/api-errors.ts` (error → Hebrew message translators).
+### `lib/api-client.ts` — HTTP client
 
-### `lib/api-client.ts`
+Single point for all HTTP. Uses HttpOnly cookies (`credentials: "include"`) — no token management in JavaScript.
 
-Single point for all HTTP. Uses HttpOnly cookies — **no token handling in JavaScript**.
-
-Every failure throws an `ApiError` with the HTTP status, so callers can localize messages based on status code:
-
-```typescript
-import { ApiError } from "./api-errors"
-
+```ts
 class ApiClient {
-  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    let res: Response
-    try {
-      res = await fetch(`/api/v1${path}`, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",       // sends HttpOnly cookie automatically
-        body: body ? JSON.stringify(body) : undefined,
-      })
-    } catch {
-      throw new ApiError("network", 0)   // fetch rejected → treat as status 0
-    }
+  /** Internal: executes fetch with JSON headers, cookie, and error handling.
+   *  Network errors throw ApiError(status=0). 401 throws ApiError(401).
+   *  204 returns undefined. All other non-ok responses throw ApiError(status). */
+  private request<T>(method: string, path: string, body?: unknown): Promise<T>
 
-    if (res.status === 204) return undefined as T
-    if (res.status === 401) throw new ApiError("Unauthorized", 401)
+  /** GET /api/v1{path} */
+  get<T>(path: string): Promise<T>
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      throw new ApiError(
-        typeof data.detail === "string" ? data.detail : `Request failed: ${res.status}`,
-        res.status,
-      )
-    }
+  /** POST /api/v1{path} with optional JSON body */
+  post<T>(path: string, body?: unknown): Promise<T>
 
-    return res.json()
-  }
-  // ... get/post/patch/delete
+  /** PATCH /api/v1{path} with optional JSON body */
+  patch<T>(path: string, body?: unknown): Promise<T>
+
+  /** DELETE /api/v1{path} */
+  delete<T>(path: string): Promise<T>
 }
+
+export const apiClient: ApiClient  // Singleton, imported by all api.ts files
 ```
 
-### `lib/api-errors.ts` — Hebrew humanizers
+### `lib/api-errors.ts` — Error class + Hebrew humanizers
 
-Every page translates `ApiError` → user-facing Hebrew via domain-specific functions. Never show raw backend `detail` strings.
-
-```typescript
+```ts
+/** Error carrying the HTTP status code (0 = network failure). */
 export class ApiError extends Error {
-  constructor(message: string, public readonly status: number) { ... }
+  constructor(message: string, public readonly status: number)
 }
 
-// Login-specific — 401 becomes "שגיאה במייל או סיסמה"
+/** Generic Hebrew fallback table.
+ *  0 -> "אין חיבור לשרת..."  |  401 -> "נדרשת התחברות מחדש"
+ *  403 -> "אין לכם הרשאה..."  |  404 -> "הפריט לא נמצא"
+ *  409 -> "הפריט כבר קיים"    |  429 -> "יותר מדי בקשות..."
+ *  500+ -> "שגיאת מערכת..."    |  other -> "אירעה שגיאה, נסו שוב" */
+function genericMessage(status: number): string
+
+/** Login errors. 401 -> "שגיאה במייל או סיסמה",
+ *  403 -> "החשבון מושהה...", 429 -> "יותר מדי ניסיונות..." */
 export function humanizeLoginError(err: unknown): string
 
-// Tenant CRUD — 409 becomes "מזהה URL (slug) כבר תפוס"
+/** Tenant CRUD errors. 409 -> "מזהה URL (slug) כבר תפוס",
+ *  422 -> "הפרטים שהוזנו אינם תקינים..." */
 export function humanizeTenantError(err: unknown): string
 
-// Uploads — 413 becomes "הלוגו גדול מדי (מקסימום 2MB)"
+/** Upload errors. 413 -> "הלוגו גדול מדי (מקסימום 2MB)",
+ *  415 -> "סוג הקובץ אינו נתמך (PNG, JPG, WebP או SVG)" */
 export function humanizeUploadError(err: unknown): string
 ```
 
-### Pattern in a page
+### `features/auth/api.ts` — Auth functions
 
-```tsx
-import { humanizeTenantError } from "@/lib/api-errors"
+```ts
+/** POST /api/v1/auth/login — JSON body {email, password}.
+ *  Backend sets HttpOnly cookie. Returns TokenResponse.
+ *  Does NOT go through apiClient — login 401 should be a normal error,
+ *  not an auth-redirect.
+ *  @throws ApiError(401) wrong credentials
+ *  @throws ApiError(429) rate limited (10/min/IP)
+ *  @throws ApiError(0) network failure */
+export function login(data: LoginRequest): Promise<TokenResponse>
 
-function TenantListPage() {
-  const create = useCreateTenant()
-  return (
-    <TenantForm
-      error={create.error ? humanizeTenantError(create.error) : null}
-      submitting={create.isPending}
-      onSubmit={...}
-    />
-  )
+/** GET /api/v1/auth/me — returns current user profile from cookie.
+ *  @throws ApiError(401) not authenticated */
+export function getMe(): Promise<User>
+
+/** POST /api/v1/auth/logout — clears cookie + blacklists token in Redis.
+ *  @throws ApiError on failure (caller ignores — logout continues anyway) */
+export function logout(): Promise<void>
+```
+
+### `features/auth/types.ts` — Auth types
+
+```ts
+export type Role = "super_admin" | "owner" | "staff" | "sales"
+export const ALL_GYM_ROLES: Role[]  // ["owner", "staff", "sales"]
+
+export interface LoginRequest { email: string; password: string }
+export interface TokenResponse { access_token: string; token_type: string; expires_in: number }
+export interface User {
+  id: string; email: string; role: Role; tenant_id: string | null
+  is_active: boolean; oauth_provider: string | null
+  created_at: string; updated_at: string
 }
 ```
 
-Key points:
-- `credentials: "include"` sends the HttpOnly cookie on every request
-- No `localStorage`, no token injection, no `Authorization` header in the frontend
-- 401 throws `ApiError(401)` — `ProtectedRoute` handles the redirect
-- Every HTTP status maps to a specific Hebrew message via the humanizers
-- Adding a new status code = one line in the helper, updates everywhere
+### `features/auth/permissions.ts` — Central permissions module
+
+```ts
+/** Every permission-gated feature in the app. Add new ones here as you build them. */
+export type Feature =
+  | "dashboard"
+  | "tenants" | "platform_users"
+  | "members" | "plans" | "leads" | "payments" | "reports" | "settings"
+
+/** Features an owner can grant to staff/sales (excludes settings, platform features). */
+export const GRANTABLE_FEATURES: Feature[]
+
+/** Per-tenant overrides — what the owner has granted to each employee role.
+ *  Placeholder shape. In the real system this becomes the role row itself. */
+export interface TenantOverrides { staff: Feature[]; sales: Feature[] }
+
+/** Does this user have access to this feature?
+ *  Checks baseline role->feature map, then tenant overrides for staff/sales.
+ *  Owner and super_admin always use the baseline (never overridden). */
+export function canAccess(user: User | null | undefined, feature: Feature, overrides?: TenantOverrides): boolean
+
+/** All features a user can see. Handy for building nav menus. */
+export function accessibleFeatures(user: User | null | undefined, overrides?: TenantOverrides): Feature[]
+```
+
+### `features/auth/auth-provider.tsx` — Auth context
+
+```ts
+/** Context value provided by AuthProvider. */
+interface AuthContextValue {
+  user: User | null
+  isAuthenticated: boolean
+  isLoading: boolean
+  login: () => Promise<void>   // Refetch user after login() succeeds
+  logout: () => Promise<void>  // POST /logout, clear user, navigate to /login
+}
+
+/** Wraps the app. On mount calls getMe() via cookie. */
+export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
+
+/** Hook: access user, auth state, login/logout actions from anywhere. */
+export function useAuth(): AuthContextValue
+```
+
+### `features/tenants/api.ts` — Tenant functions
+
+```ts
+/** GET /api/v1/tenants — list all tenants (super_admin only).
+ *  @throws ApiError(403) not super_admin */
+export function listTenants(): Promise<Tenant[]>
+
+/** GET /api/v1/tenants/{id} — get tenant by ID (includes logo_presigned_url).
+ *  @throws ApiError(404) not found */
+export function getTenant(id: string): Promise<Tenant>
+
+/** POST /api/v1/tenants — onboard a new gym.
+ *  Auto-assigns default SaaS plan, status=trial, trial_ends_at=now+14d.
+ *  @throws ApiError(409) slug already taken
+ *  @throws ApiError(422) validation error */
+export function createTenant(data: CreateTenantRequest): Promise<Tenant>
+
+/** PATCH /api/v1/tenants/{id} — partial update of tenant fields.
+ *  @throws ApiError(404) not found
+ *  @throws ApiError(409) slug conflict */
+export function updateTenant(id: string, data: UpdateTenantRequest): Promise<Tenant>
+
+/** POST /api/v1/tenants/{id}/suspend — suspend a tenant.
+ *  @throws ApiError(404) not found */
+export function suspendTenant(id: string): Promise<Tenant>
+
+/** POST /api/v1/tenants/{id}/activate — reactivate a suspended/trial/cancelled tenant.
+ *  @throws ApiError(404) not found */
+export function activateTenant(id: string): Promise<Tenant>
+
+/** POST /api/v1/tenants/{id}/cancel — soft-delete (status=cancelled). Reversible via activate.
+ *  @throws ApiError(404) not found */
+export function cancelTenant(id: string): Promise<Tenant>
+
+/** POST /api/v1/uploads/logo — multipart file upload to S3.
+ *  Returns { key, presigned_url } for immediate preview.
+ *  Does NOT go through apiClient (multipart, not JSON).
+ *  @throws Error(413) file too large
+ *  @throws Error(415) unsupported type */
+export function uploadLogo(file: File): Promise<UploadResponse>
+```
+
+### `features/tenants/hooks.ts` — Tenant TanStack Query hooks
+
+```ts
+/** Fetch all tenants. Query key: ["tenants"]. */
+export function useTenants(): UseQueryResult<Tenant[]>
+
+/** Fetch one tenant by ID. Query key: ["tenants", id]. Disabled when id is empty. */
+export function useTenant(id: string): UseQueryResult<Tenant>
+
+/** Create a tenant. Invalidates ["tenants"] on success. */
+export function useCreateTenant(): UseMutationResult<Tenant, Error, CreateTenantRequest>
+
+/** Update a tenant. Invalidates ["tenants"] on success. */
+export function useUpdateTenant(): UseMutationResult<Tenant, Error, { id: string; data: UpdateTenantRequest }>
+
+/** Suspend a tenant. Invalidates ["tenants"] on success. */
+export function useSuspendTenant(): UseMutationResult<Tenant, Error, string>
+
+/** Activate a tenant. Invalidates ["tenants"] on success. */
+export function useActivateTenant(): UseMutationResult<Tenant, Error, string>
+
+/** Cancel a tenant. Invalidates ["tenants"] on success. */
+export function useCancelTenant(): UseMutationResult<Tenant, Error, string>
+
+/** Upload a logo file. Returns { key, presigned_url }. */
+export function useUploadLogo(): UseMutationResult<UploadResponse, Error, File>
+```
+
+### `features/tenants/types.ts` — Tenant types
+
+```ts
+export type TenantStatus = "trial" | "active" | "suspended" | "cancelled"
+
+export interface Tenant {
+  id: string; slug: string; name: string; status: TenantStatus
+  saas_plan_id: string
+  logo_url: string | null; logo_presigned_url: string | null
+  phone: string | null; email: string | null; website: string | null
+  address_street: string | null; address_city: string | null
+  address_country: string | null; address_postal_code: string | null
+  legal_name: string | null; tax_id: string | null
+  timezone: string; currency: string; locale: string
+  trial_ends_at: string | null; created_at: string; updated_at: string
+}
+
+export interface CreateTenantRequest {
+  slug: string; name: string
+  logo_url?: string | null; phone?: string | null; email?: string | null; website?: string | null
+  address_street?: string | null; address_city?: string | null
+  address_country?: string | null; address_postal_code?: string | null
+  legal_name?: string | null; tax_id?: string | null
+  timezone?: string; currency?: string; locale?: string
+}
+
+export interface UpdateTenantRequest { /* same as Create but all fields optional */ }
+export interface UploadResponse { key: string; presigned_url: string }
+```
 
 ---
 
-## Auth flow
+## Auth Flow
 
-1. **Login** — `POST /auth/login` → backend sets HttpOnly cookie. Frontend calls `refreshAuth()` to fetch user.
+1. **Login** — `POST /auth/login` (JSON body) -> backend sets HttpOnly cookie. Frontend calls `refreshAuth()` to fetch user via `getMe()`.
 2. **AuthProvider** — wraps the app. On mount, calls `GET /auth/me` (cookie sent by browser). Provides `useAuth()` hook: `{ user, isAuthenticated, isLoading, login, logout }`.
 3. **ProtectedRoute** — redirects to `/login` if `isAuthenticated` is false.
 4. **API client** — `credentials: "include"` sends cookie automatically. No token handling in JS.
-5. **Logout** — `POST /auth/logout` → backend blacklists token in Redis + clears cookie. Frontend sets `user = null`, navigates to `/login`.
+5. **Logout** — `POST /auth/logout` -> backend blacklists token in Redis + clears cookie. Frontend sets `user = null`, navigates to `/login`.
 6. **Security** — token stored in HttpOnly cookie (XSS-immune). Redis blacklist prevents reuse after logout. No `localStorage` anywhere.
 
 ---
@@ -323,14 +400,14 @@ Key points:
 ```
 
 **Two guard layers:**
-- `ProtectedRoute` — is the user logged in? No → redirect to `/login`
-- `RequireFeature` — does the user have access to this feature? No → redirect to `/dashboard`
+- `ProtectedRoute` — is the user logged in? No -> redirect to `/login`
+- `RequireFeature` — does the user have access to this feature? No -> redirect to `/dashboard`
 
 ---
 
 ## Permissions (role-based feature visibility)
 
-The golden rule: **never write `user.role === "super_admin"` in a component.** Always go through `canAccess(user, feature)`.
+The golden rule: **never write `user.role === "..."` in a component.** Always go through `canAccess(user, feature)`.
 
 ### Why this matters
 
@@ -339,17 +416,6 @@ Hardcoding role checks in 50 components means that the day you add a new role (o
 ### The module
 
 `features/auth/permissions.ts` is the single source of truth.
-
-```ts
-// Named features — add new ones here as you build them
-export type Feature =
-  | "dashboard"
-  | "tenants" | "platform_users"       // platform admin
-  | "members" | "plans" | "leads" | "payments" | "reports" | "settings"
-
-// The one function everyone calls
-export function canAccess(user: User | null, feature: Feature): boolean
-```
 
 Internally it holds a `BASELINE: Record<Role, Feature[]>` dict that maps each role to its allowed features. **This is a placeholder** — when the dynamic roles system lands (see `docs/features/roles.md`), `canAccess` collapses to `user?.role.features.includes(feature)` and the dict goes away. Call sites don't change.
 
@@ -379,32 +445,16 @@ export default function RequireFeature({ feature }: { feature: Feature }) {
 }
 ```
 
-Wrap any route group with it:
-```tsx
-<Route element={<RequireFeature feature="members" />}>
-  <Route path="/members" element={<MemberListPage />} />
-</Route>
-```
-
 ### Role-based page dispatch (the dashboard pattern)
 
-`/dashboard` is one route that dispatches to different components based on who's viewing:
-
-```tsx
-// features/dashboard/DashboardPage.tsx
-export default function DashboardPage() {
-  const { user } = useAuth()
-  if (user?.role === "super_admin") return <AdminDashboard />
-  return <GymDashboard />
-}
-```
+`/dashboard` is one route that dispatches to different components:
 
 - **super_admin** sees `AdminDashboard` — platform metrics: total tenants, users, new gyms
 - **owner/staff/sales** sees `GymDashboard` — gym metrics: active members, MRR, leads, quick actions
 
-Both share the `StatCard` widget (`features/dashboard/StatCard.tsx`). All values show `"בקרוב"` until backend metrics land.
+Both share the `StatCard` widget. All values show "בקרוב" until backend metrics land.
 
-*(This one `user.role === "super_admin"` check is the single intentional exception to the rule above — the dashboard dispatcher is a layout decision, not a permission check. Everything else goes through `canAccess`.)*
+*(The `user.role === "super_admin"` check in DashboardPage is the single intentional exception — it's a layout decision, not a permission check.)*
 
 ---
 
@@ -414,27 +464,18 @@ Both share the `StatCard` widget (`features/dashboard/StatCard.tsx`). All values
 
 **Pattern:** tests live next to the code they test.
 
-```
-features/auth/
-├── api.ts
-├── api.test.ts          ← tests the API functions
-├── LoginPage.tsx
-└── LoginPage.test.tsx   ← tests the page component
-```
-
-**What to test per feature:**
-- `api.test.ts` — correct endpoints called, request body shape, error handling
-- `*.test.tsx` — renders correctly, user interactions work, navigation on success/error
-
-**Current test count:** 25 tests across 5 files
+**Current test count:** 77 tests across 8 files
 
 | File | Tests | What it covers |
 |------|-------|----------------|
-| `lib/api-client.test.ts` | 7 | Auth header injection, 401 redirect, 204, error parsing |
-| `features/auth/api.test.ts` | 4 | login(), getMe(), logout(), login error |
-| `features/auth/LoginPage.test.tsx` | 4 | Render, success, error, loading state |
+| `features/auth/permissions.test.ts` | 16 | canAccess baseline per role, tenant overrides, accessibleFeatures, GRANTABLE_FEATURES |
+| `lib/api-errors.test.ts` | 15 | ApiError class, humanizeLoginError, humanizeTenantError, humanizeUploadError |
+| `features/tenants/TenantListPage.test.tsx` | 12 | Renders table, create form, row actions, suspend/activate/cancel flows |
+| `features/auth/LoginPage.test.tsx` | 10 | Render, validation, success redirect, error states, loading |
+| `features/auth/api.test.ts` | 7 | login(), getMe(), logout(), error cases |
+| `lib/api-client.test.ts` | 6 | Cookie auth, 401 handling, 204, error parsing |
+| `features/landing/LandingPage.test.tsx` | 6 | Hebrew content, feature cards, navigation |
 | `features/tenants/api.test.ts` | 5 | list, get, create, update, suspend |
-| `features/landing/LandingPage.test.tsx` | 5 | Hebrew content, cards, navigation |
 
 **Run:** `make test-frontend` or `cd frontend && npx vitest run`
 
@@ -451,17 +492,19 @@ features/auth/
 - **Row actions.** Tables use a "פעולות" dropdown menu per row, with conditionally-shown items based on status. Destructive actions (Cancel/Delete) open a `ConfirmDialog`.
 - **Modal dialogs.** Use fixed-positioned overlays with backdrop click to close. Edit uses a scrollable dialog that reuses the form component.
 - **Static images in `public/`.** Referenced as URL strings (`"/dopa-icon.png"`). No module imports.
-- **Tests live next to code.** `Foo.tsx` → `Foo.test.tsx`, `api.ts` → `api.test.ts`.
+- **Tests live next to code.** `Foo.tsx` -> `Foo.test.tsx`, `api.ts` -> `api.test.ts`.
 - **Shared components in `components/`.** Feature-specific components in the feature folder.
 - **Types mirror backend schemas.** Eventually auto-generated from OpenAPI.
 - **No prop drilling for auth.** Use `useAuth()` hook from anywhere.
+- **Permissions via canAccess().** Never inline `user.role === "..."`. See permissions section above.
 
 ---
 
 ## Related docs
 
-- [`specs.md`](./specs.md) — product specification (§7 Frontend Stack)
+- [`spec.md`](./spec.md) — product specification
 - [`backend.md`](./backend.md) — backend architecture (what the frontend talks to)
-- [`features/auth.md`](./features/auth.md) — auth feature doc (backend + frontend)
+- [`features/auth.md`](./features/auth.md) — auth feature doc
+- [`features/roles.md`](./features/roles.md) — dynamic roles system (planned)
 - [`skills/build-frontend-feature.md`](./skills/build-frontend-feature.md) — step-by-step recipe for a new frontend feature
 - [`skills/build-backend-feature.md`](./skills/build-backend-feature.md) — step-by-step recipe for a new backend feature

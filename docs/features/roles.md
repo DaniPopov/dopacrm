@@ -14,7 +14,7 @@ Today, `users.role` is a text column holding one of four literals: `super_admin`
 
 The real model is **dynamic, per-tenant, owner-configurable roles**. Only `super_admin` and `owner` are system-defined. Every other role is a row in a `tenant_roles` table that the owner creates, names, and assigns feature grants to.
 
-**Why this matters:** DopaCRM's core differentiator is owner-level flexibility (see `docs/specs.md` §1). A gym with a front-desk cashier, two trainers, and a separate sales consultant should be able to model that — not pick from three fixed buckets. Rigid role enums force the gym to bend to the software.
+**Why this matters:** DopaCRM's core differentiator is owner-level flexibility (see `docs/spec.md` §1). A gym with a front-desk cashier, two trainers, and a separate sales consultant should be able to model that — not pick from three fixed buckets. Rigid role enums force the gym to bend to the software.
 
 **Example outcomes:**
 - "Dana's Gym" keeps the seeded `Staff` role but renames it to `Reception`.

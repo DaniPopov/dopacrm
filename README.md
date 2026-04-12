@@ -34,7 +34,7 @@ Modular monolith with **4-layer hexagonal architecture** — one codebase with c
 
 ## Docs
 
-- [Product Spec](docs/specs.md) — features, domain model, roles, data architecture
+- [Product Spec](docs/spec.md) — features, domain model, roles, data architecture
 - [Backend Architecture](docs/backend.md) — Python/FastAPI, 4-layer design, request flow, testing
 - [Frontend Architecture](docs/frontend.md) — React/TypeScript, feature-based structure, TanStack Query
 - [Standards](docs/standards/) — coding conventions (Python, architecture, Git, feature docs)

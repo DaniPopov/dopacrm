@@ -4,7 +4,7 @@
 
 **DopaCRM** — a multi-tenant SaaS CRM built for gyms and fitness studios. Gym owners manage members, membership plans, revenue, and leads from one platform. Each gym is an isolated tenant configured via database records, not code changes. Built on a template from "Assets Agent" — infrastructure file names will be renamed over time.
 
-**Core product thesis — read this before designing anything.** DopaCRM's differentiator is **owner-level flexibility**, not feature count. Most gym CRMs are rigid — you take what the vendor built. DopaCRM flips that: gym owners customize roles, fields, workflows, feature visibility, and dashboards to match how their specific gym actually operates. When faced with a choice between "ship a standard fixed thing" vs "make it owner-configurable", **default to configurable**. Push back on designs that hardcode business rules (role names, field schemas, workflow steps) — those belong in tenant config, not code. Full vision in `docs/specs.md` §1.
+**Core product thesis — read this before designing anything.** DopaCRM's differentiator is **owner-level flexibility**, not feature count. Most gym CRMs are rigid — you take what the vendor built. DopaCRM flips that: gym owners customize roles, fields, workflows, feature visibility, and dashboards to match how their specific gym actually operates. When faced with a choice between "ship a standard fixed thing" vs "make it owner-configurable", **default to configurable**. Push back on designs that hardcode business rules (role names, field schemas, workflow steps) — those belong in tenant config, not code. Full vision in `docs/spec.md` §1.
 
 ## Architecture
 
@@ -137,11 +137,11 @@ See `docs/frontend.md` for the full architecture guide.
 
 **Phase 2 (Core CRM) next.** Members, membership plans, subscriptions, payments, leads. Dashboard switches from "בקרוב" placeholders to real metrics as each feature lands.
 
-**Phase 4 (Flexibility)** is the big differentiator — dynamic roles, owner settings UI, custom fields, configurable dashboards. Deferred until 2-3 real gym-scoped features exist so the permission grid has something to configure. See `docs/specs.md` Roadmap.
+**Phase 4 (Flexibility)** is the big differentiator — dynamic roles, owner settings UI, custom fields, configurable dashboards. Deferred until 2-3 real gym-scoped features exist so the permission grid has something to configure. See `docs/spec.md` Roadmap.
 
 ## Documentation
 
-- Product spec: `docs/specs.md`
+- Product spec: `docs/spec.md`
 - Backend architecture: `docs/backend.md`
 - Frontend architecture: `docs/frontend.md`
 - Standards: `docs/standards/` (python, architecture, git, env, project-structure, feature-docs)

@@ -1,6 +1,6 @@
 # DopaCRM — Backend Architecture
 
-> Deep dive into the Python/FastAPI backend. For the product spec see [`specs.md`](./specs.md). For coding standards see [`standards/`](./standards/).
+> Deep dive into the Python/FastAPI backend. For the product spec see [`spec.md`](./spec.md). For coding standards see [`standards/`](./standards/).
 
 ---
 
@@ -196,7 +196,7 @@ E2E tests include security checks: role escalation, SQL injection, XSS, JWT tamp
 
 ## Related docs
 
-- [`specs.md`](./specs.md) — product specification
+- [`spec.md`](./spec.md) — product specification
 - [`standards/python.md`](./standards/python.md) — Python coding standards
 - [`standards/architecture.md`](./standards/architecture.md) — architecture rules
 - [`features/`](./features/) — per-feature implementation docs

@@ -15,6 +15,15 @@ import { ApiError } from "./api-errors"
 const API_BASE = "/api/v1"
 
 class ApiClient {
+  /**
+   * Internal: execute a fetch request with JSON headers, cookie auth, and
+   * standardized error handling.
+   *
+   * - Network errors (fetch rejected) throw `ApiError(status=0)`
+   * - 204 No Content returns `undefined`
+   * - 401 Unauthorized throws `ApiError(401)` — ProtectedRoute handles redirect
+   * - All other non-ok responses parse `detail` from body and throw `ApiError(status)`
+   */
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = { "Content-Type": "application/json" }
 
@@ -48,15 +57,22 @@ class ApiClient {
     return res.json()
   }
 
+  /** `GET /api/v1{path}` — fetch a resource. */
   get<T>(path: string): Promise<T> {
     return this.request("GET", path)
   }
+
+  /** `POST /api/v1{path}` — create a resource or trigger an action. */
   post<T>(path: string, body?: unknown): Promise<T> {
     return this.request("POST", path, body)
   }
+
+  /** `PATCH /api/v1{path}` — partial update of a resource. */
   patch<T>(path: string, body?: unknown): Promise<T> {
     return this.request("PATCH", path, body)
   }
+
+  /** `DELETE /api/v1{path}` — delete a resource. */
   delete<T>(path: string): Promise<T> {
     return this.request("DELETE", path)
   }
