@@ -26,7 +26,7 @@ jobs:
       - name: Set up Python 3.13
         run: uv python install 3.13
 
-      - name: Install dependencies
+      - name: Verify lockfile is in sync
         run: uv sync --frozen
 
       - name: Ruff lint
@@ -55,7 +55,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
+      - name: Verify lockfile is in sync
         run: npm ci
 
       - name: TypeScript check
@@ -63,6 +63,50 @@ jobs:
 
       - name: Vitest
         run: npx vitest run
+
+  pip-audit:
+    name: Python CVE scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: pip-audit (strict — any CVE fails the build)
+        run: uv run --with pip-audit pip-audit --strict
+
+  npm-audit:
+    name: Frontend CVE scan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: npm audit (high + critical severity fails the build)
+        run: npm audit --audit-level=high
 
   gitleaks:
     name: Secret scanning
@@ -84,27 +128,6 @@ jobs:
 
       - name: Run gitleaks
         run: gitleaks detect --source . --verbose --redact --no-banner
-
-  pip-audit:
-    name: Dependency vulnerabilities
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: true
-
-      - name: Set up Python 3.13
-        run: uv python install 3.13
-
-      - name: Install dependencies
-        run: uv sync --frozen
-
-      - name: Run pip-audit
-        run: uv run --with pip-audit pip-audit
 
   docker-build:
     name: Docker build
