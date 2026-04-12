@@ -5,17 +5,19 @@ export SEED_PASSWORD
 
 .DEFAULT_GOAL := help
 
+# All targets are phony (no output files)
 .PHONY: help \
         up-dev build-dev rebuild-dev restart-dev stop-dev down-dev \
         logs-dev urls-dev \
-        logs-backend-dev logs-frontend-dev logs-worker-dev logs-worker-beat-dev \
-        logs-mongo-dev logs-postgres-dev logs-redis-dev logs-rabbitmq-dev \
-        logs-mongo-express-dev logs-flower-dev \
-        logs-loki-dev logs-promtail-dev logs-grafana-dev \
         migrate-up-dev migrate-down-dev migrate-status-dev migrate-history-dev \
         seed-super-admin-dev \
         test-backend-unit test-backend-integration-dev test-backend-e2e-dev \
         test-backend-all-dev test-frontend test-all-dev
+
+# Services available in docker-compose.dev.yml
+SERVICES := backend frontend worker mongo postgres redis rabbitmq flower loki promtail grafana
+# Services that have a Dockerfile and can be built
+BUILDABLE := backend frontend
 
 # The awk parser matches two patterns:
 #   ##@ Section     → prints a bold section header
@@ -54,6 +56,32 @@ stop-dev:  ## Stop services (containers preserved)
 
 down-dev:  ## Stop and remove containers (volumes preserved)
 	$(COMPOSE_DEV) down
+
+##@ Per-service (make <action>-<service>-dev)
+
+# Pattern rules — works for any service in the compose file.
+# Usage:
+#   make restart-backend-dev      restart just the backend
+#   make stop-postgres-dev        stop just postgres
+#   make up-redis-dev             start just redis
+#   make build-backend-dev        build just the backend image
+#   make rebuild-frontend-dev     build frontend from scratch (--no-cache)
+#   make logs-worker-dev          tail worker logs
+
+restart-%-dev:  ## Restart one service (e.g. restart-backend-dev)
+	$(COMPOSE_DEV) restart $*
+
+stop-%-dev:  ## Stop one service (e.g. stop-postgres-dev)
+	$(COMPOSE_DEV) stop $*
+
+up-%-dev:  ## Start one service (e.g. up-redis-dev)
+	$(COMPOSE_DEV) up -d $*
+
+build-%-dev:  ## Build one service image (e.g. build-backend-dev)
+	$(COMPOSE_DEV) build $*
+
+rebuild-%-dev:  ## Build one service from scratch (e.g. rebuild-frontend-dev)
+	$(COMPOSE_DEV) build --no-cache $*
 
 ##@ Database
 
@@ -115,48 +143,7 @@ clean-database-dev:  ## Truncate tables (TABLE=<name> or TABLE=all — preserves
 logs-dev:  ## Tail logs from all services
 	$(COMPOSE_DEV) logs -f
 
-logs-backend-dev:  ## Tail logs — backend
-	$(COMPOSE_DEV) logs -f backend
-
-logs-frontend-dev:  ## Tail logs — frontend
-	$(COMPOSE_DEV) logs -f frontend
-
-logs-worker-dev:  ## Tail logs — worker
-	$(COMPOSE_DEV) logs -f worker
-
-logs-worker-beat-dev:  ## Tail logs — worker-beat
-	$(COMPOSE_DEV) logs -f worker-beat
-
-logs-mongo-dev:  ## Tail logs — mongo
-	$(COMPOSE_DEV) logs -f mongo
-
-logs-postgres-dev:  ## Tail logs — postgres
-	$(COMPOSE_DEV) logs -f postgres
-
-logs-redis-dev:  ## Tail logs — redis
-	$(COMPOSE_DEV) logs -f redis
-
-logs-rabbitmq-dev:  ## Tail logs — rabbitmq
-	$(COMPOSE_DEV) logs -f rabbitmq
-
-logs-mongo-express-dev:  ## Tail logs — mongo-express
-	$(COMPOSE_DEV) logs -f mongo-express
-
-logs-flower-dev:  ## Tail logs — flower
-	$(COMPOSE_DEV) logs -f flower
-
-logs-loki-dev:  ## Tail logs — loki
-	$(COMPOSE_DEV) logs -f loki
-
-logs-promtail-dev:  ## Tail logs — promtail
-	$(COMPOSE_DEV) logs -f promtail
-
-logs-grafana-dev:  ## Tail logs — grafana
-	$(COMPOSE_DEV) logs -f grafana
-
-# Catch-all: `make logs-<any-service>-dev`
-logs-%-dev:
-	$(COMPOSE_DEV) logs -f $*
+# Per-service logs use the pattern rule above: make logs-backend-dev, logs-postgres-dev, etc.
 
 ##@ Testing
 
@@ -194,6 +181,33 @@ load-test-tenants:  ## Load test tenants CRUD (Locust → http://localhost:8089)
 	uv run locust -f loadtests/test_tenants_load.py --host=http://localhost:8000
 
 ##@ Info
+
+list-services-dev:  ## List all services and available per-service commands
+	@echo ""
+	@echo "  Services:"
+	@echo ""
+	@for svc in $(SERVICES); do \
+		printf "    \033[36m%-15s\033[0m" "$$svc"; \
+		echo ""; \
+	done
+	@echo ""
+	@echo "  Per-service commands (replace <svc> with a service name above):"
+	@echo ""
+	@echo "    make up-<svc>-dev          Start one service"
+	@echo "    make stop-<svc>-dev        Stop one service"
+	@echo "    make restart-<svc>-dev     Restart one service"
+	@echo "    make build-<svc>-dev       Build one service image"
+	@echo "    make rebuild-<svc>-dev     Build from scratch (--no-cache)"
+	@echo "    make logs-<svc>-dev        Tail logs for one service"
+	@echo ""
+	@echo "  Examples:"
+	@echo "    make restart-backend-dev"
+	@echo "    make logs-frontend-dev"
+	@echo "    make stop-postgres-dev"
+	@echo ""
+
+status-dev:  ## Show running containers and their status
+	$(COMPOSE_DEV) ps
 
 urls-dev:  ## Show URLs for all dev services
 	@echo "DopaCRM — dev service URLs:"
