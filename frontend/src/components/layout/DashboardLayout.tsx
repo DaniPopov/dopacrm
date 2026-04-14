@@ -73,12 +73,8 @@ function MobileLayout({
 }) {
   return (
     <div className="flex min-h-screen w-full flex-col">
-      {/* Top bar */}
+      {/* Top bar — hamburger on the right (same edge as drawer), logo on the left */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 shadow-sm">
-        <div className="flex items-center gap-2">
-          <img src={dopaIcon} alt="" className="h-6 w-6" />
-          <span className="text-base font-bold text-gray-900">DopaCRM</span>
-        </div>
         <button
           onClick={onOpenDrawer}
           aria-label="פתיחת תפריט"
@@ -86,6 +82,10 @@ function MobileLayout({
         >
           <HamburgerIcon />
         </button>
+        <div className="flex items-center gap-2">
+          <img src={dopaIcon} alt="" className="h-6 w-6" />
+          <span className="text-base font-bold text-gray-900">DopaCRM</span>
+        </div>
       </header>
 
       {/* Drawer overlay */}

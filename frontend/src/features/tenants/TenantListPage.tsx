@@ -116,17 +116,17 @@ export default function TenantListPage() {
           ))}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
           <table className="w-full text-right text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/50">
-                <th className="px-5 py-3 font-medium text-gray-500">חדר כושר</th>
+                <th className="rounded-tr-xl px-5 py-3 font-medium text-gray-500">חדר כושר</th>
                 <th className="px-5 py-3 font-medium text-gray-500">סטטוס</th>
                 <th className="px-5 py-3 font-medium text-gray-500">טלפון</th>
                 <th className="px-5 py-3 font-medium text-gray-500">עיר</th>
                 <th className="px-5 py-3 font-medium text-gray-500">מטבע</th>
                 <th className="px-5 py-3 font-medium text-gray-500">תאריך הצטרפות</th>
-                <th className="px-5 py-3 font-medium text-gray-500">פעולות</th>
+                <th className="rounded-tl-xl px-5 py-3 font-medium text-gray-500">פעולות</th>
               </tr>
             </thead>
             <tbody>
