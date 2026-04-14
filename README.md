@@ -54,6 +54,7 @@ Modular monolith with **4-layer hexagonal architecture** — one codebase with c
 - [Features](docs/features/) — per-feature implementation specs:
   - Shipped: [auth](docs/features/auth.md), [tenants](docs/features/tenants.md), [users](docs/features/users.md), [saas-plans](docs/features/saas-plans.md)
   - Planned: [members](docs/features/members.md), [classes + passes + attendance](docs/features/classes.md), [roles](docs/features/roles.md)
+- [Mobile setup plan](docs/mobile-setup.md) — React Native + Expo plan, deferred until after web CRM ships to prod
 - [Skills](docs/skills/) — step-by-step recipes for building new [frontend](docs/skills/build-frontend-feature.md) / [backend](docs/skills/build-backend-feature.md) features
 
 ## Prerequisites

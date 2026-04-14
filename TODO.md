@@ -28,6 +28,14 @@
 - [ ] Custom attrs UI for membership plans (owner edits `membership_plans.custom_attrs`)
 - [ ] Per-tenant dashboard widget layout (v2 — MongoDB `user_dashboard_configs`)
 
+### Mobile (deferred — see `docs/mobile-setup.md`)
+- [ ] Decide trigger: 4-6 weeks after web CRM in prod, based on real-customer feedback
+- [ ] Refactor: move `frontend/src/lib/api-{schema,types}.ts` into `packages/api-types/` workspace package
+- [ ] Set up React Native + Expo project (TypeScript strict, EAS Build)
+- [ ] v1 features: login, member search + check-in, member profile, add member, sell pass
+- [ ] Push notifications: backend `user_push_tokens` table, Celery task for sends, Expo SDK on mobile
+- [ ] Offline mode for check-in (v2, behind a flag)
+
 ### Features — Misc
 - [ ] Tenant CRUD: add `saas_plan_id` FK when SaaS Plans table is built
 - [ ] SaaS Plans CRUD (DopaCRM pricing tiers — Free/Starter/Pro)
