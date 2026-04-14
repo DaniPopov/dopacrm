@@ -145,6 +145,19 @@ logs-dev:  ## Tail logs from all services
 
 # Per-service logs use the pattern rule above: make logs-backend-dev, logs-postgres-dev, etc.
 
+##@ API types (frontend codegen from backend OpenAPI)
+
+gen-api-types:  ## Regenerate frontend TypeScript types from backend OpenAPI spec
+	@echo "Exporting OpenAPI spec from backend..."
+	@uv run python -m scripts.export_openapi > /tmp/openapi.json
+	@echo "Generating TypeScript types..."
+	@cd frontend && npm run gen:api-types
+	@echo "✅ frontend/src/lib/api-schema.ts is up to date"
+
+check-api-types:  ## Verify frontend TypeScript types match the live backend OpenAPI
+	@uv run python -m scripts.export_openapi > /tmp/openapi.json
+	@cd frontend && npm run check:api-types
+
 ##@ Testing
 
 test-backend-unit:  ## Backend unit tests (no DB needed)

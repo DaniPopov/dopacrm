@@ -41,9 +41,6 @@ jobs:
   frontend-test:
     name: Frontend Lint & Test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -55,13 +52,34 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Verify lockfile is in sync
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+
+      - name: Install Python deps (for OpenAPI export)
+        run: uv sync --frozen
+
+      - name: Verify frontend lockfile is in sync
+        working-directory: frontend
         run: npm ci
 
+      - name: Export OpenAPI spec from backend
+        run: uv run python -m scripts.export_openapi > /tmp/openapi.json
+
+      - name: Verify api-schema.ts is in sync with backend
+        working-directory: frontend
+        run: npm run check:api-types
+
       - name: TypeScript check
+        working-directory: frontend
         run: npx tsc --noEmit
 
       - name: Vitest
+        working-directory: frontend
         run: npx vitest run
 
   pip-audit:

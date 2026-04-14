@@ -2,23 +2,30 @@
 
 Multi-tenant SaaS CRM built for gyms and fitness studios. Manage members, track revenue per member, nurture leads, and run daily operations — all from one platform designed around how gyms actually work. One codebase, one deployment, infinite tenants.
 
+**Core thesis:** most gym CRMs are rigid — you take what the vendor built. DopaCRM is the **most flexible** one — gym owners customize roles, fields, workflows, and dashboards to fit how their specific gym actually operates. See [`docs/spec.md`](docs/spec.md) §1.
+
 ## What It Does
 
-- **Member management** — profiles, plans, statuses (active / frozen / cancelled), join dates, notes
+- **Member management** — profiles, plans, statuses (active / frozen / cancelled), join dates, notes, custom fields
 - **Membership plans** — recurring (monthly, quarterly, annual) and one-off (drop-ins, trial passes)
+- **Classes + class passes + attendance** — punch cards, unlimited passes, check-in flow, low-entries dashboard
 - **Revenue tracking** — income per member, per plan, per month. Month-over-month view
 - **Lead pipeline** — capture, assign, track through stages (new → contacted → trial → converted / lost)
-- **Multi-tenant** — every gym is isolated by config, not by code. New gym = new config document, not a new deployment
+- **Owner-configurable roles** — only `super_admin` and `owner` are system; everything else is per-tenant
+- **Multi-tenant** — every gym is isolated by config + JWT-scoped queries
 - **Queue-first architecture** — FastAPI receives and validates, all real work goes to Celery workers via RabbitMQ
 
 ## Stack
 
 | Layer | Technology |
 |-------|-----------|
-| API | FastAPI |
+| API | FastAPI (Python 3.13) |
 | Task Queue | RabbitMQ + Celery |
-| Databases | MongoDB (config, activity logs) + PostgreSQL (tenants, users, members, plans, payments) + Redis (cache, rate limits) |
-| Frontend | React + TypeScript + Vite (dashboard) |
+| Databases | MongoDB (config, activity logs) + PostgreSQL (tenants, users, members, plans, payments) + Redis (cache, rate limits, JWT blacklist) |
+| Frontend | React 19 + TypeScript + Vite + TanStack Query + shadcn/ui |
+| Type sharing | OpenAPI codegen (FastAPI → `openapi-typescript` → frontend types) — no hand-written DTOs |
+| Storage | AWS S3 (logos, uploads) — env-based folder prefixes |
+| Auth | JWT (HS256, 8h) in HttpOnly cookie + Redis jti blacklist on logout |
 | Infrastructure | Docker Compose (dev), AWS (prod) |
 | Logging | structlog (JSON) → Loki + Promtail → Grafana |
 | Observability | Sentry (errors), Flower (Celery), CloudWatch |
@@ -32,12 +39,22 @@ Modular monolith with **4-layer hexagonal architecture** — one codebase with c
 - Domain is **pure** — entities + business rules. Zero external dependencies.
 - Adapters are **isolated** — repos translate ORM ↔ domain entities at the boundary.
 
+## Phase status
+
+- **Phase 1 — Foundation** ✅ Tenants, Users, Auth, S3 logos, Hebrew dashboard shell, role-based sidebar, central permissions module, route guards, rate limiting
+- **Phase 2 — Core CRM** 🚧 Members (next), Membership Plans, Subscriptions, Payments, Classes + Passes + Attendance, Leads
+- **Phase 4 — Flexibility** 📋 Dynamic roles (`tenant_roles` table), owner settings UI, custom field definitions, configurable dashboards
+
 ## Docs
 
-- [Product Spec](docs/spec.md) — features, domain model, roles, data architecture
+- [Product Spec](docs/spec.md) — features, domain model, roles, data architecture, flexibility thesis
 - [Backend Architecture](docs/backend.md) — Python/FastAPI, 4-layer design, request flow, testing
-- [Frontend Architecture](docs/frontend.md) — React/TypeScript, feature-based structure, TanStack Query
+- [Frontend Architecture](docs/frontend.md) — React/TypeScript, feature-based structure, TanStack Query, OpenAPI codegen, every API function documented
 - [Standards](docs/standards/) — coding conventions (Python, architecture, Git, feature docs)
+- [Features](docs/features/) — per-feature implementation specs:
+  - Shipped: [auth](docs/features/auth.md), [tenants](docs/features/tenants.md), [users](docs/features/users.md), [saas-plans](docs/features/saas-plans.md)
+  - Planned: [members](docs/features/members.md), [classes + passes + attendance](docs/features/classes.md), [roles](docs/features/roles.md)
+- [Skills](docs/skills/) — step-by-step recipes for building new [frontend](docs/skills/build-frontend-feature.md) / [backend](docs/skills/build-backend-feature.md) features
 
 ## Prerequisites
 
@@ -68,7 +85,7 @@ make up-dev
 # First run pulls ~1.5 GB of images (mongo, postgres, redis, rabbitmq, etc.)
 # Healthchecks ensure services start in the right order (~30s)
 
-# 6. Apply database migrations (creates companies, users, refresh_tokens tables)
+# 6. Apply database migrations (creates tenants, users, saas_plans, refresh_tokens, ...)
 make migrate-up-dev
 
 # 7. Create the platform super_admin user
@@ -131,7 +148,7 @@ Run `make urls-dev` to see this list with raw connection ports.
 | Database | `dopacrm` |
 | SSL mode | PREFERRED |
 
-After `make migrate-up-dev` you'll see: `companies`, `users`, `refresh_tokens`, `alembic_version`.
+After `make migrate-up-dev` you'll see: `tenants`, `users`, `saas_plans`, `refresh_tokens`, `alembic_version`.
 
 ### MongoDB
 
@@ -208,10 +225,13 @@ Run `make` for the full sectioned list. Summary:
 | Section | Targets |
 |---------|---------|
 | **Stack** | `up-dev`, `build-dev`, `rebuild-dev`, `restart-dev`, `stop-dev`, `down-dev` |
+| **Per-service** | `<action>-<svc>-dev` — pattern rule for actions (`up`/`stop`/`restart`/`build`/`rebuild`/`logs`) on any service. Examples: `make restart-backend-dev`, `make logs-frontend-dev`, `make stop-postgres-dev`, `make rebuild-frontend-dev` |
+| **API types** | `gen-api-types`, `check-api-types` — regenerate / verify frontend TypeScript types from backend OpenAPI |
 | **Database** | `migrate-up-dev`, `migrate-down-dev`, `migrate-status-dev`, `migrate-history-dev`, `seed-super-admin-dev`, `list-tables-dev`, `clean-database-dev` |
-| **Logs** | `logs-dev`, `logs-<service>-dev` (backend, worker, worker-beat, mongo, postgres, redis, rabbitmq, flower, grafana, loki, promtail, mongo-express) |
+| **Logs** | `logs-dev` (all services), `logs-<service>-dev` (per service via pattern rule) |
 | **Testing** | `test-backend-unit`, `test-backend-integration-dev`, `test-backend-e2e-dev`, `test-backend-all-dev`, `test-frontend`, `test-all-dev` |
-| **Info** | `urls-dev` |
+| **Load testing** | `load-test-auth`, `load-test-users`, `load-test-tenants` |
+| **Info** | `list-services-dev`, `status-dev`, `urls-dev` |
 
 ### Cleaning the database
 
@@ -245,15 +265,18 @@ make migrate-up-dev
 ## Project Layout
 
 - `backend/app/` — Application code (4-layer hexagonal, importable as `app`)
-- `backend/tests/` — Tests (pytest)
-- `backend/scripts/` — Seed scripts (`create_super_admin.py`)
+- `backend/tests/` — Tests (pytest, 89+ tests across unit/integration/e2e)
+- `backend/scripts/` — `create_super_admin.py`, `export_openapi.py` (for type drift CI)
 - `backend/migrations/` — Alembic migrations (Postgres)
-- `backend/Dockerfile` — Backend image (python:3.13-slim + uv)
+- `backend/Dockerfile` — Backend image (python:3.13-slim + uv, non-root)
+- `frontend/src/` — React app (feature-based, 77 tests)
+- `frontend/src/lib/api-schema.ts` — **auto-generated** from backend OpenAPI (do not edit)
+- `frontend/src/lib/api-types.ts` — clean type aliases consumed by feature code
 - `docker/` — Loki, Promtail, Grafana config files (compose-mounted)
 - `pyproject.toml` — Python project config (root)
 - `docker-compose.dev.yml` — Local dev orchestration (12 containers)
-- `docs/` — Architecture, standards, full Notion spec
-- `.github/workflows/ci.yml` — CI: ruff, pytest, gitleaks, pip-audit, docker-build
+- `docs/` — Architecture, standards, per-feature specs
+- `.github/workflows/ci.yml` — CI: ruff, pytest, gitleaks, pip-audit, npm audit, OpenAPI drift, docker-build
 - `.pre-commit-config.yaml` — Pre-commit hooks
 
 ## Load Testing (Locust)
@@ -300,6 +323,7 @@ make load-test-users    # simulates dashboard users — tests DB + API
 |---------|------|---------------|
 | `make load-test-auth` | `loadtests/test_auth_load.py` | Login rate limiting — should see 429s after 10 req/min/IP |
 | `make load-test-users` | `loadtests/test_users_load.py` | Authenticated CRUD — list users (5x), profile (3x), health (1x) |
+| `make load-test-tenants` | `loadtests/test_tenants_load.py` | Tenant CRUD as super_admin — list, get, create |
 
 ### Headless mode (no UI, for CI)
 
@@ -311,14 +335,29 @@ uv run locust -f loadtests/test_users_load.py \
 
 `-u 20` = 20 users, `-r 5` = ramp 5/sec, `-t 30s` = run for 30 seconds.
 
+## Type sharing — backend ↔ frontend
+
+The frontend never hand-writes API types. They're generated from FastAPI's `/openapi.json`:
+
+```bash
+make gen-api-types       # regenerate frontend/src/lib/api-schema.ts
+make check-api-types     # CI gate — fails if committed types drift from backend
+```
+
+`frontend/src/lib/api-types.ts` re-exports the generated types with friendly aliases (`Tenant`, `User`, `CreateTenantRequest`, etc.). Feature code imports from there and stays untouched when the underlying schema regenerates.
+
+When mobile lands (React Native), it consumes the same generated types via a shared package — same flow, same source of truth.
+
 ## Dev Tools
 
-- **Package manager:** [uv](https://github.com/astral-sh/uv) (Astral)
+- **Backend package manager:** [uv](https://github.com/astral-sh/uv) (Astral)
 - **Linter / formatter:** [ruff](https://github.com/astral-sh/ruff) (handles import sorting via the `I` rule — no separate isort needed)
-- **Tests:** pytest + pytest-asyncio
+- **Backend tests:** pytest + pytest-asyncio
+- **Frontend tests:** Vitest + Testing Library + jsdom
 - **Load testing:** [Locust](https://locust.io) — `loadtests/` directory
+- **Type codegen:** [openapi-typescript](https://openapi-ts.dev) — frontend types from FastAPI OpenAPI
 - **Pre-commit:** ruff (+ auto-fix), gitleaks, basic hygiene hooks
-- **CI:** GitHub Actions — ruff, pytest, gitleaks, pip-audit, docker-build
+- **CI:** GitHub Actions — ruff, pytest, frontend lint+test, OpenAPI type drift, gitleaks, pip-audit, npm audit, docker-build
 
 ## Troubleshooting
 
