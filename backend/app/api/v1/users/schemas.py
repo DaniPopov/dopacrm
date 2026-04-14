@@ -42,6 +42,9 @@ class CreateUserRequest(BaseModel):
     tenant_id: UUID | None = Field(
         default=None, description="Required for owner/staff/sales. Null for super_admin."
     )
+    first_name: str | None = None
+    last_name: str | None = None
+    phone: str | None = None
     oauth_provider: str | None = None
     oauth_id: str | None = None
 
@@ -52,6 +55,8 @@ class CreateUserRequest(BaseModel):
                     "email": "owner@dopagym.com",
                     "password": "SecureP@ss123",
                     "role": "owner",
+                    "first_name": "Dana",
+                    "last_name": "Cohen",
                     "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
                 }
             ]
@@ -65,6 +70,9 @@ class UpdateUserRequest(BaseModel):
     email: EmailStr | None = None
     role: Role | None = None
     is_active: bool | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    phone: str | None = None
 
     model_config = {
         "json_schema_extra": {
@@ -72,6 +80,8 @@ class UpdateUserRequest(BaseModel):
                 {
                     "role": "staff",
                     "is_active": True,
+                    "first_name": "Dana",
+                    "last_name": "Cohen",
                 }
             ]
         }
@@ -86,6 +96,9 @@ class UserResponse(BaseModel):
     role: Role
     tenant_id: UUID | None
     is_active: bool
+    first_name: str | None = None
+    last_name: str | None = None
+    phone: str | None = None
     oauth_provider: str | None
     created_at: datetime
     updated_at: datetime
@@ -97,6 +110,9 @@ class UserResponse(BaseModel):
                     "id": "bb22240d-f00d-47fc-ac60-aa5b08f550aa",
                     "email": "owner@dopagym.com",
                     "role": "owner",
+                    "first_name": "Dana",
+                    "last_name": "Cohen",
+                    "phone": "+972-50-123-4567",
                     "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
                     "is_active": True,
                     "oauth_provider": None,

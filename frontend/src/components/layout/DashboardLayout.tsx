@@ -10,9 +10,9 @@ const dopaIcon = "/dopa-icon.png"
  *
  * - Desktop / tablet: persistent fixed sidebar on the right (RTL layout),
  *   main content gets a matching margin.
- * - Mobile: top bar with hamburger. Sidebar opens in an overlay drawer.
- *   Drawer auto-closes on route change so it doesn't linger after
- *   tapping a link.
+ * - Mobile: top bar with hamburger that TOGGLES the drawer (opens if
+ *   closed, closes if open). Drawer auto-closes on route change so it
+ *   doesn't linger after tapping a link. ESC key also closes it.
  */
 export default function DashboardLayout() {
   const { isMobile } = useDevice()
@@ -24,6 +24,16 @@ export default function DashboardLayout() {
     setDrawerOpen(false)
   }, [location.pathname])
 
+  // ESC closes the drawer.
+  useEffect(() => {
+    if (!drawerOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDrawerOpen(false)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [drawerOpen])
+
   return (
     <div
       dir="rtl"
@@ -33,7 +43,7 @@ export default function DashboardLayout() {
       {isMobile ? (
         <MobileLayout
           drawerOpen={drawerOpen}
-          onOpenDrawer={() => setDrawerOpen(true)}
+          onToggleDrawer={() => setDrawerOpen((v) => !v)}
           onCloseDrawer={() => setDrawerOpen(false)}
         />
       ) : (
@@ -64,23 +74,24 @@ function DesktopLayout() {
 
 function MobileLayout({
   drawerOpen,
-  onOpenDrawer,
+  onToggleDrawer,
   onCloseDrawer,
 }: {
   drawerOpen: boolean
-  onOpenDrawer: () => void
+  onToggleDrawer: () => void
   onCloseDrawer: () => void
 }) {
   return (
     <div className="flex min-h-screen w-full flex-col">
-      {/* Top bar — hamburger on the right (same edge as drawer), logo on the left */}
+      {/* Top bar — hamburger on the right (drawer edge), logo on the left */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 shadow-sm">
         <button
-          onClick={onOpenDrawer}
-          aria-label="פתיחת תפריט"
+          onClick={onToggleDrawer}
+          aria-label={drawerOpen ? "סגירת תפריט" : "פתיחת תפריט"}
+          aria-expanded={drawerOpen}
           className="rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100"
         >
-          <HamburgerIcon />
+          {drawerOpen ? <CloseIcon /> : <HamburgerIcon />}
         </button>
         <div className="flex items-center gap-2">
           <img src={dopaIcon} alt="" className="h-6 w-6" />
@@ -88,26 +99,22 @@ function MobileLayout({
         </div>
       </header>
 
-      {/* Drawer overlay */}
+      {/* Drawer — absolute positioning pins it flush to the right edge,
+          regardless of flex/RTL quirks. */}
       {drawerOpen && (
         <div
-          className="fixed inset-0 z-50 flex"
+          className="fixed inset-0 z-50"
           role="dialog"
           aria-label="תפריט ניווט"
+          aria-modal="true"
         >
-          <div
-            className="absolute inset-0 bg-black/40"
+          <button
+            type="button"
+            aria-label="סגירת תפריט"
             onClick={onCloseDrawer}
-            aria-hidden="true"
+            className="absolute inset-0 cursor-default bg-black/40"
           />
-          <div className="relative ml-auto h-full w-64 animate-[slideInRight_0.2s_ease-out] bg-white shadow-2xl">
-            <button
-              onClick={onCloseDrawer}
-              aria-label="סגירת תפריט"
-              className="absolute left-3 top-3 z-10 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-            >
-              <CloseIcon />
-            </button>
+          <div className="absolute right-0 top-0 h-full w-64 animate-[slideInRight_0.2s_ease-out] bg-white shadow-2xl">
             <Sidebar onNavigate={onCloseDrawer} />
           </div>
         </div>
@@ -135,7 +142,7 @@ function HamburgerIcon() {
 
 function CloseIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
     </svg>

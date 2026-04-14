@@ -336,7 +336,7 @@ export interface components {
             phone?: string | null;
             /**
              * Slug
-             * @description URL-safe identifier (unique)
+             * @description URL-safe identifier (unique). Lowercase English letters, digits, and hyphens only — no spaces, uppercase, or non-Latin characters.
              */
             slug: string;
             /**
@@ -358,6 +358,8 @@ export interface components {
          * @description POST /api/v1/users — create a new user.
          * @example {
          *       "email": "owner@dopagym.com",
+         *       "first_name": "Dana",
+         *       "last_name": "Cohen",
          *       "password": "SecureP@ss123",
          *       "role": "owner",
          *       "tenant_id": "550e8400-e29b-41d4-a716-446655440000"
@@ -369,6 +371,10 @@ export interface components {
              * Format: email
              */
             email: string;
+            /** First Name */
+            first_name?: string | null;
+            /** Last Name */
+            last_name?: string | null;
             /** Oauth Id */
             oauth_id?: string | null;
             /** Oauth Provider */
@@ -378,6 +384,8 @@ export interface components {
              * @description Min 8 chars, at least 1 uppercase and 1 special character
              */
             password?: string | null;
+            /** Phone */
+            phone?: string | null;
             role: components["schemas"]["Role"];
             /**
              * Tenant Id
@@ -574,15 +582,23 @@ export interface components {
          * UpdateUserRequest
          * @description PATCH /api/v1/users/{user_id} — partial update.
          * @example {
+         *       "first_name": "Dana",
          *       "is_active": true,
+         *       "last_name": "Cohen",
          *       "role": "staff"
          *     }
          */
         UpdateUserRequest: {
             /** Email */
             email?: string | null;
+            /** First Name */
+            first_name?: string | null;
             /** Is Active */
             is_active?: boolean | null;
+            /** Last Name */
+            last_name?: string | null;
+            /** Phone */
+            phone?: string | null;
             role?: components["schemas"]["Role"] | null;
         };
         /**
@@ -617,8 +633,11 @@ export interface components {
          * @example {
          *       "created_at": "2026-04-09T12:00:00+03:00",
          *       "email": "owner@dopagym.com",
+         *       "first_name": "Dana",
          *       "id": "bb22240d-f00d-47fc-ac60-aa5b08f550aa",
          *       "is_active": true,
+         *       "last_name": "Cohen",
+         *       "phone": "+972-50-123-4567",
          *       "role": "owner",
          *       "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
          *       "updated_at": "2026-04-09T12:00:00+03:00"
@@ -632,6 +651,8 @@ export interface components {
             created_at: string;
             /** Email */
             email: string;
+            /** First Name */
+            first_name?: string | null;
             /**
              * Id
              * Format: uuid
@@ -639,8 +660,12 @@ export interface components {
             id: string;
             /** Is Active */
             is_active: boolean;
+            /** Last Name */
+            last_name?: string | null;
             /** Oauth Provider */
             oauth_provider: string | null;
+            /** Phone */
+            phone?: string | null;
             role: components["schemas"]["Role"];
             /** Tenant Id */
             tenant_id: string | null;

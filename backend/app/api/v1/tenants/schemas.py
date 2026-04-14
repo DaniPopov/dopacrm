@@ -6,12 +6,25 @@ shows a realistic pre-filled example.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.domain.entities.tenant import TenantStatus
+
+# Lowercase English letters + digits, separated by single hyphens.
+# Cannot start or end with hyphen. Cannot have consecutive hyphens.
+# Examples OK: "ironfit-tlv", "gym1", "crossfit-rosh-haayin"
+# Examples bad: "IronFit-TLV" (uppercase), "gym_1" (underscore), "-gym" (leading hyphen),
+#               "gym--pro" (double hyphen), "חדר" (Hebrew)
+SLUG_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+
+# Machine-readable error code embedded in the validation message. The
+# frontend `humanizeTenantError` picks it up and swaps in a Hebrew
+# message. Keep this exact string in sync with frontend/src/lib/api-errors.ts.
+SLUG_INVALID_ERROR_CODE = "slug_invalid_format"
 
 
 class CreateTenantRequest(BaseModel):
@@ -22,8 +35,22 @@ class CreateTenantRequest(BaseModel):
     """
 
     # Identity (required)
-    slug: str = Field(min_length=2, max_length=50, description="URL-safe identifier (unique)")
+    slug: str = Field(
+        min_length=2,
+        max_length=64,
+        description=(
+            "URL-safe identifier (unique). Lowercase English letters, digits, "
+            "and hyphens only — no spaces, uppercase, or non-Latin characters."
+        ),
+    )
     name: str = Field(min_length=1, max_length=200, description="Display name of the gym")
+
+    @field_validator("slug")
+    @classmethod
+    def validate_slug(cls, v: str) -> str:
+        if not SLUG_PATTERN.match(v):
+            raise ValueError(SLUG_INVALID_ERROR_CODE)
+        return v
 
     # Branding
     logo_url: str | None = Field(default=None, description="S3 key from /uploads/logo")

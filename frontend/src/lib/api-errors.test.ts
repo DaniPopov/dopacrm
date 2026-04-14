@@ -60,6 +60,12 @@ describe("humanizeTenantError", () => {
     )
   })
 
+  it("returns slug-format message when backend reports slug_invalid_format", () => {
+    expect(
+      humanizeTenantError(new ApiError("Value error, slug_invalid_format", 422)),
+    ).toBe("מזהה URL (slug) חייב להיות באנגלית קטנה, ספרות ומקפים בלבד")
+  })
+
   it("returns system-error message for 500", () => {
     expect(humanizeTenantError(new ApiError("x", 500))).toBe(
       "שגיאת מערכת, נסו שוב בעוד מספר רגעים",

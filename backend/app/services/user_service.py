@@ -43,6 +43,9 @@ class UserService:
         role: Role,
         tenant_id: UUID | None = None,
         password: str | None = None,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        phone: str | None = None,
         oauth_provider: str | None = None,
         oauth_id: str | None = None,
     ) -> User:
@@ -66,6 +69,9 @@ class UserService:
             role=role,
             tenant_id=tenant_id,
             password_hash=pwd_hash,
+            first_name=first_name,
+            last_name=last_name,
+            phone=phone,
             oauth_provider=oauth_provider,
             oauth_id=oauth_id,
         )

@@ -51,12 +51,23 @@ export function humanizeLoginError(err: unknown): string {
 /**
  * Overrides for tenant create/update errors.
  * Call this from the tenant form catch block.
+ *
+ * 422 validation errors are inspected for known machine-readable codes
+ * in the backend's error detail so we can show a targeted Hebrew message
+ * (e.g. `slug_invalid_format` becomes a rule-of-thumb for the slug field).
  */
 export function humanizeTenantError(err: unknown): string {
   if (err instanceof ApiError || (err instanceof Error && "status" in err)) {
     const status = (err as ApiError).status
+    const message = (err as ApiError).message
     if (status === 409) return "מזהה URL (slug) כבר תפוס, בחרו אחר"
-    if (status === 422) return "הפרטים שהוזנו אינם תקינים, בדקו את הטופס"
+    if (status === 422) {
+      // Backend embeds machine-readable codes in the detail — match them here.
+      if (message.includes("slug_invalid_format")) {
+        return "מזהה URL (slug) חייב להיות באנגלית קטנה, ספרות ומקפים בלבד"
+      }
+      return "הפרטים שהוזנו אינם תקינים, בדקו את הטופס"
+    }
     return genericMessage(status)
   }
   return "אירעה שגיאה בשמירת הנתונים"
