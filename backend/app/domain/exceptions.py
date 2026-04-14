@@ -71,3 +71,34 @@ class TenantSuspendedError(AppError):
 
     def __init__(self, tenant_id: str) -> None:
         super().__init__(f"Tenant suspended: {tenant_id}", "TENANT_SUSPENDED")
+
+
+# ── Member ───────────────────────────────────────────────────────────────────
+class MemberNotFoundError(AppError):
+    """No member matches the given id in the caller's tenant."""
+
+    def __init__(self, member_id: str) -> None:
+        super().__init__(f"Member not found: {member_id}", "MEMBER_NOT_FOUND")
+
+
+class MemberAlreadyExistsError(AppError):
+    """Phone number already in use for another member in this tenant."""
+
+    def __init__(self, phone: str) -> None:
+        super().__init__(
+            f"Member with phone already exists in this tenant: {phone}",
+            "MEMBER_ALREADY_EXISTS",
+        )
+
+
+class InvalidMemberStatusTransitionError(AppError):
+    """Attempted a status change the state machine doesn't allow.
+
+    Examples: unfreezing an active member, freezing a cancelled member.
+    """
+
+    def __init__(self, current: str, action: str) -> None:
+        super().__init__(
+            f"Cannot {action} member in status '{current}'",
+            "MEMBER_INVALID_TRANSITION",
+        )

@@ -64,6 +64,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List members
+         * @description List members in the caller's tenant. Filterable by status and search.
+         */
+        get: operations["list_members_api_v1_members_get"];
+        put?: never;
+        /**
+         * Create a new member
+         * @description Creates a member in the caller's tenant. Phone must be unique within the tenant.
+         */
+        post: operations["create_member_api_v1_members_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/members/{member_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a member by ID */
+        get: operations["get_member_api_v1_members__member_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a member (partial) */
+        patch: operations["update_member_api_v1_members__member_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/members/{member_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a member (terminal)
+         * @description owner+ only. Sets status=cancelled. Data is preserved.
+         */
+        post: operations["cancel_member_api_v1_members__member_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/members/{member_id}/freeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Freeze a member
+         * @description Pauses the subscription without cancelling. Only active members can be frozen.
+         */
+        post: operations["freeze_member_api_v1_members__member_id__freeze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/members/{member_id}/unfreeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unfreeze a member
+         * @description Returns a frozen member to active status.
+         */
+        post: operations["unfreeze_member_api_v1_members__member_id__unfreeze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tenants": {
         parameters: {
             query?: never;
@@ -265,6 +367,54 @@ export interface components {
             file: string;
         };
         /**
+         * CreateMemberRequest
+         * @description POST /api/v1/members — create a new member in the caller's tenant.
+         *
+         *     ``first_name``, ``last_name``, and ``phone`` are required.
+         *     ``join_date`` defaults to today (server-side) when omitted.
+         * @example {
+         *       "custom_fields": {
+         *         "referral_source": "walk_in"
+         *       },
+         *       "email": "dana@example.com",
+         *       "first_name": "Dana",
+         *       "gender": "female",
+         *       "last_name": "Cohen",
+         *       "phone": "+972-50-123-4567"
+         *     }
+         */
+        CreateMemberRequest: {
+            /**
+             * Custom Fields
+             * @description Ad-hoc per-tenant data. Do not put structured queryable data here.
+             */
+            custom_fields?: {
+                [key: string]: unknown;
+            };
+            /** Date Of Birth */
+            date_of_birth?: string | null;
+            /** Email */
+            email?: string | null;
+            /** First Name */
+            first_name: string;
+            /** Gender */
+            gender?: string | null;
+            /**
+             * Join Date
+             * @description Defaults to today if omitted
+             */
+            join_date?: string | null;
+            /** Last Name */
+            last_name: string;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Phone
+             * @description Unique within tenant
+             */
+            phone: string;
+        };
+        /**
          * CreateTenantRequest
          * @description POST /api/v1/tenants — onboard a new gym.
          *
@@ -393,6 +543,17 @@ export interface components {
              */
             tenant_id?: string | null;
         };
+        /**
+         * FreezeMemberRequest
+         * @description POST /api/v1/members/{id}/freeze — optional body.
+         */
+        FreezeMemberRequest: {
+            /**
+             * Until
+             * @description Optional auto-unfreeze date. Null means indefinite freeze.
+             */
+            until?: string | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -415,6 +576,85 @@ export interface components {
             /** Password */
             password: string;
         };
+        /**
+         * MemberResponse
+         * @description Standard member response shape.
+         * @example {
+         *       "created_at": "2026-04-14T12:00:00+03:00",
+         *       "custom_fields": {
+         *         "referral_source": "walk_in"
+         *       },
+         *       "date_of_birth": "1990-05-15",
+         *       "email": "dana@example.com",
+         *       "first_name": "Dana",
+         *       "gender": "female",
+         *       "id": "11111111-1111-1111-1111-111111111111",
+         *       "join_date": "2026-04-14",
+         *       "last_name": "Cohen",
+         *       "phone": "+972-50-123-4567",
+         *       "status": "active",
+         *       "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
+         *       "updated_at": "2026-04-14T12:00:00+03:00"
+         *     }
+         */
+        MemberResponse: {
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Custom Fields */
+            custom_fields: {
+                [key: string]: unknown;
+            };
+            /** Date Of Birth */
+            date_of_birth: string | null;
+            /** Email */
+            email: string | null;
+            /** First Name */
+            first_name: string;
+            /** Frozen At */
+            frozen_at: string | null;
+            /** Frozen Until */
+            frozen_until: string | null;
+            /** Gender */
+            gender: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Join Date
+             * Format: date
+             */
+            join_date: string;
+            /** Last Name */
+            last_name: string;
+            /** Notes */
+            notes: string | null;
+            /** Phone */
+            phone: string;
+            status: components["schemas"]["MemberStatus"];
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * MemberStatus
+         * @description Lifecycle status of a member.
+         * @enum {string}
+         */
+        MemberStatus: "active" | "frozen" | "cancelled" | "expired";
         /**
          * Role
          * @description User role hierarchy.
@@ -539,6 +779,34 @@ export interface components {
              * @default bearer
              */
             token_type: string;
+        };
+        /**
+         * UpdateMemberRequest
+         * @description PATCH /api/v1/members/{id} — partial update. All fields optional.
+         * @example {
+         *       "notes": "Moved to morning sessions",
+         *       "phone": "+972-52-999-0000"
+         *     }
+         */
+        UpdateMemberRequest: {
+            /** Custom Fields */
+            custom_fields?: {
+                [key: string]: unknown;
+            } | null;
+            /** Date Of Birth */
+            date_of_birth?: string | null;
+            /** Email */
+            email?: string | null;
+            /** First Name */
+            first_name?: string | null;
+            /** Gender */
+            gender?: string | null;
+            /** Last Name */
+            last_name?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Phone */
+            phone?: string | null;
         };
         /**
          * UpdateTenantRequest
@@ -764,6 +1032,238 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+        };
+    };
+    list_members_api_v1_members_get: {
+        parameters: {
+            query?: {
+                /** @description Repeat to filter multiple */
+                status?: components["schemas"]["MemberStatus"][] | null;
+                /** @description Case-insensitive match against name, phone, email */
+                search?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_member_api_v1_members_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_member_api_v1_members__member_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                member_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_member_api_v1_members__member_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                member_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_member_api_v1_members__member_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                member_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    freeze_member_api_v1_members__member_id__freeze_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                member_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["FreezeMemberRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unfreeze_member_api_v1_members__member_id__unfreeze_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                member_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
