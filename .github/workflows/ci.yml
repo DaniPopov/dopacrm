@@ -10,6 +10,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Force JS-based actions (e.g. astral-sh/setup-uv@v6) to use Node 24
+# even when they bundle a Node 20 runtime. Removes the deprecation
+# warning until the actions ship updated bundles.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   lint-and-test:
     name: Lint & Test
