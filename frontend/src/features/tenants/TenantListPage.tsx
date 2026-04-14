@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { humanizeTenantError } from "@/lib/api-errors"
+import { useDevice } from "@/hooks/useDevice"
 import TenantForm, { type TenantFormValues } from "./TenantForm"
 import {
   useActivateTenant,
@@ -13,6 +14,7 @@ import type { Tenant } from "./types"
 
 export default function TenantListPage() {
   const { data: tenants, isLoading, error } = useTenants()
+  const { isMobile } = useDevice()
   const [showCreate, setShowCreate] = useState(false)
   const [editing, setEditing] = useState<Tenant | null>(null)
   const create = useCreateTenant()
@@ -43,14 +45,14 @@ export default function TenantListPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">חדרי כושר</h1>
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">חדרי כושר</h1>
           <p className="mt-1 text-sm text-gray-500">ניהול כל חדרי הכושר בפלטפורמה</p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700"
+          className="w-full rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 sm:w-auto"
         >
           + הוספת חדר כושר
         </button>
@@ -98,7 +100,7 @@ export default function TenantListPage() {
         />
       )}
 
-      {/* Table */}
+      {/* List — table on desktop/tablet, cards on mobile */}
       {isLoading ? (
         <div className="py-20 text-center text-gray-400">טוען...</div>
       ) : error ? (
@@ -106,6 +108,12 @@ export default function TenantListPage() {
       ) : tenants?.length === 0 ? (
         <div className="py-20 text-center text-gray-400">
           אין חדרי כושר עדיין. הוסיפו את הראשון!
+        </div>
+      ) : isMobile ? (
+        <div className="space-y-3">
+          {tenants?.map((tenant) => (
+            <TenantCard key={tenant.id} tenant={tenant} onEdit={() => setEditing(tenant)} />
+          ))}
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -130,6 +138,135 @@ export default function TenantListPage() {
         </div>
       )}
     </div>
+  )
+}
+
+/* ── Mobile card (replaces the table row on phones) ──────────── */
+
+function TenantCard({ tenant, onEdit }: { tenant: Tenant; onEdit: () => void }) {
+  const suspend = useSuspendTenant()
+  const activate = useActivateTenant()
+  const cancel = useCancelTenant()
+  const [confirmCancel, setConfirmCancel] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const isBusy = suspend.isPending || activate.isPending || cancel.isPending
+
+  function doAction(fn: () => void) {
+    setMenuOpen(false)
+    fn()
+  }
+
+  return (
+    <>
+      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="flex items-start gap-3">
+          {tenant.logo_presigned_url ? (
+            <img
+              src={tenant.logo_presigned_url}
+              alt=""
+              className="h-11 w-11 flex-shrink-0 rounded-lg border border-gray-200 object-cover"
+            />
+          ) : (
+            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 text-sm font-semibold text-gray-400">
+              {tenant.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-semibold text-gray-900">{tenant.name}</div>
+                <div className="truncate font-mono text-xs text-gray-400" dir="ltr">
+                  {tenant.slug}
+                </div>
+              </div>
+              <StatusBadge status={tenant.status} />
+            </div>
+            <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-gray-600">
+              {tenant.phone && (
+                <div className="col-span-2">
+                  <dt className="inline text-gray-400">טלפון: </dt>
+                  <dd className="inline" dir="ltr">
+                    {tenant.phone}
+                  </dd>
+                </div>
+              )}
+              {tenant.address_city && (
+                <div>
+                  <dt className="inline text-gray-400">עיר: </dt>
+                  <dd className="inline">{tenant.address_city}</dd>
+                </div>
+              )}
+              <div>
+                <dt className="inline text-gray-400">מטבע: </dt>
+                <dd className="inline">{tenant.currency}</dd>
+              </div>
+              <div className="col-span-2">
+                <dt className="inline text-gray-400">הצטרפות: </dt>
+                <dd className="inline" dir="ltr">
+                  {new Date(tenant.created_at).toLocaleDateString("he-IL")}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="relative mt-3 border-t border-gray-100 pt-3">
+          <button
+            onClick={() => setMenuOpen((v) => !v)}
+            disabled={isBusy}
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+          >
+            {isBusy ? "..." : "פעולות ▾"}
+          </button>
+          {menuOpen && (
+            <div
+              className="absolute left-0 right-0 top-full z-10 mt-1 rounded-lg border border-gray-200 bg-white py-1 text-right shadow-lg"
+            >
+              <MenuItem label="עריכה" onClick={() => doAction(onEdit)} />
+              {(tenant.status === "suspended" ||
+                tenant.status === "trial" ||
+                tenant.status === "cancelled") && (
+                <MenuItem
+                  label="הפעל"
+                  onClick={() => doAction(() => activate.mutate(tenant.id))}
+                />
+              )}
+              {(tenant.status === "active" || tenant.status === "trial") && (
+                <MenuItem
+                  label="השהה"
+                  onClick={() => doAction(() => suspend.mutate(tenant.id))}
+                />
+              )}
+              {tenant.status !== "cancelled" && (
+                <MenuItem
+                  label="ביטול (מחיקה רכה)"
+                  variant="danger"
+                  onClick={() => doAction(() => setConfirmCancel(true))}
+                />
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {confirmCancel && (
+        <ConfirmDialog
+          title="ביטול חדר כושר"
+          message={`האם לבטל את "${tenant.name}"? הנתונים יישמרו וניתן להפעיל מחדש.`}
+          confirmLabel="כן, בטל"
+          variant="danger"
+          onConfirm={() => {
+            cancel.mutate(tenant.id, {
+              onSuccess: () => setConfirmCancel(false),
+            })
+          }}
+          onCancel={() => setConfirmCancel(false)}
+          loading={cancel.isPending}
+        />
+      )}
+    </>
   )
 }
 

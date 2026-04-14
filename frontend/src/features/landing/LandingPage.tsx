@@ -11,19 +11,17 @@ export default function LandingPage() {
     <div dir="rtl" className="min-h-screen bg-white" style={{ fontFamily: "'Rubik', sans-serif" }}>
       {/* ── Nav ──────────────────────────────────────────────────────── */}
       <nav className="fixed top-0 right-0 left-0 z-50 border-b border-white/10 bg-white/80 backdrop-blur-lg">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <img src={dopaIcon} alt="DopaCRM" className="h-8 w-8" />
-            <span className="text-lg font-bold text-gray-900">DopaCRM</span>
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <img src={dopaIcon} alt="DopaCRM" className="h-7 w-7 sm:h-8 sm:w-8" />
+            <span className="text-base font-bold text-gray-900 sm:text-lg">DopaCRM</span>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate("/login")}
-              className="rounded-full border border-blue-600 px-5 py-2 text-sm font-medium text-blue-600 transition-all hover:bg-blue-600 hover:text-white"
-            >
-              כניסה לפורטל
-            </button>
-          </div>
+          <button
+            onClick={() => navigate("/login")}
+            className="rounded-full border border-blue-600 px-4 py-1.5 text-sm font-medium text-blue-600 transition-all hover:bg-blue-600 hover:text-white sm:px-5 sm:py-2"
+          >
+            כניסה לפורטל
+          </button>
         </div>
       </nav>
 
@@ -40,34 +38,34 @@ export default function LandingPage() {
           style={{ background: "radial-gradient(circle, #06B6D4 0%, transparent 70%)" }}
         />
 
-        <div className="relative mx-auto max-w-7xl px-6 py-20 lg:py-28">
-          <div className="grid items-center gap-12 lg:grid-cols-2">
+        <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-20 lg:py-28">
+          <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
             {/* Text */}
             <div className="animate-[fadeInRight_0.8s_ease-out]">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-sm font-medium text-blue-700">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 sm:mb-6 sm:px-4 sm:text-sm">
                 <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
                 המערכת המובילה לניהול חדרי כושר
               </div>
-              <h1 className="text-4xl font-extrabold leading-tight text-gray-900 sm:text-5xl lg:text-6xl">
+              <h1 className="text-3xl font-extrabold leading-tight text-gray-900 sm:text-5xl lg:text-6xl">
                 נהלו את חדר הכושר
                 <br />
                 <span className="bg-gradient-to-l from-blue-600 to-cyan-500 bg-clip-text text-transparent">
                   כמו מקצוענים
                 </span>
               </h1>
-              <p className="mt-6 max-w-lg text-lg leading-relaxed text-gray-600">
+              <p className="mt-4 max-w-lg text-base leading-relaxed text-gray-600 sm:mt-6 sm:text-lg">
                 מנויים, הכנסות, לידים, תוכניות — הכל במקום אחד.
                 DopaCRM נבנה מהיסוד לחדרי כושר וסטודיואים בישראל.
               </p>
-              <div className="mt-10 flex flex-wrap gap-4">
+              <div className="mt-6 flex flex-wrap gap-3 sm:mt-10 sm:gap-4">
                 <button
                   onClick={() => navigate("/login")}
-                  className="rounded-xl bg-gradient-to-l from-blue-600 to-blue-700 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-0.5"
+                  className="w-full rounded-xl bg-gradient-to-l from-blue-600 to-blue-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-0.5 sm:w-auto sm:px-8 sm:py-3.5 sm:text-base"
                 >
                   התחילו בחינם
                 </button>
                 <button
-                  className="rounded-xl border-2 border-gray-200 bg-white px-8 py-3.5 text-base font-semibold text-gray-700 transition-all hover:border-blue-300 hover:text-blue-600"
+                  className="w-full rounded-xl border-2 border-gray-200 bg-white px-6 py-3 text-sm font-semibold text-gray-700 transition-all hover:border-blue-300 hover:text-blue-600 sm:w-auto sm:px-8 sm:py-3.5 sm:text-base"
                 >
                   צפו בהדגמה
                 </button>
@@ -81,7 +79,7 @@ export default function LandingPage() {
                 <img
                   src={crmImage}
                   alt="DopamineoCRM"
-                  className="relative rounded-2xl shadow-2xl shadow-blue-900/10"
+                  className="relative w-full rounded-2xl shadow-2xl shadow-blue-900/10"
                   style={{ maxHeight: "460px" }}
                 />
               </div>

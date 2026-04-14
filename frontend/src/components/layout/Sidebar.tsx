@@ -12,8 +12,11 @@ const dopaIcon = "/dopa-icon.png"
  * backend starts returning owner-configured tenant overrides,
  * the sidebar adapts automatically.
  *
- * To add a link: add it to NAV_ITEMS below and make sure the feature
- * is declared in permissions.ts.
+ * Layout:
+ * - Desktop / tablet: persistent fixed sidebar (rendered by DashboardLayout)
+ * - Mobile: rendered inside an overlay drawer (also by DashboardLayout)
+ *
+ * `onNavigate` lets the parent close the mobile drawer after a link click.
  */
 interface NavItem {
   to: string
@@ -37,12 +40,12 @@ const NAV_ITEMS: NavItem[] = [
   // { to: "/settings", label: "הגדרות", icon: "⚙️", feature: "settings" },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
   const { user, logout } = useAuth()
   const visibleItems = NAV_ITEMS.filter((item) => canAccess(user, item.feature))
 
   return (
-    <aside className="fixed right-0 top-0 z-40 flex h-full w-56 flex-col border-l border-gray-200 bg-white">
+    <aside className="flex h-full w-56 flex-col border-l border-gray-200 bg-white">
       {/* Logo */}
       <div className="flex items-center gap-2.5 border-b border-gray-100 px-5 py-4">
         <img src={dopaIcon} alt="" className="h-7 w-7" />
@@ -52,7 +55,13 @@ export default function Sidebar() {
       {/* Nav links */}
       <nav className="flex-1 space-y-1 px-3 py-4">
         {visibleItems.map((item) => (
-          <SidebarLink key={item.to} to={item.to} icon={item.icon} label={item.label} />
+          <SidebarLink
+            key={item.to}
+            to={item.to}
+            icon={item.icon}
+            label={item.label}
+            onClick={onNavigate}
+          />
         ))}
       </nav>
 
@@ -70,10 +79,21 @@ export default function Sidebar() {
   )
 }
 
-function SidebarLink({ to, icon, label }: { to: string; icon: string; label: string }) {
+function SidebarLink({
+  to,
+  icon,
+  label,
+  onClick,
+}: {
+  to: string
+  icon: string
+  label: string
+  onClick?: () => void
+}) {
   return (
     <NavLink
       to={to}
+      onClick={onClick}
       className={({ isActive }) =>
         `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
           isActive
