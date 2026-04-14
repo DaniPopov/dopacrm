@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { humanizeTenantError } from "@/lib/api-errors"
 import { useDevice } from "@/hooks/useDevice"
 import TenantForm, { type TenantFormValues } from "./TenantForm"
@@ -8,17 +9,15 @@ import {
   useCreateTenant,
   useSuspendTenant,
   useTenants,
-  useUpdateTenant,
 } from "./hooks"
 import type { Tenant } from "./types"
 
 export default function TenantListPage() {
   const { data: tenants, isLoading, error } = useTenants()
   const { isMobile } = useDevice()
+  const navigate = useNavigate()
   const [showCreate, setShowCreate] = useState(false)
-  const [editing, setEditing] = useState<Tenant | null>(null)
   const create = useCreateTenant()
-  const update = useUpdateTenant()
 
   function handleCreate(values: TenantFormValues) {
     create.mutate(values, {
@@ -29,17 +28,8 @@ export default function TenantListPage() {
     })
   }
 
-  function handleUpdate(values: TenantFormValues) {
-    if (!editing) return
-    update.mutate(
-      { id: editing.id, data: values },
-      {
-        onSuccess: () => {
-          setEditing(null)
-          update.reset()
-        },
-      },
-    )
+  function openEdit(tenant: Tenant) {
+    navigate(`/tenants/${tenant.id}`)
   }
 
   return (
@@ -86,20 +76,6 @@ export default function TenantListPage() {
         </div>
       )}
 
-      {/* Edit dialog — modal overlay */}
-      {editing && (
-        <EditDialog
-          tenant={editing}
-          submitting={update.isPending}
-          error={update.error ? humanizeTenantError(update.error) : undefined}
-          onSubmit={handleUpdate}
-          onClose={() => {
-            setEditing(null)
-            update.reset()
-          }}
-        />
-      )}
-
       {/* List — table on desktop/tablet, cards on mobile */}
       {isLoading ? (
         <div className="py-20 text-center text-gray-400">טוען...</div>
@@ -112,7 +88,7 @@ export default function TenantListPage() {
       ) : isMobile ? (
         <div className="space-y-3">
           {tenants?.map((tenant) => (
-            <TenantCard key={tenant.id} tenant={tenant} onEdit={() => setEditing(tenant)} />
+            <TenantCard key={tenant.id} tenant={tenant} onEdit={() => openEdit(tenant)} />
           ))}
         </div>
       ) : (
@@ -131,7 +107,7 @@ export default function TenantListPage() {
             </thead>
             <tbody>
               {tenants?.map((tenant) => (
-                <TenantRow key={tenant.id} tenant={tenant} onEdit={() => setEditing(tenant)} />
+                <TenantRow key={tenant.id} tenant={tenant} onEdit={() => openEdit(tenant)} />
               ))}
             </tbody>
           </table>
@@ -421,48 +397,6 @@ function MenuItem({
     >
       {label}
     </button>
-  )
-}
-
-/* ── Edit dialog ─────────────────────────────────────────────── */
-
-function EditDialog({
-  tenant,
-  submitting,
-  error,
-  onSubmit,
-  onClose,
-}: {
-  tenant: Tenant
-  submitting: boolean
-  error: string | undefined
-  onSubmit: (values: TenantFormValues) => void
-  onClose: () => void
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
-    >
-      <div className="my-8 w-full max-w-3xl rounded-xl bg-white p-6 shadow-2xl">
-        <div className="mb-6 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-gray-900">עריכת {tenant.name}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            ✕
-          </button>
-        </div>
-        <TenantForm
-          initial={tenant}
-          submitting={submitting}
-          error={error ?? null}
-          submitLabel="שמור שינויים"
-          onSubmit={onSubmit}
-          onCancel={onClose}
-        />
-      </div>
-    </div>
   )
 }
 

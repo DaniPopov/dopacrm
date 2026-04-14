@@ -6,6 +6,13 @@ import { MemoryRouter } from "react-router-dom"
 import TenantListPage from "./TenantListPage"
 import type { Tenant } from "./types"
 
+// Capture navigate() calls so we can assert Edit routes to /tenants/:id
+const mockNavigate = vi.fn()
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom")
+  return { ...actual, useNavigate: () => mockNavigate }
+})
+
 // Mock all the hooks used by the page + its children
 vi.mock("./hooks", () => ({
   useTenants: vi.fn(),
@@ -174,13 +181,13 @@ describe("TenantListPage", () => {
     expect(screen.getByText("כן, בטל")).toBeInTheDocument()
   })
 
-  it("opens edit dialog when Edit is clicked", async () => {
+  it("navigates to /tenants/:id when Edit is clicked", async () => {
     mockUseTenants.mockReturnValue({ data: [fakeTenant], isLoading: false, error: null } as any)
+    mockNavigate.mockClear()
     const user = userEvent.setup()
     renderPage()
     await user.click(screen.getByRole("button", { name: /פעולות/ }))
     await user.click(screen.getByText("עריכה"))
-    expect(screen.getByText(/עריכת/)).toBeInTheDocument()
-    expect(screen.getByText("שמור שינויים")).toBeInTheDocument()
+    expect(mockNavigate).toHaveBeenCalledWith("/tenants/t1")
   })
 })

@@ -3,6 +3,7 @@ import LandingPage from "@/features/landing/LandingPage"
 import LoginPage from "@/features/auth/LoginPage"
 import DashboardPage from "@/features/dashboard/DashboardPage"
 import TenantListPage from "@/features/tenants/TenantListPage"
+import TenantDetailPage from "@/features/tenants/TenantDetailPage"
 import UserListPage from "@/features/users/UserListPage"
 import ProtectedRoute from "@/components/layout/ProtectedRoute"
 import RequireFeature from "@/components/layout/RequireFeature"
@@ -20,6 +21,7 @@ export default function App() {
           {/* Platform admin only — URL-typing doesn't bypass the sidebar */}
           <Route element={<RequireFeature feature="tenants" />}>
             <Route path="/tenants" element={<TenantListPage />} />
+            <Route path="/tenants/:id" element={<TenantDetailPage />} />
           </Route>
           <Route element={<RequireFeature feature="platform_users" />}>
             <Route path="/users" element={<UserListPage />} />
