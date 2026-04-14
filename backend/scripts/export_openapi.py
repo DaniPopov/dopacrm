@@ -12,6 +12,7 @@ Usage::
 
     uv run python -m scripts.export_openapi > /tmp/openapi.json
 """
+
 from __future__ import annotations
 
 import json

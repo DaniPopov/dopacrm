@@ -3,7 +3,8 @@ FROM node:22-alpine
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+# --legacy-peer-deps: openapi-typescript declares TS ^5 but works fine with TS 6
+RUN npm ci --legacy-peer-deps
 
 COPY . .
 
