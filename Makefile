@@ -105,6 +105,20 @@ seed-super-admin-dev:  ## Create platform super_admin (SEED_EMAIL=... SEED_PASSW
 	fi
 	@$(COMPOSE_DEV) exec -e SEED_EMAIL -e SEED_PASSWORD backend python -m scripts.create_super_admin
 
+seed-test-gym-dev:  ## Create a test gym + owner/staff/sales users (SLUG=<slug>)
+	@if [ -z "$$SLUG" ]; then \
+		echo "Error: SLUG must be set."; \
+		echo "Example: make seed-test-gym-dev SLUG=dopamineo"; \
+		echo ""; \
+		echo "Creates tenant \"<slug>\" + three users:"; \
+		echo "  owner@<slug>.test   (role: owner)"; \
+		echo "  staff@<slug>.test   (role: staff)"; \
+		echo "  sales@<slug>.test   (role: sales)"; \
+		echo "All with password: TestPass1!"; \
+		exit 1; \
+	fi
+	@$(COMPOSE_DEV) exec -e SLUG backend python -m scripts.seed_test_gym
+
 list-tables-dev:  ## List all tables in the dev database
 	@$(COMPOSE_DEV) exec postgres psql -U dopacrm -d dopacrm -c "\dt"
 
