@@ -461,20 +461,20 @@ export interface components {
          *     Only ``slug`` and ``name`` are required. Everything else is optional
          *     and can be filled in later via PATCH.
          * @example {
-         *       "address_city": "Tel Aviv",
+         *       "address_city": "אור יהודה",
          *       "address_country": "IL",
          *       "address_postal_code": "6578901",
-         *       "address_street": "Rothschild 1",
+         *       "address_street": "יוני נתניהו 5",
          *       "currency": "ILS",
-         *       "email": "info@ironfit.co.il",
-         *       "legal_name": "IronFit Ltd",
+         *       "email": "mark@dopamineogym.com",
+         *       "legal_name": "דופמינו בע״מ",
          *       "locale": "he-IL",
-         *       "name": "IronFit Tel Aviv",
-         *       "phone": "+972-3-555-1234",
-         *       "slug": "ironfit-tlv",
+         *       "name": "דופמינו ג׳ים",
+         *       "phone": "0543123090",
+         *       "slug": "dopamineogym-or-yheuda",
          *       "tax_id": "123456789",
          *       "timezone": "Asia/Jerusalem",
-         *       "website": "https://ironfit.co.il"
+         *       "website": "https://dopamineo.co.il/"
          *     }
          */
         CreateTenantRequest: {
@@ -712,26 +712,26 @@ export interface components {
          * TenantResponse
          * @description Standard tenant response.
          * @example {
-         *       "address_city": "Tel Aviv",
+         *       "address_city": "אור יהודה",
          *       "address_country": "IL",
          *       "address_postal_code": "6578901",
-         *       "address_street": "Rothschild 1",
-         *       "created_at": "2026-04-11T12:00:00+03:00",
+         *       "address_street": "יוני נתניהו 5",
+         *       "created_at": "2026-04-15T12:00:00+03:00",
          *       "currency": "ILS",
-         *       "email": "info@ironfit.co.il",
+         *       "email": "mark@dopamineogym.com",
          *       "id": "550e8400-e29b-41d4-a716-446655440000",
-         *       "legal_name": "IronFit Ltd",
+         *       "legal_name": "דופמינו בע״מ",
          *       "locale": "he-IL",
-         *       "name": "IronFit Tel Aviv",
-         *       "phone": "+972-3-555-1234",
+         *       "name": "דופמינו ג׳ים",
+         *       "phone": "0543123090",
          *       "saas_plan_id": "aaaa0000-0000-0000-0000-000000000000",
-         *       "slug": "ironfit-tlv",
+         *       "slug": "dopamineogym-or-yheuda",
          *       "status": "trial",
          *       "tax_id": "123456789",
          *       "timezone": "Asia/Jerusalem",
-         *       "trial_ends_at": "2026-04-25T12:00:00+03:00",
-         *       "updated_at": "2026-04-11T12:00:00+03:00",
-         *       "website": "https://ironfit.co.il"
+         *       "trial_ends_at": "2026-04-29T12:00:00+03:00",
+         *       "updated_at": "2026-04-15T12:00:00+03:00",
+         *       "website": "https://dopamineo.co.il/"
          *     }
          */
         TenantResponse: {
@@ -869,8 +869,8 @@ export interface components {
          * UpdateTenantRequest
          * @description PATCH /api/v1/tenants/{tenant_id} — partial update.
          * @example {
-         *       "name": "IronFit Tel Aviv — Rothschild",
-         *       "phone": "+972-3-555-9999"
+         *       "name": "דופמינו ג׳ים — אור יהודה",
+         *       "phone": "0543123090"
          *     }
          */
         UpdateTenantRequest: {

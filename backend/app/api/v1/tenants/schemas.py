@@ -121,8 +121,8 @@ class UpdateTenantRequest(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
-                    "name": "IronFit Tel Aviv — Rothschild",
-                    "phone": "+972-3-555-9999",
+                    "name": "דופמינו ג׳ים — אור יהודה",
+                    "phone": "0543123090",
                 }
             ]
         }
@@ -188,26 +188,26 @@ class TenantResponse(BaseModel):
             "examples": [
                 {
                     "id": "550e8400-e29b-41d4-a716-446655440000",
-                    "slug": "ironfit-tlv",
-                    "name": "IronFit Tel Aviv",
+                    "slug": "dopamineogym-or-yheuda",
+                    "name": "דופמינו ג׳ים",
                     "status": "trial",
                     "saas_plan_id": "aaaa0000-0000-0000-0000-000000000000",
                     "logo_url": None,
-                    "phone": "+972-3-555-1234",
-                    "email": "info@ironfit.co.il",
-                    "website": "https://ironfit.co.il",
-                    "address_street": "Rothschild 1",
-                    "address_city": "Tel Aviv",
+                    "phone": "0543123090",
+                    "email": "mark@dopamineogym.com",
+                    "website": "https://dopamineo.co.il/",
+                    "address_street": "יוני נתניהו 5",
+                    "address_city": "אור יהודה",
                     "address_country": "IL",
                     "address_postal_code": "6578901",
-                    "legal_name": "IronFit Ltd",
+                    "legal_name": "דופמינו בע״מ",
                     "tax_id": "123456789",
                     "timezone": "Asia/Jerusalem",
                     "currency": "ILS",
                     "locale": "he-IL",
-                    "trial_ends_at": "2026-04-25T12:00:00+03:00",
-                    "created_at": "2026-04-11T12:00:00+03:00",
-                    "updated_at": "2026-04-11T12:00:00+03:00",
+                    "trial_ends_at": "2026-04-29T12:00:00+03:00",
+                    "created_at": "2026-04-15T12:00:00+03:00",
+                    "updated_at": "2026-04-15T12:00:00+03:00",
                 }
             ]
         }
