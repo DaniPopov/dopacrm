@@ -4,6 +4,7 @@ import {
   cancelTenant,
   createTenant,
   getTenant,
+  getTenantStats,
   listTenants,
   suspendTenant,
   updateTenant,
@@ -24,6 +25,15 @@ export function useTenant(id: string) {
   return useQuery({
     queryKey: ["tenants", id],
     queryFn: () => getTenant(id),
+    enabled: !!id,
+  })
+}
+
+/** Fetch per-tenant stats (member + user counts). Invalidated by user/member mutations. */
+export function useTenantStats(id: string) {
+  return useQuery({
+    queryKey: ["tenants", id, "stats"],
+    queryFn: () => getTenantStats(id),
     enabled: !!id,
   })
 }

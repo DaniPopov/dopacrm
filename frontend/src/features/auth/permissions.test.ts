@@ -24,7 +24,6 @@ describe("canAccess — baseline", () => {
   it("super_admin sees platform features and never gym features", () => {
     const u = makeUser("super_admin")
     expect(canAccess(u, "tenants")).toBe(true)
-    expect(canAccess(u, "platform_users")).toBe(true)
     expect(canAccess(u, "dashboard")).toBe(true)
     expect(canAccess(u, "members")).toBe(false)
     expect(canAccess(u, "payments")).toBe(false)
@@ -37,7 +36,6 @@ describe("canAccess — baseline", () => {
     expect(canAccess(u, "payments")).toBe(true)
     expect(canAccess(u, "settings")).toBe(true)
     expect(canAccess(u, "tenants")).toBe(false)
-    expect(canAccess(u, "platform_users")).toBe(false)
   })
 
   it("staff only sees dashboard at baseline", () => {
@@ -131,7 +129,6 @@ describe("GRANTABLE_FEATURES", () => {
   it("excludes owner-only and super_admin-only features", () => {
     expect(GRANTABLE_FEATURES).not.toContain("settings")
     expect(GRANTABLE_FEATURES).not.toContain("tenants")
-    expect(GRANTABLE_FEATURES).not.toContain("platform_users")
     expect(GRANTABLE_FEATURES).not.toContain("dashboard")
   })
 

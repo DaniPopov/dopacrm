@@ -29,9 +29,8 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: "/dashboard", label: "דשבורד", icon: "📊", feature: "dashboard" },
 
-  // Platform admin
+  // Platform admin — user management lives inside /tenants/:id
   { to: "/tenants", label: "חדרי כושר", icon: "🏢", feature: "tenants" },
-  { to: "/users", label: "משתמשים", icon: "👤", feature: "platform_users" },
 
   // Gym-scoped (placeholders — routes land with feature work)
   // { to: "/members", label: "מנויים", icon: "👥", feature: "members" },

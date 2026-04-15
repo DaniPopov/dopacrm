@@ -1,10 +1,13 @@
 import { apiClient } from "@/lib/api-client"
+import type { components } from "@/lib/api-schema"
 import type {
   CreateTenantRequest,
   Tenant,
   UpdateTenantRequest,
   UploadResponse,
 } from "./types"
+
+export type TenantStats = components["schemas"]["TenantStatsResponse"]
 
 /**
  * List all tenants on the platform.
@@ -93,6 +96,19 @@ export function activateTenant(id: string): Promise<Tenant> {
  */
 export function cancelTenant(id: string): Promise<Tenant> {
   return apiClient.post(`/tenants/${id}/cancel`)
+}
+
+/**
+ * Fetch per-tenant counters for the detail page.
+ *
+ * `GET /api/v1/tenants/{id}/stats` — super_admin can view any tenant;
+ * tenant users can only view their own gym.
+ *
+ * @throws `ApiError(403)` — caller is not allowed to view this tenant
+ * @throws `ApiError(404)` — tenant not found
+ */
+export function getTenantStats(id: string): Promise<TenantStats> {
+  return apiClient.get(`/tenants/${id}/stats`)
 }
 
 /**

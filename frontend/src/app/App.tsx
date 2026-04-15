@@ -4,7 +4,6 @@ import LoginPage from "@/features/auth/LoginPage"
 import DashboardPage from "@/features/dashboard/DashboardPage"
 import TenantListPage from "@/features/tenants/TenantListPage"
 import TenantDetailPage from "@/features/tenants/TenantDetailPage"
-import UserListPage from "@/features/users/UserListPage"
 import ProtectedRoute from "@/components/layout/ProtectedRoute"
 import RequireFeature from "@/components/layout/RequireFeature"
 import DashboardLayout from "@/components/layout/DashboardLayout"
@@ -18,13 +17,11 @@ export default function App() {
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
 
-          {/* Platform admin only — URL-typing doesn't bypass the sidebar */}
+          {/* Platform admin only — URL-typing doesn't bypass the sidebar.
+              User management is nested under /tenants/:id (no standalone /users page). */}
           <Route element={<RequireFeature feature="tenants" />}>
             <Route path="/tenants" element={<TenantListPage />} />
             <Route path="/tenants/:id" element={<TenantDetailPage />} />
-          </Route>
-          <Route element={<RequireFeature feature="platform_users" />}>
-            <Route path="/users" element={<UserListPage />} />
           </Route>
 
           {/* Future gym-scoped routes wrap with RequireFeature too:

@@ -74,6 +74,20 @@ export function humanizeTenantError(err: unknown): string {
 }
 
 /**
+ * Overrides for user CRUD errors (create/update/delete).
+ * Call this from the user form catch block.
+ */
+export function humanizeUserError(err: unknown): string {
+  if (err instanceof ApiError || (err instanceof Error && "status" in err)) {
+    const status = (err as ApiError).status
+    if (status === 409) return "משתמש עם מייל זה כבר קיים"
+    if (status === 422) return "הפרטים שהוזנו אינם תקינים, בדקו את הטופס"
+    return genericMessage(status)
+  }
+  return "אירעה שגיאה בשמירת המשתמש"
+}
+
+/**
  * Overrides for upload errors.
  * Call this from any upload flow.
  */

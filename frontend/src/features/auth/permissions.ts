@@ -53,9 +53,9 @@ import type { Role, User } from "./types"
  */
 export type Feature =
   | "dashboard" // everyone
-  // Platform admin
+  // Platform admin — user management lives inside the tenant detail page,
+  // so there's no "platform_users" feature (dropped 2026-04-15).
   | "tenants"
-  | "platform_users"
   // Gym-scoped
   | "members"
   | "plans"
@@ -73,7 +73,7 @@ export type Feature =
  * - sales:       dashboard only — owner grants the rest
  */
 const BASELINE: Record<Role, Feature[]> = {
-  super_admin: ["dashboard", "tenants", "platform_users"],
+  super_admin: ["dashboard", "tenants"],
   owner: [
     "dashboard",
     "members",
