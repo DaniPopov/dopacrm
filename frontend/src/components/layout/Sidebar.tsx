@@ -32,8 +32,10 @@ const NAV_ITEMS: NavItem[] = [
   // Platform admin — user management lives inside /tenants/:id
   { to: "/tenants", label: "חדרי כושר", icon: "🏢", feature: "tenants" },
 
-  // Gym-scoped (placeholders — routes land with feature work)
-  // { to: "/members", label: "מנויים", icon: "👥", feature: "members" },
+  // Gym-scoped
+  { to: "/members", label: "מנויים", icon: "👥", feature: "members" },
+
+  // Future (placeholders — routes land with feature work)
   // { to: "/plans", label: "תוכניות", icon: "📋", feature: "plans" },
   // { to: "/leads", label: "לידים", icon: "🎯", feature: "leads" },
   // { to: "/payments", label: "תשלומים", icon: "💰", feature: "payments" },

@@ -4,6 +4,8 @@ import LoginPage from "@/features/auth/LoginPage"
 import DashboardPage from "@/features/dashboard/DashboardPage"
 import TenantListPage from "@/features/tenants/TenantListPage"
 import TenantDetailPage from "@/features/tenants/TenantDetailPage"
+import MemberListPage from "@/features/members/MemberListPage"
+import MemberDetailPage from "@/features/members/MemberDetailPage"
 import ProtectedRoute from "@/components/layout/ProtectedRoute"
 import RequireFeature from "@/components/layout/RequireFeature"
 import DashboardLayout from "@/components/layout/DashboardLayout"
@@ -24,11 +26,11 @@ export default function App() {
             <Route path="/tenants/:id" element={<TenantDetailPage />} />
           </Route>
 
-          {/* Future gym-scoped routes wrap with RequireFeature too:
+          {/* Gym-scoped: members (owner + staff + sales baseline) */}
           <Route element={<RequireFeature feature="members" />}>
             <Route path="/members" element={<MemberListPage />} />
+            <Route path="/members/:id" element={<MemberDetailPage />} />
           </Route>
-          */}
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -33,6 +33,13 @@ export type Tenant = Schemas["TenantResponse"]
 export type CreateTenantRequest = Schemas["CreateTenantRequest"]
 export type UpdateTenantRequest = Schemas["UpdateTenantRequest"]
 
+// Members
+export type MemberStatus = Schemas["MemberStatus"]
+export type Member = Schemas["MemberResponse"]
+export type CreateMemberRequest = Schemas["CreateMemberRequest"]
+export type UpdateMemberRequest = Schemas["UpdateMemberRequest"]
+export type FreezeMemberRequest = Schemas["FreezeMemberRequest"]
+
 // Users
 export type CreateUserRequest = Schemas["CreateUserRequest"]
 export type UpdateUserRequest = Schemas["UpdateUserRequest"]

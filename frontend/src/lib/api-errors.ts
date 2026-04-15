@@ -74,6 +74,34 @@ export function humanizeTenantError(err: unknown): string {
 }
 
 /**
+ * Overrides for member CRUD errors (create / update / freeze / cancel).
+ *
+ * The backend differentiates phone collision (MEMBER_ALREADY_EXISTS) from
+ * invalid state transitions (MEMBER_INVALID_TRANSITION) via the detail
+ * message — we sniff both keywords rather than making the error shape
+ * richer.
+ */
+export function humanizeMemberError(err: unknown): string {
+  if (err instanceof ApiError || (err instanceof Error && "status" in err)) {
+    const status = (err as ApiError).status
+    const message = (err as ApiError).message
+    if (status === 404) return "המנוי לא נמצא"
+    if (status === 409) {
+      if (message.toLowerCase().includes("already exists")) {
+        return "מנוי עם מספר טלפון זה כבר קיים"
+      }
+      if (message.toLowerCase().includes("cannot ")) {
+        return "לא ניתן לבצע פעולה זו בסטטוס הנוכחי"
+      }
+      return "התנגשות — בדקו שהפרטים אינם חוזרים"
+    }
+    if (status === 422) return "הפרטים שהוזנו אינם תקינים, בדקו את הטופס"
+    return genericMessage(status)
+  }
+  return "אירעה שגיאה בשמירת המנוי"
+}
+
+/**
  * Overrides for user CRUD errors (create/update/delete).
  * Call this from the user form catch block.
  */

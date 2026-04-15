@@ -38,17 +38,18 @@ describe("canAccess — baseline", () => {
     expect(canAccess(u, "tenants")).toBe(false)
   })
 
-  it("staff only sees dashboard at baseline", () => {
+  it("staff sees dashboard + members at baseline", () => {
     const u = makeUser("staff")
     expect(canAccess(u, "dashboard")).toBe(true)
-    expect(canAccess(u, "members")).toBe(false)
+    expect(canAccess(u, "members")).toBe(true)
     expect(canAccess(u, "payments")).toBe(false)
     expect(canAccess(u, "settings")).toBe(false)
   })
 
-  it("sales only sees dashboard at baseline", () => {
+  it("sales sees dashboard + members at baseline (converts leads)", () => {
     const u = makeUser("sales")
     expect(canAccess(u, "dashboard")).toBe(true)
+    expect(canAccess(u, "members")).toBe(true)
     expect(canAccess(u, "leads")).toBe(false)
     expect(canAccess(u, "settings")).toBe(false)
   })
@@ -101,16 +102,17 @@ describe("canAccess — tenant overrides", () => {
 
 describe("accessibleFeatures", () => {
   it("returns baseline for roles with no overrides", () => {
-    expect(accessibleFeatures(makeUser("staff"))).toEqual(["dashboard"])
-    expect(accessibleFeatures(makeUser("sales"))).toEqual(["dashboard"])
+    expect(accessibleFeatures(makeUser("staff"))).toEqual(["dashboard", "members"])
+    expect(accessibleFeatures(makeUser("sales"))).toEqual(["dashboard", "members"])
   })
 
   it("merges baseline and overrides for staff", () => {
     const features = accessibleFeatures(makeUser("staff"), {
-      staff: ["members"],
+      staff: ["payments"],
       sales: [],
     })
-    expect(features).toEqual(["dashboard", "members"])
+    // baseline = [dashboard, members]; override adds payments
+    expect(features).toEqual(["dashboard", "members", "payments"])
   })
 
   it("owner always sees full gym feature set", () => {

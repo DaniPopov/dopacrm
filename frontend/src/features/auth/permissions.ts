@@ -83,8 +83,10 @@ const BASELINE: Record<Role, Feature[]> = {
     "reports",
     "settings",
   ],
-  staff: ["dashboard"],
-  sales: ["dashboard"],
+  // Staff handles day-to-day member ops (check-in, contact updates).
+  staff: ["dashboard", "members"],
+  // Sales converts leads → members, needs to see/create members too.
+  sales: ["dashboard", "members"],
 }
 
 /**

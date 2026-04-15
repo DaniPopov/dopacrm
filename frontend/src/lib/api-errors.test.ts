@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import {
   ApiError,
   humanizeLoginError,
+  humanizeMemberError,
   humanizeTenantError,
   humanizeUploadError,
 } from "./api-errors"
@@ -74,6 +75,42 @@ describe("humanizeTenantError", () => {
 
   it("returns generic message for unknown errors", () => {
     expect(humanizeTenantError(undefined)).toBe("אירעה שגיאה בשמירת הנתונים")
+  })
+})
+
+describe("humanizeMemberError", () => {
+  it("returns not-found message for 404", () => {
+    expect(humanizeMemberError(new ApiError("x", 404))).toBe("המנוי לא נמצא")
+  })
+
+  it("returns phone-collision message when 409 mentions 'already exists'", () => {
+    expect(
+      humanizeMemberError(
+        new ApiError("Member with phone already exists in this tenant: +972-50-1", 409),
+      ),
+    ).toBe("מנוי עם מספר טלפון זה כבר קיים")
+  })
+
+  it("returns transition message when 409 mentions 'Cannot'", () => {
+    expect(
+      humanizeMemberError(new ApiError("Cannot freeze member in status 'frozen'", 409)),
+    ).toBe("לא ניתן לבצע פעולה זו בסטטוס הנוכחי")
+  })
+
+  it("returns generic conflict for other 409s", () => {
+    expect(humanizeMemberError(new ApiError("something else", 409))).toBe(
+      "התנגשות — בדקו שהפרטים אינם חוזרים",
+    )
+  })
+
+  it("returns validation message for 422", () => {
+    expect(humanizeMemberError(new ApiError("x", 422))).toBe(
+      "הפרטים שהוזנו אינם תקינים, בדקו את הטופס",
+    )
+  })
+
+  it("returns generic message for non-ApiError", () => {
+    expect(humanizeMemberError(null)).toBe("אירעה שגיאה בשמירת המנוי")
   })
 })
 
