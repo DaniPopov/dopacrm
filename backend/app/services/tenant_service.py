@@ -217,6 +217,34 @@ class TenantService:
             "total_users": await self._user_repo.count_by_tenant(tenant_id),
         }
 
+    async def get_platform_stats(self, *, caller: TokenPayload) -> dict[str, int]:
+        """Return platform-wide counters for the super_admin dashboard.
+
+        Fields:
+        - total_tenants — every row, any status
+        - active_tenants — status in (active, trial)
+        - new_tenants_this_month — created since UTC first-of-month
+        - total_users — every user row (incl. super_admin)
+        - total_members — across all tenants
+
+        super_admin only. "This month" uses UTC first-of-month — close
+        enough for v1; tenant-local cutoffs come with billing.
+        """
+        self._require_super_admin(caller)
+
+        now = utcnow()
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        return {
+            "total_tenants": await self._repo.count_all(),
+            "active_tenants": await self._repo.count_by_status(
+                [TenantStatus.ACTIVE.value, TenantStatus.TRIAL.value]
+            ),
+            "new_tenants_this_month": await self._repo.count_created_since(month_start),
+            "total_users": await self._user_repo.count_all(),
+            "total_members": await self._member_repo.count_all(),
+        }
+
     async def list_users_for_tenant(
         self,
         *,

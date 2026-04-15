@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/api/v1/admin/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Platform-wide aggregate counts
+         * @description super_admin only. Returns total/active tenant counts, new-tenants-this-month, total users, and total members across all tenants. Powers the admin dashboard.
+         */
+        get: operations["get_platform_stats_api_v1_admin_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -696,6 +716,31 @@ export interface components {
          */
         MemberStatus: "active" | "frozen" | "cancelled" | "expired";
         /**
+         * PlatformStatsResponse
+         * @description Aggregate counts across every tenant on the platform.
+         *
+         *     Powers the super_admin dashboard (AdminDashboard.tsx on the frontend).
+         * @example {
+         *       "active_tenants": 10,
+         *       "new_tenants_this_month": 3,
+         *       "total_members": 387,
+         *       "total_tenants": 12,
+         *       "total_users": 45
+         *     }
+         */
+        PlatformStatsResponse: {
+            /** Active Tenants */
+            active_tenants: number;
+            /** New Tenants This Month */
+            new_tenants_this_month: number;
+            /** Total Members */
+            total_members: number;
+            /** Total Tenants */
+            total_tenants: number;
+            /** Total Users */
+            total_users: number;
+        };
+        /**
          * Role
          * @description User role hierarchy.
          *
@@ -1022,6 +1067,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    get_platform_stats_api_v1_admin_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformStatsResponse"];
+                };
+            };
+        };
+    };
     login_api_v1_auth_login_post: {
         parameters: {
             query?: never;

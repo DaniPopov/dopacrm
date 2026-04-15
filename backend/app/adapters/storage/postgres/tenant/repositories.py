@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.adapters.storage.postgres.tenant.models import TenantORM
@@ -134,6 +134,31 @@ class TenantRepository:
             select(TenantORM).order_by(TenantORM.created_at.desc()).limit(limit).offset(offset),
         )
         return [_to_domain(orm) for orm in result.scalars()]
+
+    async def count_all(self) -> int:
+        """Total number of tenants on the platform."""
+        result = await self._session.execute(select(func.count(TenantORM.id)))
+        return int(result.scalar_one())
+
+    async def count_by_status(self, statuses: list[str]) -> int:
+        """Count tenants whose status is in the given list.
+
+        Used by the platform stats endpoint to fold "active" and "trial"
+        into one "active_tenants" bucket.
+        """
+        if not statuses:
+            return 0
+        result = await self._session.execute(
+            select(func.count(TenantORM.id)).where(TenantORM.status.in_(statuses))
+        )
+        return int(result.scalar_one())
+
+    async def count_created_since(self, since: datetime) -> int:
+        """Count tenants whose created_at is at or after ``since``."""
+        result = await self._session.execute(
+            select(func.count(TenantORM.id)).where(TenantORM.created_at >= since)
+        )
+        return int(result.scalar_one())
 
     async def update(self, tenant_id: UUID, **fields) -> Tenant:
         """Update specific fields on a tenant row. Returns the updated entity."""

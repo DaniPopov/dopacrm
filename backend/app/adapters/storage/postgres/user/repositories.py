@@ -182,6 +182,14 @@ class UserRepository:
         )
         return int(result.scalar_one())
 
+    async def count_all(self) -> int:
+        """Platform-wide user count (super_admin + all tenant users).
+
+        Used by the admin dashboard. Includes super_admin rows (tenant_id NULL).
+        """
+        result = await self._session.execute(select(func.count(UserORM.id)))
+        return int(result.scalar_one())
+
     async def update(self, user_id: UUID, **fields) -> User:
         """Update specific fields on a user row. Returns the updated entity.
 

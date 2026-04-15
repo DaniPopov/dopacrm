@@ -157,6 +157,14 @@ class MemberRepository:
         result = await self._session.execute(stmt)
         return int(result.scalar_one())
 
+    async def count_all(self) -> int:
+        """Platform-wide member count across all tenants.
+
+        Used by the admin dashboard.
+        """
+        result = await self._session.execute(select(func.count(MemberORM.id)))
+        return int(result.scalar_one())
+
     async def update(self, member_id: UUID, **fields: Any) -> Member:
         """Update specific fields on a member row. Returns the updated entity.
 
