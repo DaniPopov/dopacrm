@@ -251,6 +251,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tenants/{tenant_id}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Per-tenant stats
+         * @description Counts for the tenant detail page — members (total + active) and users. super_admin can view any tenant; tenant users can only view their own.
+         */
+        get: operations["get_tenant_stats_api_v1_tenants__tenant_id__stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tenants/{tenant_id}/suspend": {
         parameters: {
             query?: never;
@@ -265,6 +285,26 @@ export interface paths {
          * @description super_admin only. Blocks all users of this gym from accessing the platform.
          */
         post: operations["suspend_tenant_api_v1_tenants__tenant_id__suspend_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenants/{tenant_id}/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List users of a tenant
+         * @description super_admin only. Use GET /users instead for self-tenant listing.
+         */
+        get: operations["list_tenant_users_api_v1_tenants__tenant_id__users_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -753,6 +793,23 @@ export interface components {
             updated_at: string;
             /** Website */
             website: string | null;
+        };
+        /**
+         * TenantStatsResponse
+         * @description Per-tenant counters shown on the tenant detail page.
+         * @example {
+         *       "active_members": 38,
+         *       "total_members": 42,
+         *       "total_users": 5
+         *     }
+         */
+        TenantStatsResponse: {
+            /** Active Members */
+            active_members: number;
+            /** Total Members */
+            total_members: number;
+            /** Total Users */
+            total_users: number;
         };
         /**
          * TenantStatus
@@ -1463,6 +1520,37 @@ export interface operations {
             };
         };
     };
+    get_tenant_stats_api_v1_tenants__tenant_id__stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantStatsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     suspend_tenant_api_v1_tenants__tenant_id__suspend_post: {
         parameters: {
             query?: never;
@@ -1481,6 +1569,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TenantResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tenant_users_api_v1_tenants__tenant_id__users_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponse"][];
                 };
             };
             /** @description Validation Error */

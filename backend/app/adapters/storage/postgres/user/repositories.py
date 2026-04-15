@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.adapters.storage.postgres.user.models import UserORM
@@ -174,6 +174,13 @@ class UserRepository:
             .offset(offset)
         )
         return [_to_domain(orm) for orm in result.scalars()]
+
+    async def count_by_tenant(self, tenant_id: UUID) -> int:
+        """Count users in a tenant. Powers the tenant stats endpoint."""
+        result = await self._session.execute(
+            select(func.count(UserORM.id)).where(UserORM.tenant_id == tenant_id)
+        )
+        return int(result.scalar_one())
 
     async def update(self, user_id: UUID, **fields) -> User:
         """Update specific fields on a user row. Returns the updated entity.

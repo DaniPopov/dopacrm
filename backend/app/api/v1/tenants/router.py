@@ -19,8 +19,10 @@ from app.api.dependencies.database import get_session
 from app.api.v1.tenants.schemas import (
     CreateTenantRequest,
     TenantResponse,
+    TenantStatsResponse,
     UpdateTenantRequest,
 )
+from app.api.v1.users.schemas import UserResponse
 from app.core.logger import get_logger
 from app.core.security import TokenPayload
 from app.services.tenant_service import TenantService
@@ -203,3 +205,59 @@ async def cancel_tenant(
 ) -> TenantResponse:
     tenant = await service.cancel_tenant(caller=caller, tenant_id=tenant_id)
     return _to_response(tenant)
+
+
+# ── Nested: tenant-scoped stats + users ──────────────────────────────────────
+
+
+@router.get(
+    "/{tenant_id}/stats",
+    response_model=TenantStatsResponse,
+    summary="Per-tenant stats",
+    description=(
+        "Counts for the tenant detail page — members (total + active) and users. "
+        "super_admin can view any tenant; tenant users can only view their own."
+    ),
+)
+async def get_tenant_stats(
+    tenant_id: UUID,
+    caller: TokenPayload = Depends(get_current_user),
+    service: TenantService = Depends(_get_service),
+) -> TenantStatsResponse:
+    stats = await service.get_stats(caller=caller, tenant_id=tenant_id)
+    return TenantStatsResponse(**stats)
+
+
+def _user_to_response(user) -> UserResponse:
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        role=user.role,
+        tenant_id=user.tenant_id,
+        is_active=user.is_active,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        phone=user.phone,
+        oauth_provider=user.oauth_provider,
+        created_at=user.created_at,
+        updated_at=user.updated_at,
+    )
+
+
+@router.get(
+    "/{tenant_id}/users",
+    response_model=list[UserResponse],
+    summary="List users of a tenant",
+    description="super_admin only. Use GET /users instead for self-tenant listing.",
+)
+async def list_tenant_users(
+    tenant_id: UUID,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    caller: TokenPayload = Depends(require_super_admin),
+    service: TenantService = Depends(_get_service),
+) -> list[UserResponse]:
+    users = await service.list_users_for_tenant(
+        caller=caller, tenant_id=tenant_id, limit=limit, offset=offset
+    )
+    return [_user_to_response(u) for u in users]

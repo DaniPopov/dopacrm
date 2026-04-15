@@ -16,13 +16,17 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
+from app.adapters.storage.postgres.member.repositories import MemberRepository
 from app.adapters.storage.postgres.saas_plan.repositories import SaasPlanRepository
 from app.adapters.storage.postgres.tenant.repositories import (
     TenantAlreadyExistsError,
     TenantRepository,
 )
+from app.adapters.storage.postgres.user.repositories import UserRepository
 from app.core.time import utcnow
+from app.domain.entities.member import MemberStatus
 from app.domain.entities.tenant import Tenant, TenantStatus
+from app.domain.entities.user import Role, User
 from app.domain.exceptions import (
     InsufficientPermissionsError,
     TenantNotFoundError,
@@ -46,6 +50,8 @@ class TenantService:
         self._session = session
         self._repo = TenantRepository(session)
         self._plan_repo = SaasPlanRepository(session)
+        self._member_repo = MemberRepository(session)
+        self._user_repo = UserRepository(session)
 
     # ── Commands ─────────────────────────────────────────────────────────────
 
@@ -195,6 +201,38 @@ class TenantService:
         self._require_super_admin(caller)
         return await self._repo.list_all(limit=limit, offset=offset)
 
+    async def get_stats(self, *, caller: TokenPayload, tenant_id: UUID) -> dict[str, int]:
+        """Return per-tenant counts used by the tenant detail page.
+
+        super_admin can view any tenant's stats. Tenant users can only
+        see their own tenant's stats.
+        """
+        self._require_super_admin_or_same_tenant(caller, tenant_id)
+        await self._get_or_raise(tenant_id)
+        return {
+            "total_members": await self._member_repo.count_for_tenant(tenant_id),
+            "active_members": await self._member_repo.count_for_tenant(
+                tenant_id, status=MemberStatus.ACTIVE
+            ),
+            "total_users": await self._user_repo.count_by_tenant(tenant_id),
+        }
+
+    async def list_users_for_tenant(
+        self,
+        *,
+        caller: TokenPayload,
+        tenant_id: UUID,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[User]:
+        """List users belonging to a specific tenant. super_admin only —
+        tenant users use GET /users (which is already tenant-scoped in
+        UserService.list_users).
+        """
+        self._require_super_admin(caller)
+        await self._get_or_raise(tenant_id)
+        return await self._user_repo.list_by_tenant(tenant_id, limit=limit, offset=offset)
+
     # ── Private helpers ──────────────────────────────────────────────────────
 
     async def _get_or_raise(self, tenant_id: UUID) -> Tenant:
@@ -208,4 +246,12 @@ class TenantService:
     def _require_super_admin(caller: TokenPayload) -> None:
         """Raise if the caller is not super_admin."""
         if caller.role != "super_admin":
+            raise InsufficientPermissionsError()
+
+    @staticmethod
+    def _require_super_admin_or_same_tenant(caller: TokenPayload, tenant_id: UUID) -> None:
+        """Allow super_admin for any tenant; others must be in the tenant."""
+        if caller.role == Role.SUPER_ADMIN.value:
+            return
+        if caller.tenant_id is None or str(caller.tenant_id) != str(tenant_id):
             raise InsufficientPermissionsError()

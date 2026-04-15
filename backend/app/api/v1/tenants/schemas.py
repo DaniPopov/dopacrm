@@ -129,6 +129,20 @@ class UpdateTenantRequest(BaseModel):
     }
 
 
+class TenantStatsResponse(BaseModel):
+    """Per-tenant counters shown on the tenant detail page."""
+
+    total_members: int
+    active_members: int
+    total_users: int
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [{"total_members": 42, "active_members": 38, "total_users": 5}]
+        }
+    }
+
+
 class TenantResponse(BaseModel):
     """Standard tenant response."""
 
