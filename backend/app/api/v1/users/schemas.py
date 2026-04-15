@@ -65,7 +65,12 @@ class CreateUserRequest(BaseModel):
 
 
 class UpdateUserRequest(BaseModel):
-    """PATCH /api/v1/users/{user_id} — partial update."""
+    """PATCH /api/v1/users/{user_id} — partial update.
+
+    super_admin can reset a user's password by including ``password`` here.
+    Plaintext is hashed with argon2 in the service layer; it never touches
+    the DB directly. Leave blank / omit to keep the existing password.
+    """
 
     email: EmailStr | None = None
     role: Role | None = None
@@ -73,6 +78,24 @@ class UpdateUserRequest(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     phone: str | None = None
+    password: str | None = Field(
+        default=None,
+        min_length=8,
+        description="New password. Min 8 chars, 1 uppercase, 1 special character.",
+    )
+
+    @field_validator("password")
+    @classmethod
+    def password_complexity(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        if not re.search(r"[A-Z]", v):
+            msg = "Password must contain at least one uppercase letter"
+            raise ValueError(msg)
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", v):
+            msg = "Password must contain at least one special character (!@#$%^&*...)"
+            raise ValueError(msg)
+        return v
 
     model_config = {
         "json_schema_extra": {

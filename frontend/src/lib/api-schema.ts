@@ -951,6 +951,10 @@ export interface components {
         /**
          * UpdateUserRequest
          * @description PATCH /api/v1/users/{user_id} — partial update.
+         *
+         *     super_admin can reset a user's password by including ``password`` here.
+         *     Plaintext is hashed with argon2 in the service layer; it never touches
+         *     the DB directly. Leave blank / omit to keep the existing password.
          * @example {
          *       "first_name": "Dana",
          *       "is_active": true,
@@ -967,6 +971,11 @@ export interface components {
             is_active?: boolean | null;
             /** Last Name */
             last_name?: string | null;
+            /**
+             * Password
+             * @description New password. Min 8 chars, 1 uppercase, 1 special character.
+             */
+            password?: string | null;
             /** Phone */
             phone?: string | null;
             role?: components["schemas"]["Role"] | null;

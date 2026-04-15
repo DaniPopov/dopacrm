@@ -1,8 +1,10 @@
 import { useState } from "react"
 import CreateUserForm from "@/features/users/CreateUserForm"
+import EditUserDialog from "@/features/users/EditUserDialog"
 import { useTenantUsers } from "@/features/users/hooks"
 import type { User } from "@/features/users/types"
 
+/** Hebrew labels for each role. Used in the role badge. */
 const ROLE_LABELS: Record<string, string> = {
   super_admin: "מנהל על",
   owner: "בעלים",
@@ -12,11 +14,17 @@ const ROLE_LABELS: Record<string, string> = {
 
 /**
  * Users management section inside the tenant detail page.
- * Shows the list of gym staff and opens an inline create form.
+ *
+ * Shows the list of gym staff with their avatar, name, email, and
+ * role badge. super_admin can:
+ * - Open an inline create form via "+ הוסף משתמש"
+ * - Click a user's row "עריכה" to open EditUserDialog and change
+ *   name/email/phone/role/is_active/password
  */
 export default function TenantUsersSection({ tenantId }: { tenantId: string }) {
   const { data: users, isLoading, error } = useTenantUsers(tenantId)
   const [creating, setCreating] = useState(false)
+  const [editing, setEditing] = useState<User | null>(null)
 
   return (
     <section>
@@ -66,15 +74,27 @@ export default function TenantUsersSection({ tenantId }: { tenantId: string }) {
       ) : (
         <div className="space-y-2">
           {users.map((u) => (
-            <UserRow key={u.id} user={u} />
+            <UserRow key={u.id} user={u} onEdit={() => setEditing(u)} />
           ))}
         </div>
+      )}
+
+      {editing && (
+        <EditUserDialog
+          user={editing}
+          tenantId={tenantId}
+          onClose={() => setEditing(null)}
+        />
       )}
     </section>
   )
 }
 
-function UserRow({ user }: { user: User }) {
+/**
+ * One user in the list: avatar + name + email + role badge + inactive
+ * badge (if disabled) + "עריכה" button on the left edge.
+ */
+function UserRow({ user, onEdit }: { user: User; onEdit: () => void }) {
   const displayName =
     [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email.split("@")[0]
 
@@ -95,10 +115,20 @@ function UserRow({ user }: { user: User }) {
           לא פעיל
         </span>
       )}
+      <button
+        onClick={onEdit}
+        className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+      >
+        עריכה
+      </button>
     </div>
   )
 }
 
+/**
+ * Initials for the avatar: first letter of first_name + last_name if
+ * set, otherwise first letter of the email local-part. Always uppercase.
+ */
 function initialOf(user: User): string {
   const first = user.first_name?.charAt(0) ?? ""
   const last = user.last_name?.charAt(0) ?? ""

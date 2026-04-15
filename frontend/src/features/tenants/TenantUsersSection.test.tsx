@@ -13,6 +13,13 @@ vi.mock("@/features/users/hooks", () => ({
     isPending: false,
     error: null,
   })),
+  // EditUserDialog uses this — a no-op stub is enough for opening the dialog
+  useUpdateUser: vi.fn(() => ({
+    mutate: vi.fn(),
+    reset: vi.fn(),
+    isPending: false,
+    error: null,
+  })),
 }))
 
 import { useTenantUsers } from "@/features/users/hooks"
@@ -82,5 +89,16 @@ describe("TenantUsersSection", () => {
     // Form panel appears with its own headline + submit button
     expect(screen.getByText("משתמש חדש")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "הוסף משתמש" })).toBeInTheDocument()
+  })
+
+  it("opens the EditUserDialog when a row's עריכה button is clicked", async () => {
+    mockUsers.mockReturnValue({ data: [fakeUser], isLoading: false, error: null } as any)
+    const user = userEvent.setup()
+    renderSection()
+    await user.click(screen.getByRole("button", { name: "עריכה" }))
+    // Dialog headline appears
+    expect(screen.getByText("עריכת משתמש")).toBeInTheDocument()
+    // And its own save button
+    expect(screen.getByRole("button", { name: "שמור שינויים" })).toBeInTheDocument()
   })
 })

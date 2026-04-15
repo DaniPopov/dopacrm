@@ -122,6 +122,9 @@ seed-test-gym-dev:  ## Create a test gym + owner/staff/sales users (SLUG=<slug>)
 list-tables-dev:  ## List all tables in the dev database
 	@$(COMPOSE_DEV) exec postgres psql -U dopacrm -d dopacrm -c "\dt"
 
+psql-dev:  ## Drop into an interactive psql session against the dev database
+	@$(COMPOSE_DEV) exec -it postgres psql -U dopacrm -d dopacrm
+
 clean-database-dev:  ## Truncate tables (TABLE=<name> or TABLE=all — preserves saas_plans + alembic)
 	@if [ -z "$$TABLE" ]; then \
 		echo "Error: TABLE must be set."; \

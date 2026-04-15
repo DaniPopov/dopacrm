@@ -112,8 +112,20 @@ class UserService:
         user_id: UUID,
         **fields,
     ) -> User:
-        """Partial update — only provided fields are changed."""
+        """Partial update — only provided fields are changed.
+
+        If ``password`` is provided, it's hashed with argon2 and stored as
+        ``password_hash``. The plaintext never touches the repository. Pass
+        ``password=None`` (or omit) to leave the existing password alone.
+        """
         await self.get_user(user_id)  # raises UserNotFoundError if missing
+
+        # Map plaintext password → hashed column name
+        if "password" in fields:
+            pwd = fields.pop("password")
+            if pwd is not None:
+                fields["password_hash"] = hash_password(pwd)
+
         updated = await self._repo.update(user_id, **fields)
         await self._session.commit()
         return updated
