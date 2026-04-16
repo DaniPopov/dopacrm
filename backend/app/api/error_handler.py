@@ -33,6 +33,9 @@ _STATUS_MAP: dict[str, int] = {
     "MEMBER_NOT_FOUND": 404,
     "MEMBER_ALREADY_EXISTS": 409,
     "MEMBER_INVALID_TRANSITION": 409,
+    # Class
+    "CLASS_NOT_FOUND": 404,
+    "CLASS_ALREADY_EXISTS": 409,
 }
 
 #: Fallback for unmapped codes.

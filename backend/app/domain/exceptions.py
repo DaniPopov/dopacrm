@@ -73,6 +73,24 @@ class TenantSuspendedError(AppError):
         super().__init__(f"Tenant suspended: {tenant_id}", "TENANT_SUSPENDED")
 
 
+# ── Class ────────────────────────────────────────────────────────────────────
+class GymClassNotFoundError(AppError):
+    """No class type matches the given id in the caller's tenant."""
+
+    def __init__(self, class_id: str) -> None:
+        super().__init__(f"Class not found: {class_id}", "CLASS_NOT_FOUND")
+
+
+class GymClassAlreadyExistsError(AppError):
+    """A class with this name already exists in this tenant."""
+
+    def __init__(self, name: str) -> None:
+        super().__init__(
+            f"Class with this name already exists in this tenant: {name}",
+            "CLASS_ALREADY_EXISTS",
+        )
+
+
 # ── Member ───────────────────────────────────────────────────────────────────
 class MemberNotFoundError(AppError):
     """No member matches the given id in the caller's tenant."""

@@ -447,6 +447,22 @@ If Mongo stays empty through Phases 2-3, it gets removed from the stack in a lat
 - Every query is scoped by `tenant_id`, extracted from JWT
 - Tenant isolation is enforced at the **service layer** — services always receive `tenant_id` and pass it to repositories
 - Redis caching is namespaced by `tenant_id`
+- **One tenant = one gym** in the current model. All fields on `tenants` (slug, name, address, phone, email) describe a single physical location.
+
+### Multi-location gyms — v1 workaround, future consolidation
+
+A chain with 3 branches (e.g. Holmes Place TLV + Haifa + Ramat Gan) onboards today as **3 separate tenants** — each with its own members, staff, classes, plans, billing. Full data isolation between branches, which is actually the safer default (TLV's staff shouldn't accidentally see Haifa's members).
+
+**What's deferred until a real multi-location customer asks:**
+
+- **Company-level parent tenant.** A `parent_tenant_id` FK on `tenants` would group the 3 branches under one "company" tenant for consolidated reporting and a "company owner" role with read access across branches.
+- **Cross-tenant dashboards.** "Total revenue across all branches" roll-up.
+- **Shared member records.** Today a member training at both TLV and Haifa is two rows. Deduplication via `company-level members` is deferred.
+- **Unified billing.** Possibly consolidated to the parent tenant, or kept per-branch.
+
+**Why defer:** the 100 possible "consolidated" features are ambiguous without a real customer telling us which they actually need. The workaround (N tenants) is shippable today and already gives proper data isolation. When a real multi-location customer arrives, their specific needs inform the design.
+
+**What's not blocked:** nothing in the current schema prevents adding `parent_tenant_id` later — it's a non-breaking migration.
 
 ---
 
