@@ -45,6 +45,16 @@ export type GymClass = Schemas["GymClassResponse"]
 export type CreateGymClassRequest = Schemas["CreateGymClassRequest"]
 export type UpdateGymClassRequest = Schemas["UpdateGymClassRequest"]
 
+// Membership Plans + entitlements
+export type PlanType = Schemas["PlanType"]
+export type BillingPeriod = Schemas["BillingPeriod"]
+export type ResetPeriod = Schemas["ResetPeriod"]
+export type MembershipPlan = Schemas["PlanResponse"]
+export type CreatePlanRequest = Schemas["CreatePlanRequest"]
+export type UpdatePlanRequest = Schemas["UpdatePlanRequest"]
+export type PlanEntitlement = Schemas["EntitlementResponseSchema"]
+export type PlanEntitlementInput = Schemas["EntitlementInputSchema"]
+
 // Users
 export type CreateUserRequest = Schemas["CreateUserRequest"]
 export type UpdateUserRequest = Schemas["UpdateUserRequest"]

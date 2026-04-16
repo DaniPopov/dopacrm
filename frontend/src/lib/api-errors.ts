@@ -120,6 +120,26 @@ export function humanizeClassError(err: unknown): string {
 }
 
 /**
+ * Overrides for membership-plan CRUD errors (create / update / deactivate).
+ *
+ * The backend returns PLAN_INVALID_SHAPE (422) for bad combos like
+ * one_time + no duration_days, or unlimited + quantity. We collapse all
+ * 422s into one generic message — the form itself guides the owner to
+ * valid combinations, so a detailed field-level error isn't useful.
+ */
+export function humanizePlanError(err: unknown): string {
+  if (err instanceof ApiError || (err instanceof Error && "status" in err)) {
+    const status = (err as ApiError).status
+    if (status === 403) return "רק בעלים יכולים לערוך מסלולים"
+    if (status === 404) return "המסלול לא נמצא"
+    if (status === 409) return "מסלול בשם זה כבר קיים בחדר הכושר"
+    if (status === 422) return "הפרטים שהוזנו אינם תקינים, בדקו את הטופס"
+    return genericMessage(status)
+  }
+  return "אירעה שגיאה בשמירת המסלול"
+}
+
+/**
  * Overrides for user CRUD errors (create/update/delete).
  * Call this from the user form catch block.
  */

@@ -8,6 +8,8 @@ import MemberListPage from "@/features/members/MemberListPage"
 import MemberDetailPage from "@/features/members/MemberDetailPage"
 import ClassListPage from "@/features/classes/ClassListPage"
 import ClassDetailPage from "@/features/classes/ClassDetailPage"
+import PlanListPage from "@/features/plans/PlanListPage"
+import PlanDetailPage from "@/features/plans/PlanDetailPage"
 import ProtectedRoute from "@/components/layout/ProtectedRoute"
 import RequireFeature from "@/components/layout/RequireFeature"
 import DashboardLayout from "@/components/layout/DashboardLayout"
@@ -38,6 +40,12 @@ export default function App() {
           <Route element={<RequireFeature feature="classes" />}>
             <Route path="/classes" element={<ClassListPage />} />
             <Route path="/classes/:id" element={<ClassDetailPage />} />
+          </Route>
+
+          {/* Gym-scoped: membership plans. Tenant users read; owner mutates. */}
+          <Route element={<RequireFeature feature="plans" />}>
+            <Route path="/plans" element={<PlanListPage />} />
+            <Route path="/plans/:id" element={<PlanDetailPage />} />
           </Route>
         </Route>
       </Route>

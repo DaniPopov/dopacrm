@@ -271,6 +271,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List membership plans
+         * @description Lists plans in the caller's tenant (any tenant user can read). Entitlements are eager-loaded. Use ``include_inactive=true`` to see deactivated plans.
+         */
+        get: operations["list_plans_api_v1_plans_get"];
+        put?: never;
+        /**
+         * Create a membership plan
+         * @description Owner-only. Creates a plan + its entitlement rules atomically. Shape is validated (one_time vs recurring, entitlement quantity vs reset_period) before the DB sees it.
+         */
+        post: operations["create_plan_api_v1_plans_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plans/{plan_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a plan by ID */
+        get: operations["get_plan_api_v1_plans__plan_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a plan (partial)
+         * @description Owner-only. Omit ``entitlements`` to leave them alone; pass ``[]`` to clear all rules; pass a list to REPLACE the full set. Shape re-validated on update.
+         */
+        patch: operations["update_plan_api_v1_plans__plan_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/plans/{plan_id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Re-activate a deactivated plan
+         * @description Owner-only.
+         */
+        post: operations["activate_plan_api_v1_plans__plan_id__activate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plans/{plan_id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deactivate a plan (soft)
+         * @description Owner-only. Existing subscriptions keep working; new ones can't reference this plan.
+         */
+        post: operations["deactivate_plan_api_v1_plans__plan_id__deactivate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tenants": {
         parameters: {
             query?: never;
@@ -506,6 +591,12 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * BillingPeriod
+         * @description How often the plan bills.
+         * @enum {string}
+         */
+        BillingPeriod: "monthly" | "quarterly" | "yearly" | "one_time";
         /** Body_upload_logo_api_v1_uploads_logo_post */
         Body_upload_logo_api_v1_uploads_logo_post: {
             /** File */
@@ -581,6 +672,56 @@ export interface components {
              * @description Unique within tenant
              */
             phone: string;
+        };
+        /**
+         * CreatePlanRequest
+         * @description POST /api/v1/plans — create a plan in the caller's tenant.
+         * @example {
+         *       "billing_period": "monthly",
+         *       "currency": "ILS",
+         *       "description": "3 שיעורים קבוצתיים + אימון אישי אחד בשבוע",
+         *       "entitlements": [
+         *         {
+         *           "quantity": 3,
+         *           "reset_period": "weekly"
+         *         }
+         *       ],
+         *       "name": "חודשי — 3 קבוצתי + 1 אישי",
+         *       "price_cents": 45000,
+         *       "type": "recurring"
+         *     }
+         */
+        CreatePlanRequest: {
+            billing_period: components["schemas"]["BillingPeriod"];
+            /**
+             * Currency
+             * @default ILS
+             */
+            currency: string;
+            /** Custom Attrs */
+            custom_attrs?: {
+                [key: string]: unknown;
+            };
+            /** Description */
+            description?: string | null;
+            /**
+             * Duration Days
+             * @description Required for one_time plans; NULL for recurring.
+             */
+            duration_days?: number | null;
+            /**
+             * Entitlements
+             * @description Access rules. Empty list = unlimited any class. Otherwise each rule specifies a class (or null=any) + quota + reset cadence.
+             */
+            entitlements?: components["schemas"]["EntitlementInputSchema"][];
+            /**
+             * Name
+             * @description Unique within tenant
+             */
+            name: string;
+            /** Price Cents */
+            price_cents: number;
+            type: components["schemas"]["PlanType"];
         };
         /**
          * CreateTenantRequest
@@ -710,6 +851,49 @@ export interface components {
              * @description Required for owner/staff/sales. Null for super_admin.
              */
             tenant_id?: string | null;
+        };
+        /**
+         * EntitlementInputSchema
+         * @description One entitlement rule in a plan.
+         */
+        EntitlementInputSchema: {
+            /**
+             * Class Id
+             * @description FK to classes.id in the same tenant. Null = 'any class'.
+             */
+            class_id?: string | null;
+            /**
+             * Quantity
+             * @description How many entries. Must be NULL when reset_period='unlimited'; required otherwise.
+             */
+            quantity?: number | null;
+            reset_period: components["schemas"]["ResetPeriod"];
+        };
+        /**
+         * EntitlementResponseSchema
+         * @description Entitlement as returned to the frontend.
+         */
+        EntitlementResponseSchema: {
+            /** Class Id */
+            class_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /** Quantity */
+            quantity: number | null;
+            reset_period: components["schemas"]["ResetPeriod"];
         };
         /**
          * FreezeMemberRequest
@@ -868,6 +1052,81 @@ export interface components {
          */
         MemberStatus: "active" | "frozen" | "cancelled" | "expired";
         /**
+         * PlanResponse
+         * @description Plan as returned to the frontend, with entitlements eager-loaded.
+         * @example {
+         *       "billing_period": "monthly",
+         *       "created_at": "2026-04-16T12:00:00+03:00",
+         *       "currency": "ILS",
+         *       "custom_attrs": {},
+         *       "description": "3 שיעורים קבוצתיים + אימון אישי אחד בשבוע",
+         *       "entitlements": [
+         *         {
+         *           "created_at": "2026-04-16T12:00:00+03:00",
+         *           "id": "33333333-3333-3333-3333-333333333333",
+         *           "plan_id": "22222222-2222-2222-2222-222222222222",
+         *           "quantity": 3,
+         *           "reset_period": "weekly"
+         *         }
+         *       ],
+         *       "id": "22222222-2222-2222-2222-222222222222",
+         *       "is_active": true,
+         *       "name": "חודשי — 3 קבוצתי + 1 אישי",
+         *       "price_cents": 45000,
+         *       "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
+         *       "type": "recurring",
+         *       "updated_at": "2026-04-16T12:00:00+03:00"
+         *     }
+         */
+        PlanResponse: {
+            billing_period: components["schemas"]["BillingPeriod"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Currency */
+            currency: string;
+            /** Custom Attrs */
+            custom_attrs: {
+                [key: string]: unknown;
+            };
+            /** Description */
+            description: string | null;
+            /** Duration Days */
+            duration_days: number | null;
+            /** Entitlements */
+            entitlements: components["schemas"]["EntitlementResponseSchema"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Name */
+            name: string;
+            /** Price Cents */
+            price_cents: number;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            type: components["schemas"]["PlanType"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * PlanType
+         * @description Recurring billing vs one-shot purchase.
+         * @enum {string}
+         */
+        PlanType: "recurring" | "one_time";
+        /**
          * PlatformStatsResponse
          * @description Aggregate counts across every tenant on the platform.
          *
@@ -892,6 +1151,12 @@ export interface components {
             /** Total Users */
             total_users: number;
         };
+        /**
+         * ResetPeriod
+         * @description How often an entitlement quota resets.
+         * @enum {string}
+         */
+        ResetPeriod: "weekly" | "monthly" | "billing_period" | "never" | "unlimited";
         /**
          * Role
          * @description User role hierarchy.
@@ -1077,6 +1342,41 @@ export interface components {
             notes?: string | null;
             /** Phone */
             phone?: string | null;
+        };
+        /**
+         * UpdatePlanRequest
+         * @description PATCH /api/v1/plans/{id} — partial update.
+         *
+         *     Omitting ``entitlements`` leaves existing rules untouched.
+         *     Passing ``entitlements: []`` clears all rules (plan becomes
+         *     unlimited any-class). Passing a list REPLACES the full set.
+         * @example {
+         *       "description": "עודכן",
+         *       "price_cents": 50000
+         *     }
+         */
+        UpdatePlanRequest: {
+            billing_period?: components["schemas"]["BillingPeriod"] | null;
+            /** Currency */
+            currency?: string | null;
+            /** Custom Attrs */
+            custom_attrs?: {
+                [key: string]: unknown;
+            } | null;
+            /** Description */
+            description?: string | null;
+            /** Duration Days */
+            duration_days?: number | null;
+            /**
+             * Entitlements
+             * @description None leaves existing entitlements; a list REPLACES them.
+             */
+            entitlements?: components["schemas"]["EntitlementInputSchema"][] | null;
+            /** Name */
+            name?: string | null;
+            /** Price Cents */
+            price_cents?: number | null;
+            type?: components["schemas"]["PlanType"] | null;
         };
         /**
          * UpdateTenantRequest
@@ -1748,6 +2048,200 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MemberResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_plans_api_v1_plans_get: {
+        parameters: {
+            query?: {
+                include_inactive?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_plan_api_v1_plans_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_plan_api_v1_plans__plan_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_plan_api_v1_plans__plan_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePlanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    activate_plan_api_v1_plans__plan_id__activate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deactivate_plan_api_v1_plans__plan_id__deactivate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanResponse"];
                 };
             };
             /** @description Validation Error */
