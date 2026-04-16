@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react"
+import PasswordInput from "@/components/ui/password-input"
 import { humanizeUserError } from "@/lib/api-errors"
 import { useUpdateUser } from "./hooks"
 import type { Role, UpdateUserRequest, User } from "./types"
@@ -154,8 +155,7 @@ export default function EditUserDialog({
               helper="השאירו ריק לשמירת הסיסמה הנוכחית. מינימום 8 תווים, אות גדולה וסימן מיוחד"
               className="sm:col-span-2"
             >
-              <input
-                type="password"
+              <PasswordInput
                 value={form.password}
                 onChange={(e) => set("password", e.target.value)}
                 placeholder="(ללא שינוי)"

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react"
+import PasswordInput from "@/components/ui/password-input"
 import { humanizeUserError } from "@/lib/api-errors"
 import { useCreateUser } from "./hooks"
 import type { Role } from "./types"
@@ -96,8 +97,7 @@ export default function CreateUserForm({
           />
         </Field>
         <Field label="סיסמה *" helper="מינימום 8 תווים, אות גדולה וסימן מיוחד">
-          <input
-            type="password"
+          <PasswordInput
             required
             minLength={8}
             value={form.password}
