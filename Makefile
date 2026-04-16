@@ -51,11 +51,13 @@ rebuild-dev:  ## Build images from scratch (--no-cache)
 restart-dev:  ## Restart running services
 	$(COMPOSE_DEV) restart
 
-stop-dev:  ## Stop services (containers preserved)
+stop-dev:  ## Stop services (containers preserved) + kill any legacy Assets-Agent orphans
 	$(COMPOSE_DEV) stop
+	@docker ps -aq --filter "name=assets-agent-" | xargs -r docker rm -f > /dev/null 2>&1 || true
 
-down-dev:  ## Stop and remove containers (volumes preserved)
-	$(COMPOSE_DEV) down
+down-dev:  ## Stop and remove containers (volumes preserved) + remove orphans
+	$(COMPOSE_DEV) down --remove-orphans
+	@docker ps -aq --filter "name=assets-agent-" | xargs -r docker rm -f > /dev/null 2>&1 || true
 
 ##@ Per-service (make <action>-<service>-dev)
 
