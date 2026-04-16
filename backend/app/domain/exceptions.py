@@ -73,6 +73,36 @@ class TenantSuspendedError(AppError):
         super().__init__(f"Tenant suspended: {tenant_id}", "TENANT_SUSPENDED")
 
 
+# ── Membership Plan ──────────────────────────────────────────────────────────
+class MembershipPlanNotFoundError(AppError):
+    """No plan matches the given id in the caller's tenant."""
+
+    def __init__(self, plan_id: str) -> None:
+        super().__init__(f"Plan not found: {plan_id}", "PLAN_NOT_FOUND")
+
+
+class MembershipPlanAlreadyExistsError(AppError):
+    """A plan with this name already exists in this tenant."""
+
+    def __init__(self, name: str) -> None:
+        super().__init__(
+            f"Plan with this name already exists in this tenant: {name}",
+            "PLAN_ALREADY_EXISTS",
+        )
+
+
+class InvalidPlanShapeError(AppError):
+    """Plan fields don't satisfy the shape rules.
+
+    Examples: one_time plan without duration_days, entitlement with
+    reset='unlimited' but quantity provided, class_id that belongs to
+    a different tenant.
+    """
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(f"Invalid plan shape: {reason}", "PLAN_INVALID_SHAPE")
+
+
 # ── Class ────────────────────────────────────────────────────────────────────
 class GymClassNotFoundError(AppError):
     """No class type matches the given id in the caller's tenant."""

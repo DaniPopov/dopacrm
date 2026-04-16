@@ -11,6 +11,10 @@ ORM class here.
 from app.adapters.storage.postgres.database import Base, async_session_factory, get_engine
 from app.adapters.storage.postgres.gym_class.models import GymClassORM
 from app.adapters.storage.postgres.member.models import MemberORM
+from app.adapters.storage.postgres.membership_plan.models import (
+    MembershipPlanORM,
+    PlanEntitlementORM,
+)
 from app.adapters.storage.postgres.refresh_token.models import RefreshTokenORM
 from app.adapters.storage.postgres.saas_plan.models import SaasPlanORM
 from app.adapters.storage.postgres.tenant.models import TenantORM
@@ -20,6 +24,8 @@ __all__ = [
     "Base",
     "GymClassORM",
     "MemberORM",
+    "MembershipPlanORM",
+    "PlanEntitlementORM",
     "RefreshTokenORM",
     "SaasPlanORM",
     "TenantORM",

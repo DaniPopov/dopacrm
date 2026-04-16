@@ -36,6 +36,10 @@ _STATUS_MAP: dict[str, int] = {
     # Class
     "CLASS_NOT_FOUND": 404,
     "CLASS_ALREADY_EXISTS": 409,
+    # Membership Plan
+    "PLAN_NOT_FOUND": 404,
+    "PLAN_ALREADY_EXISTS": 409,
+    "PLAN_INVALID_SHAPE": 422,
 }
 
 #: Fallback for unmapped codes.

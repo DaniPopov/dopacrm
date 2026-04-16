@@ -215,6 +215,9 @@ load-test-tenants:  ## Load test tenants CRUD (Locust → http://localhost:8089)
 load-test-classes:  ## Load test classes CRUD (needs: make seed-test-gym-dev SLUG=loadtest)
 	uv run locust -f loadtests/test_classes_load.py --host=http://localhost:8000
 
+load-test-plans:  ## Load test plans CRUD (needs: make seed-test-gym-dev SLUG=loadtest)
+	uv run locust -f loadtests/test_plans_load.py --host=http://localhost:8000
+
 ##@ Info
 
 list-services-dev:  ## List all services and available per-service commands
