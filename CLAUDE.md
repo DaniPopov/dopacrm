@@ -33,13 +33,15 @@
 - Domain is **pure** — Pydantic entities + business rules. Zero external dependencies.
 - Adapters are **isolated** — repos translate ORM ↔ domain entities at the boundary.
 - Failed tasks go to dead letter queue — never silently disappear
-- Postgres is the **default** database for transactional entities. MongoDB holds tenant config (feature flags, limits, plan settings) and document-shaped data. Flexibility within Postgres entities uses **JSONB columns** (`plans.custom_attrs`, `members.custom_fields`).
+- **Postgres-first for every new feature.** MongoDB is provisioned in the stack but currently unused — the original design reserved it for `tenant_configs`, activity logs, audit trails, etc., but Postgres JSONB handles every case we've hit cleanly with full FK integrity, transactions, and easier GROUP BY reporting. Don't add new Mongo collections without a specific use case that Postgres can't handle (genuinely-free-shape webhook archives, massive append-only event streams — neither of which we have yet). If those never materialize, Mongo gets removed from the stack in a future cleanup.
+- **When we'll revisit Mongo:** most likely candidate is activity/audit logs once write volume puts real pressure on the main DB. Until we measure that pressure (not guess at it), logs stay in Postgres for transactional guarantees with the action they describe — an audit log that can be dropped isn't really an audit log. Outbox pattern to make Mongo writes atomic is more infrastructure than just writing to Postgres.
+- Flexibility within Postgres entities uses **JSONB columns** (`members.custom_fields`, `membership_plans.custom_attrs`). Structured, queryable concepts (class passes, attendance, entitlements) get real tables.
 
 ## Data Split
 
-- **PostgreSQL:** `tenants`, `users`, `saas_plans`, `members`, `membership_plans`, `subscriptions`, `payments`, `leads`, `refresh_tokens` — plus JSONB columns for per-tenant config, per-plan custom attributes, per-member custom fields
-- **MongoDB:** `tenant_configs` (feature flags, limits, settings per gym), `activity_logs`, `audit_trails`, `lead_activities`, `integration_payloads`
-- **Redis:** config cache, session cache, rate limits, quotas
+- **PostgreSQL (default for everything):** `tenants`, `users`, `saas_plans`, `members`, `membership_plans`, `subscriptions`, `payments`, `leads`, `classes`, `plan_entitlements`, `refresh_tokens` — plus JSONB columns for per-member custom fields and per-plan custom attrs.
+- **MongoDB (provisioned, unused):** originally intended for `tenant_configs`, activity logs, audit trails, integration payloads. None of these are live. New features default to Postgres.
+- **Redis:** rate limits, JWT blacklist, cache.
 
 ## Roles
 

@@ -87,11 +87,10 @@ A tenant is a gym. Everything else belongs to a tenant.
 - `trial_ends_at = now + 14 days`
 - `saas_plan_id = default plan id` — auto-assigned via `SaasPlanRepository.find_default()`
 
-**Tenant config** is stored in **MongoDB** (`tenant_configs` collection, keyed by `tenant_id`). Contains feature flags, operational limits, and plan-specific settings:
+**Tenant config** (feature flags, operational limits, and plan-specific settings) — originally planned for a Mongo `tenant_configs` collection, but revised: lives in a JSONB column on the `tenants` table (or a dedicated `tenant_configs` Postgres table if it grows). Same shape, same seed-from-saas-plan flow, but keeps tenant config transactional with the rest of the tenant row. Example shape:
 
 ```json
 {
-  "tenant_id": "550e8400-...",
   "limits": {
     "max_members": 250,
     "max_staff_users": 5,
@@ -335,7 +334,7 @@ Prospective members moving through a pipeline.
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 
-**Lead activity feed:** stored in **MongoDB** (`lead_activities` collection):
+**Lead activity feed:** Postgres table `lead_activities` (revised from the original Mongo design — uniform shape, FKs to leads/users, queried WITH the lead). Columns: `id`, `tenant_id`, `lead_id`, `type`, `note`, `created_by`, `created_at`:
 ```json
 {
   "lead_id": "...",
@@ -394,7 +393,7 @@ Tenant-scoped. Each gym sees only their own data.
 
 #### Customizable dashboards (future)
 
-Gym owners will be able to choose which widgets to show, set date ranges, and arrange layout. Config stored in MongoDB (`user_dashboard_configs`):
+Gym owners will be able to choose which widgets to show, set date ranges, and arrange layout. Config stored in a Postgres `user_dashboard_configs` table (originally planned for Mongo — revised, see §4):
 
 ```json
 {
@@ -422,23 +421,23 @@ All core business entities: `tenants`, `saas_plans`, `users`, `members`, `member
 
 JSONB columns for per-entity flexibility: `membership_plans.custom_attrs`, `members.custom_fields`.
 
-### MongoDB (config + document-shaped data)
+### MongoDB — provisioned but currently unused
 
-- `tenant_configs` — per-gym feature flags, limits, settings
-- `activity_logs` — append-only system events per tenant
-- `lead_activities` — activity feed per lead (calls, notes, status changes)
-- `audit_trails` — who changed what, when
-- `integration_payloads` — raw webhook payloads from external services (Stripe, etc.)
+The original design reserved Mongo for `tenant_configs`, activity logs, audit trails, lead activities, integration payloads. **As of 2026-04-16, none of these are live.** Every case we've hit is better served by Postgres with either a real table or a JSONB column — FK integrity, transactions, and GROUP BY reporting all matter more than schema-less flexibility at our scale.
+
+**Default for new features: Postgres.** Don't add Mongo collections unless a use case genuinely requires it (truly free-shape third-party webhook archives, massive append-only event streams). Apply this rubric:
+
+- Data FKs into Postgres entities? → Postgres.
+- Shape is mostly uniform? → Postgres.
+- Ingestion rate is modest (single-digit thousands / day)? → Postgres handles it.
+
+If Mongo stays empty through Phases 2-3, it gets removed from the stack in a later cleanup.
 
 ### Redis
 
-- Config cache (hot-path reads of tenant config)
-- Session / rate limit counters
-- Temporary state (e.g., email verification tokens)
-
-### Cross-database identity
-
-Mongo documents reference Postgres entities by **UUID** (`tenant_id`, `lead_id`, `member_id`). Never by slug or name.
+- Rate limit counters
+- JWT blacklist (logout invalidation)
+- Config cache (when/if tenant config becomes a hot path)
 
 ---
 
@@ -448,7 +447,6 @@ Mongo documents reference Postgres entities by **UUID** (`tenant_id`, `lead_id`,
 - Every query is scoped by `tenant_id`, extracted from JWT
 - Tenant isolation is enforced at the **service layer** — services always receive `tenant_id` and pass it to repositories
 - Redis caching is namespaced by `tenant_id`
-- MongoDB collections include `tenant_id` on every document
 
 ---
 
@@ -564,7 +562,7 @@ See [`docs/frontend.md`](./frontend.md) for the full architecture and convention
 - **UUIDs** as primary keys everywhere
 - **Timestamps** as `timestamptz`, stored in UTC, displayed in tenant timezone
 - **Money** in cents (`int`), with a `currency` column (ISO 4217)
-- **Soft delete**: not used in v1. Real deletes. Activity/audit logs in MongoDB preserve history.
+- **Soft delete via status flags** (members, plans, tenants → `status=cancelled`/`is_active=false`). No hard deletes in v1 — activity/audit logs (Postgres tables) preserve history.
 - **Enums** as `text` with `CHECK` constraints, not Postgres `ENUM` types
 
 ---

@@ -1,15 +1,12 @@
 # Feature: Classes, Class Passes & Attendance
 
-> **Status:** Planned. Not yet implemented. Plan for review.
+> **Status:** Partially planned — the three tables (`classes`, `class_passes`, `attendance`) are designed here but now SHIP INCREMENTALLY rather than together (revised 2026-04-16):
 >
-> **Order:** Build AFTER Members. This feature depends on `members.id`.
+> 1. **`classes` catalog (NEXT)** — ~400 lines, half-day backend. Ships FIRST so Membership Plans can FK into it for proper entitlements.
+> 2. **`class_passes`** — sold to a member. Builds on `classes` + `members`.
+> 3. **`attendance`** — check-in enforcement that reads `subscriptions.plan.entitlements` and/or `class_passes` to decide what's allowed.
 >
-> This is one combined doc covering three closely-coupled tables that ship together:
-> 1. `classes` — what the gym offers
-> 2. `class_passes` — what a member bought
-> 3. `attendance` — when a member used a pass
->
-> They could be split, but the data only makes sense together.
+> Why incremental: Plans wants a proper `plan_entitlements` sub-table with FK to `classes`. Shipping classes-catalog first unlocks that clean design. Passes + attendance come later — after Subscriptions + Payments exist and the check-in flow has real data to enforce against.
 
 ---
 
