@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Outlet, useLocation } from "react-router-dom"
 import { useDevice } from "@/hooks/useDevice"
+import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed"
 import Sidebar from "./Sidebar"
 
 const dopaIcon = "/dopa-icon.png"
@@ -8,23 +9,28 @@ const dopaIcon = "/dopa-icon.png"
 /**
  * Dashboard shell.
  *
- * - Desktop / tablet: persistent fixed sidebar on the right (RTL layout),
- *   main content gets a matching margin.
- * - Mobile: top bar with hamburger that TOGGLES the drawer (opens if
- *   closed, closes if open). Drawer auto-closes on route change so it
- *   doesn't linger after tapping a link. ESC key also closes it.
+ * - Desktop / tablet: persistent sidebar on the right (RTL). Can be
+ *   collapsed to an icon-only 64px rail via the chevron toggle in the
+ *   sidebar header. State persists via localStorage (see
+ *   `useSidebarCollapsed`) so the preference sticks across reloads.
+ * - Mobile: top bar with a hamburger that toggles a drawer. ESC and
+ *   backdrop click also close.
+ *
+ * An app-level footer ("Developed by Dopamineo") sits at the bottom
+ * of the main column on all layouts.
  */
 export default function DashboardLayout() {
   const { isMobile } = useDevice()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [collapsed, toggleCollapsed] = useSidebarCollapsed()
   const location = useLocation()
 
-  // Close drawer whenever the route changes (user tapped a link).
+  // Close drawer whenever the route changes.
   useEffect(() => {
     setDrawerOpen(false)
   }, [location.pathname])
 
-  // ESC closes the drawer.
+  // ESC closes the mobile drawer.
   useEffect(() => {
     if (!drawerOpen) return
     const onKey = (e: KeyboardEvent) => {
@@ -47,7 +53,7 @@ export default function DashboardLayout() {
           onCloseDrawer={() => setDrawerOpen(false)}
         />
       ) : (
-        <DesktopLayout />
+        <DesktopLayout collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
       )}
     </div>
   )
@@ -55,16 +61,31 @@ export default function DashboardLayout() {
 
 /* ── Desktop / tablet ─────────────────────────────────────────── */
 
-function DesktopLayout() {
+function DesktopLayout({
+  collapsed,
+  onToggleCollapsed,
+}: {
+  collapsed: boolean
+  onToggleCollapsed: () => void
+}) {
+  // Match the sidebar width: w-56 (224px) expanded, w-16 (64px) collapsed
+  const sidebarWidthClass = collapsed ? "w-16" : "w-56"
+  const mainOffsetClass = collapsed ? "mr-16" : "mr-56"
+
   return (
     <>
-      <div className="fixed right-0 top-0 z-40 h-full w-56">
-        <Sidebar />
+      <div
+        className={`fixed right-0 top-0 z-40 h-full transition-all duration-200 ${sidebarWidthClass}`}
+      >
+        <Sidebar collapsed={collapsed} onToggleCollapse={onToggleCollapsed} />
       </div>
-      <div className="mr-56 flex-1">
-        <main className="mx-auto max-w-6xl px-8 py-8">
+      <div
+        className={`flex flex-1 flex-col transition-all duration-200 ${mainOffsetClass}`}
+      >
+        <main className="mx-auto w-full max-w-6xl flex-1 px-8 py-8">
           <Outlet />
         </main>
+        <AppFooter />
       </div>
     </>
   )
@@ -99,8 +120,7 @@ function MobileLayout({
         </div>
       </header>
 
-      {/* Drawer — absolute positioning pins it flush to the right edge,
-          regardless of flex/RTL quirks. */}
+      {/* Drawer — pinned flush to the right edge */}
       {drawerOpen && (
         <div
           className="fixed inset-0 z-50"
@@ -124,11 +144,32 @@ function MobileLayout({
       <main className="flex-1 px-4 py-6">
         <Outlet />
       </main>
+
+      <AppFooter />
     </div>
   )
 }
 
-/* ── Icons (inline SVG — no new dep) ──────────────────────────── */
+/* ── App footer ───────────────────────────────────────────────── */
+
+/**
+ * App-level footer pinned to the bottom of the main column.
+ * Renders the same on desktop and mobile — small dopa logo inline
+ * next to the "Dopamineo" wordmark.
+ */
+function AppFooter() {
+  return (
+    <footer className="border-t border-gray-100 bg-white px-4 py-3 text-xs text-gray-400">
+      <div className="flex items-center justify-center gap-1.5">
+        <img src={dopaIcon} alt="" className="h-4 w-4" />
+        <span className="font-semibold text-gray-500">Dopamineo</span>
+        <span>Developed by</span>
+      </div>
+    </footer>
+  )
+}
+
+/* ── Icons ────────────────────────────────────────────────────── */
 
 function HamburgerIcon() {
   return (

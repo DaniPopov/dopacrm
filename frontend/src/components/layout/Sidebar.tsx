@@ -2,22 +2,27 @@ import { NavLink } from "react-router-dom"
 import { useAuth } from "@/features/auth/auth-provider"
 import { canAccess, type Feature } from "@/features/auth/permissions"
 import type { User } from "@/features/auth/types"
+import { useTenant } from "@/features/tenants/hooks"
 
 const dopaIcon = "/dopa-icon.png"
 
 /**
  * Role-based sidebar navigation.
  *
- * Each nav item is tied to a Feature. Visibility is decided by
- * permissions.canAccess — NOT by role arrays. This way, when the
- * backend starts returning owner-configured tenant overrides,
- * the sidebar adapts automatically.
+ * Branding:
+ * - super_admin (no tenant) → shows the DopaCRM logo + name (platform view)
+ * - tenant user (owner/staff/sales) → shows their gym's logo + name,
+ *   falling back to DopaCRM defaults if the gym hasn't uploaded a logo
+ *   or until `useTenant` resolves.
  *
- * Layout:
- * - Desktop / tablet: persistent fixed sidebar (rendered by DashboardLayout)
- * - Mobile: rendered inside an overlay drawer (also by DashboardLayout)
+ * Collapse (desktop only):
+ * - When `collapsed=true`, the sidebar shrinks to icon-only (64px wide).
+ *   Labels, the brand name, the user banner text, and the logout label
+ *   all hide — icons remain for a compact rail.
+ * - The toggle button stays visible in both states.
  *
- * `onNavigate` lets the parent close the mobile drawer after a link click.
+ * Mobile: the drawer version doesn't collapse (it's either open or
+ * not). `DashboardLayout` controls that separately.
  */
 interface NavItem {
   to: string
@@ -42,48 +47,148 @@ const NAV_ITEMS: NavItem[] = [
   // { to: "/settings", label: "הגדרות", icon: "⚙️", feature: "settings" },
 ]
 
-export default function Sidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
+interface SidebarProps {
+  /** Called when a link is tapped — closes the drawer on mobile. */
+  onNavigate?: () => void
+  /** Desktop collapsed state. Ignored in the mobile drawer. */
+  collapsed?: boolean
+  /** Toggle collapsed ↔ expanded. Ignored when `collapsed` is undefined. */
+  onToggleCollapse?: () => void
+}
+
+export default function Sidebar({
+  onNavigate,
+  collapsed = false,
+  onToggleCollapse,
+}: SidebarProps = {}) {
   const { user, logout } = useAuth()
   const visibleItems = NAV_ITEMS.filter((item) => canAccess(user, item.feature))
 
+  // Tenant branding: fetch only when user is tenant-scoped
+  const tenantId = user?.tenant_id ?? ""
+  const { data: tenant } = useTenant(tenantId)
+
+  const brandLogo = tenant?.logo_presigned_url ?? dopaIcon
+  const brandName = tenant?.name ?? "DopaCRM"
+
   return (
-    <aside className="flex h-full w-56 flex-col border-l border-gray-200 bg-white">
-      {/* Logo */}
-      <div className="flex items-center gap-2.5 border-b border-gray-100 px-5 py-4">
-        <img src={dopaIcon} alt="" className="h-7 w-7" />
-        <span className="text-base font-bold text-gray-900">DopaCRM</span>
+    <aside
+      className={`flex h-full flex-col border-l border-gray-200 bg-white transition-all duration-200 ${
+        collapsed ? "w-16" : "w-56"
+      }`}
+    >
+      {/* Logo + optional collapse toggle */}
+      <div
+        className={`flex items-center gap-2.5 border-b border-gray-100 py-4 ${
+          collapsed ? "px-2 justify-center" : "px-5"
+        }`}
+      >
+        <img
+          src={brandLogo}
+          alt=""
+          className="h-7 w-7 flex-shrink-0 rounded object-cover"
+        />
+        {!collapsed && (
+          <>
+            <span className="min-w-0 flex-1 truncate text-base font-bold text-gray-900">
+              {brandName}
+            </span>
+            {onToggleCollapse && (
+              <CollapseToggle collapsed={collapsed} onToggle={onToggleCollapse} />
+            )}
+          </>
+        )}
       </div>
 
+      {/* When collapsed, the toggle moves below the logo for visibility */}
+      {collapsed && onToggleCollapse && (
+        <div className="flex justify-center border-b border-gray-100 py-1">
+          <CollapseToggle collapsed={collapsed} onToggle={onToggleCollapse} />
+        </div>
+      )}
+
       {/* Nav links */}
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className={`flex-1 space-y-1 py-4 ${collapsed ? "px-2" : "px-3"}`}>
         {visibleItems.map((item) => (
           <SidebarLink
             key={item.to}
             to={item.to}
             icon={item.icon}
             label={item.label}
+            collapsed={collapsed}
             onClick={onNavigate}
           />
         ))}
       </nav>
 
       {/* User banner + logout */}
-      <div className="border-t border-gray-100 p-3">
-        <UserBanner user={user} />
+      <div className={`border-t border-gray-100 ${collapsed ? "p-2" : "p-3"}`}>
+        {!collapsed && <UserBanner user={user} />}
+
         <button
           onClick={logout}
-          className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-red-50 hover:text-red-600"
+          className={`mt-2 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-red-50 hover:text-red-600 ${
+            collapsed ? "justify-center" : "justify-center"
+          }`}
+          aria-label="התנתקות"
+          title={collapsed ? "התנתקות" : undefined}
         >
           <LogoutIcon />
-          התנתקות
+          {!collapsed && <span>התנתקות</span>}
         </button>
       </div>
     </aside>
   )
 }
 
-/* ── User banner — avatar circle + name + email ──────────────── */
+/* ── Collapse toggle button ───────────────────────────────────── */
 
+/**
+ * Chevron button that flips between expanded/collapsed.
+ * Arrow points toward where the sidebar will MOVE when clicked —
+ * in RTL, a right-pointing chevron (→) expands (opens the sidebar
+ * to the left), left-pointing (←) collapses.
+ */
+function CollapseToggle({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={collapsed ? "פתח סרגל" : "סגור סרגל"}
+      title={collapsed ? "פתח סרגל" : "סגור סרגל"}
+      className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+        // flip horizontally when collapsed so the chevron points "outward"
+        style={{ transform: collapsed ? "scaleX(-1)" : undefined }}
+      >
+        <polyline points="15 18 9 12 15 6" />
+      </svg>
+    </button>
+  )
+}
+
+/* ── User banner ──────────────────────────────────────────────── */
+
+/**
+ * Avatar circle + name + email inside the collapsed-footer zone.
+ * Hidden entirely when the sidebar is collapsed.
+ */
 function UserBanner({ user }: { user: User | null }) {
   if (!user) return null
 
@@ -104,9 +209,8 @@ function UserBanner({ user }: { user: User | null }) {
 }
 
 /**
- * Build initials. Prefers first_name + last_name; falls back to parsing
- * the email local-part (splitting on dot/underscore/hyphen) when the
- * name fields aren't set.
+ * Two-letter avatar initials. Prefers first_name + last_name, falls
+ * back to parsing the email local-part on dot/hyphen/underscore.
  */
 function getInitials(user: User): string {
   if (user.first_name || user.last_name) {
@@ -133,19 +237,25 @@ function SidebarLink({
   to,
   icon,
   label,
+  collapsed,
   onClick,
 }: {
   to: string
   icon: string
   label: string
+  collapsed: boolean
   onClick?: () => void
 }) {
   return (
     <NavLink
       to={to}
       onClick={onClick}
+      title={collapsed ? label : undefined}
+      aria-label={collapsed ? label : undefined}
       className={({ isActive }) =>
-        `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+        `flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition-colors ${
+          collapsed ? "justify-center px-2" : "px-3"
+        } ${
           isActive
             ? "bg-blue-50 text-blue-700"
             : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
@@ -153,11 +263,12 @@ function SidebarLink({
       }
     >
       <span className="text-base">{icon}</span>
-      {label}
+      {!collapsed && <span>{label}</span>}
     </NavLink>
   )
 }
 
+/** Log-out icon — used next to the התנתקות label, or alone when collapsed. */
 function LogoutIcon() {
   return (
     <svg
