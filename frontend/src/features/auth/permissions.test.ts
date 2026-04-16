@@ -38,18 +38,20 @@ describe("canAccess — baseline", () => {
     expect(canAccess(u, "tenants")).toBe(false)
   })
 
-  it("staff sees dashboard + members at baseline", () => {
+  it("staff sees dashboard + members + classes at baseline", () => {
     const u = makeUser("staff")
     expect(canAccess(u, "dashboard")).toBe(true)
     expect(canAccess(u, "members")).toBe(true)
+    expect(canAccess(u, "classes")).toBe(true)
     expect(canAccess(u, "payments")).toBe(false)
     expect(canAccess(u, "settings")).toBe(false)
   })
 
-  it("sales sees dashboard + members at baseline (converts leads)", () => {
+  it("sales sees dashboard + members + classes at baseline", () => {
     const u = makeUser("sales")
     expect(canAccess(u, "dashboard")).toBe(true)
     expect(canAccess(u, "members")).toBe(true)
+    expect(canAccess(u, "classes")).toBe(true)
     expect(canAccess(u, "leads")).toBe(false)
     expect(canAccess(u, "settings")).toBe(false)
   })
@@ -102,8 +104,16 @@ describe("canAccess — tenant overrides", () => {
 
 describe("accessibleFeatures", () => {
   it("returns baseline for roles with no overrides", () => {
-    expect(accessibleFeatures(makeUser("staff"))).toEqual(["dashboard", "members"])
-    expect(accessibleFeatures(makeUser("sales"))).toEqual(["dashboard", "members"])
+    expect(accessibleFeatures(makeUser("staff"))).toEqual([
+      "dashboard",
+      "members",
+      "classes",
+    ])
+    expect(accessibleFeatures(makeUser("sales"))).toEqual([
+      "dashboard",
+      "members",
+      "classes",
+    ])
   })
 
   it("merges baseline and overrides for staff", () => {
@@ -111,8 +121,8 @@ describe("accessibleFeatures", () => {
       staff: ["payments"],
       sales: [],
     })
-    // baseline = [dashboard, members]; override adds payments
-    expect(features).toEqual(["dashboard", "members", "payments"])
+    // baseline = [dashboard, members, classes]; override adds payments
+    expect(features).toEqual(["dashboard", "members", "classes", "payments"])
   })
 
   it("owner always sees full gym feature set", () => {

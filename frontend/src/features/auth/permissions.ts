@@ -58,6 +58,7 @@ export type Feature =
   | "tenants"
   // Gym-scoped
   | "members"
+  | "classes" // class-type catalog (gym-scoped)
   | "plans"
   | "leads"
   | "payments"
@@ -77,16 +78,18 @@ const BASELINE: Record<Role, Feature[]> = {
   owner: [
     "dashboard",
     "members",
+    "classes",
     "plans",
     "leads",
     "payments",
     "reports",
     "settings",
   ],
-  // Staff handles day-to-day member ops (check-in, contact updates).
-  staff: ["dashboard", "members"],
-  // Sales converts leads → members, needs to see/create members too.
-  sales: ["dashboard", "members"],
+  // Staff handles day-to-day ops (check-in, member updates). Reads the
+  // class catalog to pick what a walk-in wants.
+  staff: ["dashboard", "members", "classes"],
+  // Sales converts leads → members. Reads classes when enrolling.
+  sales: ["dashboard", "members", "classes"],
 }
 
 /**
@@ -97,6 +100,7 @@ const BASELINE: Record<Role, Feature[]> = {
  */
 export const GRANTABLE_FEATURES: Feature[] = [
   "members",
+  "classes",
   "plans",
   "leads",
   "payments",

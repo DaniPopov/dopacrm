@@ -102,6 +102,24 @@ export function humanizeMemberError(err: unknown): string {
 }
 
 /**
+ * Overrides for class-catalog errors (create / update / deactivate).
+ *
+ * Owner is the only role allowed to mutate — staff seeing 403 means
+ * the UI rendered them an edit button it shouldn't have.
+ */
+export function humanizeClassError(err: unknown): string {
+  if (err instanceof ApiError || (err instanceof Error && "status" in err)) {
+    const status = (err as ApiError).status
+    if (status === 403) return "רק בעלים יכולים לערוך שיעורים"
+    if (status === 404) return "השיעור לא נמצא"
+    if (status === 409) return "שיעור בשם זה כבר קיים בחדר הכושר"
+    if (status === 422) return "הפרטים שהוזנו אינם תקינים, בדקו את הטופס"
+    return genericMessage(status)
+  }
+  return "אירעה שגיאה בשמירת השיעור"
+}
+
+/**
  * Overrides for user CRUD errors (create/update/delete).
  * Call this from the user form catch block.
  */

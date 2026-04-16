@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import {
   ApiError,
+  humanizeClassError,
   humanizeLoginError,
   humanizeMemberError,
   humanizeTenantError,
@@ -111,6 +112,34 @@ describe("humanizeMemberError", () => {
 
   it("returns generic message for non-ApiError", () => {
     expect(humanizeMemberError(null)).toBe("אירעה שגיאה בשמירת המנוי")
+  })
+})
+
+describe("humanizeClassError", () => {
+  it("returns owner-only message for 403", () => {
+    expect(humanizeClassError(new ApiError("x", 403))).toBe(
+      "רק בעלים יכולים לערוך שיעורים",
+    )
+  })
+
+  it("returns not-found message for 404", () => {
+    expect(humanizeClassError(new ApiError("x", 404))).toBe("השיעור לא נמצא")
+  })
+
+  it("returns duplicate-name message for 409", () => {
+    expect(humanizeClassError(new ApiError("dup", 409))).toBe(
+      "שיעור בשם זה כבר קיים בחדר הכושר",
+    )
+  })
+
+  it("returns validation message for 422", () => {
+    expect(humanizeClassError(new ApiError("x", 422))).toBe(
+      "הפרטים שהוזנו אינם תקינים, בדקו את הטופס",
+    )
+  })
+
+  it("returns generic message for non-ApiError", () => {
+    expect(humanizeClassError(null)).toBe("אירעה שגיאה בשמירת השיעור")
   })
 })
 

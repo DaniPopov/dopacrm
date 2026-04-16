@@ -6,6 +6,8 @@ import TenantListPage from "@/features/tenants/TenantListPage"
 import TenantDetailPage from "@/features/tenants/TenantDetailPage"
 import MemberListPage from "@/features/members/MemberListPage"
 import MemberDetailPage from "@/features/members/MemberDetailPage"
+import ClassListPage from "@/features/classes/ClassListPage"
+import ClassDetailPage from "@/features/classes/ClassDetailPage"
 import ProtectedRoute from "@/components/layout/ProtectedRoute"
 import RequireFeature from "@/components/layout/RequireFeature"
 import DashboardLayout from "@/components/layout/DashboardLayout"
@@ -30,6 +32,12 @@ export default function App() {
           <Route element={<RequireFeature feature="members" />}>
             <Route path="/members" element={<MemberListPage />} />
             <Route path="/members/:id" element={<MemberDetailPage />} />
+          </Route>
+
+          {/* Gym-scoped: classes catalog. Tenant users read; owner mutates. */}
+          <Route element={<RequireFeature feature="classes" />}>
+            <Route path="/classes" element={<ClassListPage />} />
+            <Route path="/classes/:id" element={<ClassDetailPage />} />
           </Route>
         </Route>
       </Route>

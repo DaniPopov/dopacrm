@@ -40,6 +40,11 @@ export type CreateMemberRequest = Schemas["CreateMemberRequest"]
 export type UpdateMemberRequest = Schemas["UpdateMemberRequest"]
 export type FreezeMemberRequest = Schemas["FreezeMemberRequest"]
 
+// Classes (gym class-types catalog)
+export type GymClass = Schemas["GymClassResponse"]
+export type CreateGymClassRequest = Schemas["CreateGymClassRequest"]
+export type UpdateGymClassRequest = Schemas["UpdateGymClassRequest"]
+
 // Users
 export type CreateUserRequest = Schemas["CreateUserRequest"]
 export type UpdateUserRequest = Schemas["UpdateUserRequest"]

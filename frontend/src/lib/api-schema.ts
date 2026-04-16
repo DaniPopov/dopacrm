@@ -84,6 +84,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/classes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List class types
+         * @description Lists classes in the caller's tenant. Any tenant user can read. Pass ``include_inactive=true`` (owner) to see deactivated classes.
+         */
+        get: operations["list_classes_api_v1_classes_get"];
+        put?: never;
+        /**
+         * Create a class type
+         * @description Owner-only. Creates a new class type in the caller's tenant. Name must be unique within the tenant.
+         */
+        post: operations["create_class_api_v1_classes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/classes/{class_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a class by ID */
+        get: operations["get_class_api_v1_classes__class_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a class (partial)
+         * @description Owner-only. Rename, re-color, edit description.
+         */
+        patch: operations["update_class_api_v1_classes__class_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/classes/{class_id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Re-activate a deactivated class
+         * @description Owner-only. Sets is_active=true.
+         */
+        post: operations["activate_class_api_v1_classes__class_id__activate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/classes/{class_id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deactivate a class (soft)
+         * @description Owner-only. Sets is_active=false — existing plan_entitlements and class_passes keep working, but new subscriptions can't reference this class.
+         */
+        post: operations["deactivate_class_api_v1_classes__class_id__deactivate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/members": {
         parameters: {
             query?: never;
@@ -427,6 +512,29 @@ export interface components {
             file: string;
         };
         /**
+         * CreateGymClassRequest
+         * @description POST /api/v1/classes — create a class in the caller's tenant.
+         * @example {
+         *       "color": "#3B82F6",
+         *       "description": "High-intensity indoor cycling",
+         *       "name": "Spinning"
+         *     }
+         */
+        CreateGymClassRequest: {
+            /**
+             * Color
+             * @description Hex code recommended (e.g. '#3B82F6'). Not validated.
+             */
+            color?: string | null;
+            /** Description */
+            description?: string | null;
+            /**
+             * Name
+             * @description Unique within tenant
+             */
+            name: string;
+        };
+        /**
          * CreateMemberRequest
          * @description POST /api/v1/members — create a new member in the caller's tenant.
          *
@@ -613,6 +721,50 @@ export interface components {
              * @description Optional auto-unfreeze date. Null means indefinite freeze.
              */
             until?: string | null;
+        };
+        /**
+         * GymClassResponse
+         * @description Standard gym class response shape.
+         * @example {
+         *       "color": "#3B82F6",
+         *       "created_at": "2026-04-16T10:00:00+03:00",
+         *       "description": "High-intensity indoor cycling",
+         *       "id": "11111111-1111-1111-1111-111111111111",
+         *       "is_active": true,
+         *       "name": "Spinning",
+         *       "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
+         *       "updated_at": "2026-04-16T10:00:00+03:00"
+         *     }
+         */
+        GymClassResponse: {
+            /** Color */
+            color: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Name */
+            name: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -881,6 +1033,22 @@ export interface components {
              * @default bearer
              */
             token_type: string;
+        };
+        /**
+         * UpdateGymClassRequest
+         * @description PATCH /api/v1/classes/{id} — partial update.
+         * @example {
+         *       "color": "#10B981",
+         *       "description": "Updated description"
+         *     }
+         */
+        UpdateGymClassRequest: {
+            /** Color */
+            color?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name?: string | null;
         };
         /**
          * UpdateMemberRequest
@@ -1163,6 +1331,200 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+        };
+    };
+    list_classes_api_v1_classes_get: {
+        parameters: {
+            query?: {
+                include_inactive?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GymClassResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_class_api_v1_classes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGymClassRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GymClassResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_class_api_v1_classes__class_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GymClassResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_class_api_v1_classes__class_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateGymClassRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GymClassResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    activate_class_api_v1_classes__class_id__activate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GymClassResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deactivate_class_api_v1_classes__class_id__deactivate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GymClassResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
