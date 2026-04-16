@@ -16,15 +16,20 @@ class CreateGymClassRequest(BaseModel):
     color: str | None = Field(
         default=None,
         max_length=20,
-        description="Hex code recommended (e.g. '#3B82F6'). Not validated.",
+        description=(
+            "Hex code (e.g. '#3B82F6'). Frontend offers a preset palette + "
+            "free-picker fallback so owners don't have to type hex codes. "
+            "Backend accepts any string up to 20 chars — the UI is "
+            "responsible for sending a valid value."
+        ),
     )
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "name": "Spinning",
-                    "description": "High-intensity indoor cycling",
+                    "name": "ספינינג",
+                    "description": "שיעור רכיבה על אופני כושר בקצב גבוה",
                     "color": "#3B82F6",
                 }
             ]
@@ -41,7 +46,9 @@ class UpdateGymClassRequest(BaseModel):
 
     model_config = {
         "json_schema_extra": {
-            "examples": [{"description": "Updated description", "color": "#10B981"}]
+            "examples": [
+                {"description": "עודכן — כולל חימום ממושך יותר", "color": "#10B981"}
+            ]
         }
     }
 
@@ -64,8 +71,8 @@ class GymClassResponse(BaseModel):
                 {
                     "id": "11111111-1111-1111-1111-111111111111",
                     "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
-                    "name": "Spinning",
-                    "description": "High-intensity indoor cycling",
+                    "name": "ספינינג",
+                    "description": "שיעור רכיבה על אופני כושר בקצב גבוה",
                     "color": "#3B82F6",
                     "is_active": True,
                     "created_at": "2026-04-16T10:00:00+03:00",
