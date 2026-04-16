@@ -516,14 +516,14 @@ export interface components {
          * @description POST /api/v1/classes — create a class in the caller's tenant.
          * @example {
          *       "color": "#3B82F6",
-         *       "description": "High-intensity indoor cycling",
-         *       "name": "Spinning"
+         *       "description": "שיעור רכיבה על אופני כושר בקצב גבוה",
+         *       "name": "ספינינג"
          *     }
          */
         CreateGymClassRequest: {
             /**
              * Color
-             * @description Hex code recommended (e.g. '#3B82F6'). Not validated.
+             * @description Hex code (e.g. '#3B82F6'). Frontend offers a preset palette + free-picker fallback so owners don't have to type hex codes. Backend accepts any string up to 20 chars — the UI is responsible for sending a valid value.
              */
             color?: string | null;
             /** Description */
@@ -728,10 +728,10 @@ export interface components {
          * @example {
          *       "color": "#3B82F6",
          *       "created_at": "2026-04-16T10:00:00+03:00",
-         *       "description": "High-intensity indoor cycling",
+         *       "description": "שיעור רכיבה על אופני כושר בקצב גבוה",
          *       "id": "11111111-1111-1111-1111-111111111111",
          *       "is_active": true,
-         *       "name": "Spinning",
+         *       "name": "ספינינג",
          *       "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
          *       "updated_at": "2026-04-16T10:00:00+03:00"
          *     }
@@ -1039,7 +1039,7 @@ export interface components {
          * @description PATCH /api/v1/classes/{id} — partial update.
          * @example {
          *       "color": "#10B981",
-         *       "description": "Updated description"
+         *       "description": "עודכן — כולל חימום ממושך יותר"
          *     }
          */
         UpdateGymClassRequest: {

@@ -46,9 +46,7 @@ class UpdateGymClassRequest(BaseModel):
 
     model_config = {
         "json_schema_extra": {
-            "examples": [
-                {"description": "עודכן — כולל חימום ממושך יותר", "color": "#10B981"}
-            ]
+            "examples": [{"description": "עודכן — כולל חימום ממושך יותר", "color": "#10B981"}]
         }
     }
 
