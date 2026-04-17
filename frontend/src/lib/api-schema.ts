@@ -943,6 +943,16 @@ export interface components {
              */
             member_id: string;
             /**
+             * @description How the member pays: cash / credit_card / standing_order / other.
+             * @default cash
+             */
+            payment_method: components["schemas"]["PaymentMethod"];
+            /**
+             * Payment Method Detail
+             * @description Free-text elaboration. Required by the UI when method='other'; optional otherwise (e.g., 'Visa 1234').
+             */
+            payment_method_detail?: string | null;
+            /**
              * Plan Id
              * Format: uuid
              */
@@ -1293,6 +1303,17 @@ export interface components {
          */
         MemberStatus: "active" | "frozen" | "cancelled" | "expired";
         /**
+         * PaymentMethod
+         * @description How the member pays for this subscription.
+         *
+         *     Not a billing cadence — that's already captured by ``expires_at`` on
+         *     the row (set = cash/prepaid-style, null = standing-order-style).
+         *     This is just the operational "how does the cash arrive" fact staff
+         *     needs to see at a glance.
+         * @enum {string}
+         */
+        PaymentMethod: "cash" | "credit_card" | "standing_order" | "other";
+        /**
          * PlanResponse
          * @description Plan as returned to the frontend, with entitlements eager-loaded.
          * @example {
@@ -1399,6 +1420,10 @@ export interface components {
          *     Default extension = plan's billing period (monthly=+30d, quarterly=+90d,
          *     yearly=+365d, one_time=+duration_days). Override via `new_expires_at`
          *     for "she paid 2 months upfront" and similar.
+         *
+         *     Optional `new_payment_method` / `new_payment_method_detail` handle the
+         *     common "member moved from cash to standing order" flow at renewal time.
+         *     Omit both to keep the existing payment info.
          */
         RenewSubscriptionRequest: {
             /**
@@ -1406,6 +1431,13 @@ export interface components {
              * @description Override the default billing-period extension.
              */
             new_expires_at?: string | null;
+            /** @description Optional: switch payment method at renewal time. */
+            new_payment_method?: components["schemas"]["PaymentMethod"] | null;
+            /**
+             * New Payment Method Detail
+             * @description Paired with new_payment_method. Ignored if method is not provided.
+             */
+            new_payment_method_detail?: string | null;
         };
         /**
          * ResetPeriod
@@ -1529,6 +1561,9 @@ export interface components {
              * Format: uuid
              */
             member_id: string;
+            payment_method: components["schemas"]["PaymentMethod"];
+            /** Payment Method Detail */
+            payment_method_detail: string | null;
             /**
              * Plan Id
              * Format: uuid

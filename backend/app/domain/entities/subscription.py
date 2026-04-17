@@ -53,6 +53,21 @@ class SubscriptionStatus(StrEnum):
     REPLACED = "replaced"  # plan change — forwards via replaced_by_id
 
 
+class PaymentMethod(StrEnum):
+    """How the member pays for this subscription.
+
+    Not a billing cadence — that's already captured by ``expires_at`` on
+    the row (set = cash/prepaid-style, null = standing-order-style).
+    This is just the operational "how does the cash arrive" fact staff
+    needs to see at a glance.
+    """
+
+    CASH = "cash"  # מזומן
+    CREDIT_CARD = "credit_card"  # אשראי (one-off card charge; staff records each month)
+    STANDING_ORDER = "standing_order"  # הוראת קבע (auto-debit; usually expires_at=null)
+    OTHER = "other"  # use payment_method_detail for the free-text specifics
+
+
 class SubscriptionEventType(StrEnum):
     """Discrete event types in the subscription timeline.
 
@@ -89,6 +104,18 @@ class Subscription(BaseModel):
     )
     currency: str = Field(
         description="Locked at create-time from plan.currency; immutable per sub."
+    )
+
+    payment_method: PaymentMethod = Field(
+        default=PaymentMethod.CASH,
+        description="How the member pays. Defaults to cash (most common in IL).",
+    )
+    payment_method_detail: str | None = Field(
+        default=None,
+        description=(
+            "Free-text elaboration. Required by the UI when method='other'; "
+            "optional otherwise (e.g., 'Isracard 1234' or 'bank transfer')."
+        ),
     )
 
     started_at: date

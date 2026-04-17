@@ -638,6 +638,115 @@ def test_member_status_syncs_on_freeze_and_unfreeze(client: TestClient, gym_setu
     assert _get_member_status(gym_setup["member_id"]) == "active"
 
 
+# ── Payment method ──────────────────────────────────────────────────────────
+
+
+def test_create_defaults_payment_method_to_cash(client: TestClient, gym_setup: dict) -> None:
+    data = _create_sub(
+        client,
+        gym_setup["staff_headers"],
+        member_id=gym_setup["member_id"],
+        plan_id=gym_setup["silver_id"],
+    )
+    assert data["payment_method"] == "cash"
+    assert data["payment_method_detail"] is None
+
+
+def test_create_with_explicit_payment_method_and_detail(
+    client: TestClient, gym_setup: dict
+) -> None:
+    data = _create_sub(
+        client,
+        gym_setup["staff_headers"],
+        member_id=gym_setup["member_id"],
+        plan_id=gym_setup["silver_id"],
+        payment_method="credit_card",
+        payment_method_detail="Visa 1234",
+    )
+    assert data["payment_method"] == "credit_card"
+    assert data["payment_method_detail"] == "Visa 1234"
+
+
+def test_create_with_other_method_accepts_free_text(client: TestClient, gym_setup: dict) -> None:
+    data = _create_sub(
+        client,
+        gym_setup["staff_headers"],
+        member_id=gym_setup["member_id"],
+        plan_id=gym_setup["silver_id"],
+        payment_method="other",
+        payment_method_detail="bank transfer, ref 9876",
+    )
+    assert data["payment_method"] == "other"
+    assert data["payment_method_detail"] == "bank transfer, ref 9876"
+
+
+def test_create_rejects_unknown_payment_method(client: TestClient, gym_setup: dict) -> None:
+    r = client.post(
+        "/api/v1/subscriptions",
+        headers=gym_setup["staff_headers"],
+        json={
+            "member_id": gym_setup["member_id"],
+            "plan_id": gym_setup["silver_id"],
+            "payment_method": "bitcoin",
+        },
+    )
+    assert r.status_code == 422
+
+
+def test_renew_can_switch_payment_method(client: TestClient, gym_setup: dict) -> None:
+    """The common flow: member on cash moves to standing order at renewal."""
+    sub = _create_sub(
+        client,
+        gym_setup["staff_headers"],
+        member_id=gym_setup["member_id"],
+        plan_id=gym_setup["silver_id"],
+        payment_method="cash",
+        expires_at=(date.today() + timedelta(days=5)).isoformat(),
+    )
+    r = client.post(
+        f"/api/v1/subscriptions/{sub['id']}/renew",
+        headers=gym_setup["staff_headers"],
+        json={"new_payment_method": "standing_order"},
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["payment_method"] == "standing_order"
+
+    # Event log records the change
+    events = client.get(
+        f"/api/v1/subscriptions/{sub['id']}/events",
+        headers=gym_setup["staff_headers"],
+    ).json()
+    renew_event = next(e for e in events if e["event_type"] == "renewed")
+    assert renew_event["event_data"]["previous_payment_method"] == "cash"
+    assert renew_event["event_data"]["new_payment_method"] == "standing_order"
+
+
+def test_change_plan_carries_over_payment_method(client: TestClient, gym_setup: dict) -> None:
+    """Plan change is a catalog change, not a payment-style change —
+    new sub inherits the old sub's payment method."""
+    old = _create_sub(
+        client,
+        gym_setup["staff_headers"],
+        member_id=gym_setup["member_id"],
+        plan_id=gym_setup["silver_id"],
+        payment_method="credit_card",
+        payment_method_detail="Mastercard 5678",
+    )
+    r = client.post(
+        f"/api/v1/subscriptions/{old['id']}/change-plan",
+        headers=gym_setup["staff_headers"],
+        json={"new_plan_id": gym_setup["gold_id"]},
+    )
+    assert r.status_code == 200
+    new_sub = r.json()
+    assert new_sub["payment_method"] == "credit_card"
+    assert new_sub["payment_method_detail"] == "Mastercard 5678"
+
+
+# ── Member.status sync (continues below) ────────────────────────────────────
+
+
 def test_member_status_syncs_on_cancel(client: TestClient, gym_setup: dict) -> None:
     sub = _create_sub(
         client,

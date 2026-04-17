@@ -2,6 +2,8 @@ import { useState, type FormEvent } from "react"
 import { usePlans } from "@/features/plans/hooks"
 import { humanizeSubscriptionError } from "@/lib/api-errors"
 import { useCreateSubscription } from "./hooks"
+import { PAYMENT_METHOD_OPTIONS } from "./paymentMethods"
+import type { PaymentMethod } from "./types"
 
 /**
  * Enroll a member in a plan.
@@ -26,6 +28,14 @@ export default function SubscriptionEnrollDialog({
   const [planId, setPlanId] = useState("")
   const [startedAt, setStartedAt] = useState("")
   const [expiresAt, setExpiresAt] = useState("")
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash")
+  const [paymentDetail, setPaymentDetail] = useState("")
+
+  // Standing-order is auto-debit — it shouldn't have a hard expiry date.
+  // When staff picks it, hide the expires_at field entirely and clear any
+  // stray value. Switching back reveals the field again.
+  const isStandingOrder = paymentMethod === "standing_order"
+  const isOther = paymentMethod === "other"
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -35,7 +45,10 @@ export default function SubscriptionEnrollDialog({
         member_id: memberId,
         plan_id: planId,
         started_at: startedAt || null,
-        expires_at: expiresAt || null,
+        // Standing-order → always null (explicit) regardless of field value
+        expires_at: isStandingOrder ? null : expiresAt || null,
+        payment_method: paymentMethod,
+        payment_method_detail: paymentDetail.trim() || null,
       },
       {
         onSuccess: () => {
@@ -82,20 +95,68 @@ export default function SubscriptionEnrollDialog({
           />
         </Field>
 
-        <Field
-          label="תוקף עד"
-          helper={
-            "תשלום במזומן: הזינו תאריך התשלום הבא. " +
-            "הרשאת קבע אוטומטית: השאירו ריק (רץ עד ביטול)."
-          }
-        >
-          <input
-            type="date"
-            value={expiresAt}
-            onChange={(e) => setExpiresAt(e.target.value)}
+        <Field label="אמצעי תשלום *">
+          <select
+            required
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
             className={inputClass}
-          />
+          >
+            {PAYMENT_METHOD_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
         </Field>
+
+        {isOther && (
+          <Field label="פרטים *" helper="תיאור חופשי: למשל 'העברה בנקאית' או 'צ'ק'">
+            <input
+              type="text"
+              required
+              maxLength={200}
+              value={paymentDetail}
+              onChange={(e) => setPaymentDetail(e.target.value)}
+              placeholder="פרטים על אמצעי התשלום"
+              className={inputClass}
+            />
+          </Field>
+        )}
+
+        {!isOther && paymentMethod === "credit_card" && (
+          <Field label="הערה על הכרטיס (אופציונלי)" helper="למשל 'ויזה 1234'">
+            <input
+              type="text"
+              maxLength={200}
+              value={paymentDetail}
+              onChange={(e) => setPaymentDetail(e.target.value)}
+              placeholder="ויזה 1234"
+              className={inputClass}
+            />
+          </Field>
+        )}
+
+        {isStandingOrder ? (
+          <div className="rounded-lg border border-blue-100 bg-blue-50/50 px-4 py-2.5 text-sm text-blue-800">
+            הוראת קבע: המנוי פעיל עד ביטול ידני, ללא תאריך תפוגה.
+          </div>
+        ) : (
+          <Field
+            label="תוקף עד"
+            helper={
+              "תשלום במזומן או בכרטיס — הזינו את תאריך סיום התקופה ששולמה. " +
+              "השאירו ריק עבור מסלולים חד-פעמיים (ייקבע אוטומטית מתאריך ההתחלה ומשך המסלול)."
+            }
+          >
+            <input
+              type="date"
+              value={expiresAt}
+              onChange={(e) => setExpiresAt(e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+        )}
 
         {create.error && (
           <ErrorBox message={humanizeSubscriptionError(create.error)} />

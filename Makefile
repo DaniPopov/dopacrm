@@ -218,6 +218,9 @@ load-test-classes:  ## Load test classes CRUD (needs: make seed-test-gym-dev SLU
 load-test-plans:  ## Load test plans CRUD (needs: make seed-test-gym-dev SLUG=loadtest)
 	uv run locust -f loadtests/test_plans_load.py --host=http://localhost:8000
 
+load-test-subscriptions:  ## Load test subscriptions + events (needs: make seed-test-gym-dev SLUG=loadtest)
+	uv run locust -f loadtests/test_subscriptions_load.py --host=http://localhost:8000
+
 ##@ Info
 
 list-services-dev:  ## List all services and available per-service commands

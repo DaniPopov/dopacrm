@@ -64,6 +64,10 @@ class SubscriptionORM(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     price_cents: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(10), nullable=False)
+    payment_method: Mapped[str] = mapped_column(
+        String(30), nullable=False, server_default=text("'cash'")
+    )
+    payment_method_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     started_at: Mapped[date] = mapped_column(Date, nullable=False)
     expires_at: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -103,6 +107,10 @@ class SubscriptionORM(Base):
             name="ck_subs_status",
         ),
         CheckConstraint("price_cents >= 0", name="ck_subs_price_non_negative"),
+        CheckConstraint(
+            "payment_method IN ('cash', 'credit_card', 'standing_order', 'other')",
+            name="ck_subs_payment_method",
+        ),
         CheckConstraint(
             "(status <> 'frozen' AND frozen_at IS NULL AND frozen_until IS NULL) "
             "OR (status = 'frozen' AND frozen_at IS NOT NULL)",

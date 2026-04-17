@@ -14,6 +14,7 @@ import SubscriptionFreezeDialog from "./SubscriptionFreezeDialog"
 import SubscriptionRenewDialog from "./SubscriptionRenewDialog"
 import SubscriptionTimeline from "./SubscriptionTimeline"
 import { SubscriptionBadge } from "./SubscriptionBadge"
+import { formatPaymentMethod } from "./paymentMethods"
 import type { Subscription } from "./types"
 
 /**
@@ -157,6 +158,7 @@ export default function MemberSubscriptionSection({
         <SubscriptionRenewDialog
           subscriptionId={current.id}
           currentExpiresAt={current.expires_at}
+          currentPaymentMethod={current.payment_method}
           onClose={() => setDialog(null)}
         />
       )}
@@ -220,6 +222,10 @@ function CurrentSubCard({
               ? formatDate(sub.expires_at)
               : "ללא מגבלת זמן (הרשאת קבע)"
           }
+        />
+        <Row
+          label="תשלום"
+          value={formatPaymentMethod(sub.payment_method, sub.payment_method_detail)}
         />
         {sub.status === "frozen" && (
           <Row

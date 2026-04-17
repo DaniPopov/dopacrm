@@ -9,6 +9,7 @@ from datetime import UTC, date, datetime
 from uuid import uuid4
 
 from app.domain.entities.subscription import (
+    PaymentMethod,
     Subscription,
     SubscriptionEvent,
     SubscriptionEventType,
@@ -26,6 +27,8 @@ def _sub(**overrides) -> Subscription:
         status=SubscriptionStatus.ACTIVE,
         price_cents=45000,
         currency="ILS",
+        payment_method=PaymentMethod.CASH,
+        payment_method_detail=None,
         started_at=date(2026, 4, 1),
         expires_at=None,
         frozen_at=None,
@@ -303,6 +306,41 @@ def test_event_defaults_to_empty_payload_and_nullable_created_by() -> None:
     )
     assert e.event_data == {}
     assert e.created_by is None  # system event
+
+
+# ── PaymentMethod enum & fields ──────────────────────────────────────────────
+
+
+def test_payment_method_defaults_to_cash() -> None:
+    """Most gyms in IL take cash by default — the Pydantic default should match."""
+    s = _sub()
+    assert s.payment_method == PaymentMethod.CASH
+    assert s.payment_method_detail is None
+
+
+def test_payment_method_accepts_standing_order_with_null_expires() -> None:
+    """Card auto-debit: expires_at=None paired with standing_order is the
+    canonical 'runs until cancelled' combo."""
+    s = _sub(payment_method=PaymentMethod.STANDING_ORDER, expires_at=None)
+    assert s.payment_method == PaymentMethod.STANDING_ORDER
+    assert s.expires_at is None
+
+
+def test_payment_method_other_allows_free_text_detail() -> None:
+    s = _sub(
+        payment_method=PaymentMethod.OTHER,
+        payment_method_detail="bank transfer, reference 12345",
+    )
+    assert s.payment_method == PaymentMethod.OTHER
+    assert s.payment_method_detail == "bank transfer, reference 12345"
+
+
+def test_payment_method_enum_values() -> None:
+    """Guard against typos in the StrEnum — the values flow into the DB CHECK."""
+    assert PaymentMethod.CASH.value == "cash"
+    assert PaymentMethod.CREDIT_CARD.value == "credit_card"
+    assert PaymentMethod.STANDING_ORDER.value == "standing_order"
+    assert PaymentMethod.OTHER.value == "other"
 
 
 def test_event_carries_days_late_on_renewal() -> None:

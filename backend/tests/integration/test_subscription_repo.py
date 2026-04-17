@@ -29,6 +29,7 @@ from app.adapters.storage.postgres.user.repositories import UserRepository
 from app.core.security import hash_password
 from app.domain.entities.membership_plan import BillingPeriod, PlanType
 from app.domain.entities.subscription import (
+    PaymentMethod,
     SubscriptionEventType,
     SubscriptionStatus,
 )
@@ -791,6 +792,101 @@ async def test_expired_at_preserved_across_renew(
     refreshed = await repo.find_by_id(sub.id)
     assert refreshed is not None
     assert refreshed.expired_at == date(2026, 4, 16)
+
+
+async def test_payment_method_and_detail_round_trip(
+    repo, tenant_repo, plan_repo, member_repo, default_saas_plan_id
+) -> None:
+    """Covers all four enum values through a real INSERT + SELECT."""
+    tenant = await _create_tenant(tenant_repo, default_saas_plan_id)
+    plan = await _create_plan(plan_repo, tenant.id)
+
+    combos = [
+        (PaymentMethod.CASH, None),
+        (PaymentMethod.CREDIT_CARD, "Isracard 1234"),
+        (PaymentMethod.STANDING_ORDER, None),
+        (PaymentMethod.OTHER, "bank transfer, ref 9876"),
+    ]
+    for method, detail in combos:
+        member = await _create_member(member_repo, tenant.id)
+        sub = await repo.create(
+            tenant_id=tenant.id,
+            member_id=member.id,
+            plan_id=plan.id,
+            price_cents=plan.price_cents,
+            currency=plan.currency,
+            started_at=date(2026, 4, 1),
+            expires_at=None,
+            payment_method=method,
+            payment_method_detail=detail,
+            created_by=None,
+        )
+        assert sub.payment_method == method
+        assert sub.payment_method_detail == detail
+
+
+async def test_renew_can_flip_payment_method_and_logs_change(
+    repo, tenant_repo, plan_repo, member_repo, default_saas_plan_id
+) -> None:
+    """Member went from cash → standing order at renewal. The change
+    is logged in the 'renewed' event so the owner can see method migrations."""
+    tenant = await _create_tenant(tenant_repo, default_saas_plan_id)
+    member = await _create_member(member_repo, tenant.id)
+    plan = await _create_plan(plan_repo, tenant.id)
+    sub = await repo.create(
+        tenant_id=tenant.id,
+        member_id=member.id,
+        plan_id=plan.id,
+        price_cents=plan.price_cents,
+        currency=plan.currency,
+        started_at=date(2026, 1, 1),
+        expires_at=date(2026, 4, 15),
+        payment_method=PaymentMethod.CASH,
+        payment_method_detail=None,
+        created_by=None,
+    )
+    renewed = await repo.renew(
+        sub.id,
+        new_expires_at=date(2026, 5, 15),
+        days_late=0,
+        created_by=None,
+        new_payment_method=PaymentMethod.STANDING_ORDER,
+    )
+    assert renewed.payment_method == PaymentMethod.STANDING_ORDER
+
+    events = await repo.list_events(sub.id)
+    renew_event = next(e for e in events if e.event_type == SubscriptionEventType.RENEWED)
+    assert renew_event.event_data["previous_payment_method"] == "cash"
+    assert renew_event.event_data["new_payment_method"] == "standing_order"
+
+
+async def test_renew_without_method_override_keeps_existing_method(
+    repo, tenant_repo, plan_repo, member_repo, default_saas_plan_id
+) -> None:
+    tenant = await _create_tenant(tenant_repo, default_saas_plan_id)
+    member = await _create_member(member_repo, tenant.id)
+    plan = await _create_plan(plan_repo, tenant.id)
+    sub = await repo.create(
+        tenant_id=tenant.id,
+        member_id=member.id,
+        plan_id=plan.id,
+        price_cents=plan.price_cents,
+        currency=plan.currency,
+        started_at=date(2026, 4, 1),
+        expires_at=date(2026, 5, 1),
+        payment_method=PaymentMethod.CREDIT_CARD,
+        payment_method_detail="Visa 1234",
+        created_by=None,
+    )
+    renewed = await repo.renew(
+        sub.id,
+        new_expires_at=date(2026, 6, 1),
+        days_late=0,
+        created_by=None,
+        # No method override — should stay CREDIT_CARD
+    )
+    assert renewed.payment_method == PaymentMethod.CREDIT_CARD
+    assert renewed.payment_method_detail == "Visa 1234"
 
 
 async def test_today_offset_helper_smoke() -> None:

@@ -10,6 +10,7 @@ export type {
   ChangePlanRequest,
   CreateSubscriptionRequest,
   FreezeSubscriptionRequest,
+  PaymentMethod,
   RenewSubscriptionRequest,
   Subscription,
   SubscriptionEvent,

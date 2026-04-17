@@ -53,6 +53,7 @@ from app.adapters.storage.postgres.subscription.repositories import (
 from app.domain.entities.member import MemberStatus
 from app.domain.entities.membership_plan import BillingPeriod, PlanType
 from app.domain.entities.subscription import (
+    PaymentMethod,
     Subscription,
     SubscriptionEvent,
     SubscriptionStatus,
@@ -103,6 +104,8 @@ class SubscriptionService:
         plan_id: UUID,
         started_at: date | None = None,
         expires_at: date | None = None,
+        payment_method: PaymentMethod = PaymentMethod.CASH,
+        payment_method_detail: str | None = None,
     ) -> Subscription:
         """Enroll a member in a plan.
 
@@ -111,6 +114,7 @@ class SubscriptionService:
             - cash / prepaid → set to the next payment due date
             - card-auto → leave None ("runs until cancelled")
             - one-time plan + caller omits → auto-set to started_at + duration_days
+        - ``payment_method`` defaults to CASH (most common in IL gyms).
         - Price + currency snapshot comes from ``plan`` at create time.
         - Fails 409 if the member already has a live (active/frozen) sub.
         """
@@ -150,6 +154,8 @@ class SubscriptionService:
             currency=plan.currency,
             started_at=resolved_start,
             expires_at=resolved_expires,
+            payment_method=payment_method,
+            payment_method_detail=payment_method_detail,
             created_by=caller_id,
             event_data={"plan_id": str(plan_id)},
         )
@@ -213,10 +219,17 @@ class SubscriptionService:
         caller: TokenPayload,
         sub_id: UUID,
         new_expires_at: date | None = None,
+        new_payment_method: PaymentMethod | None = None,
+        new_payment_method_detail: str | None = None,
     ) -> Subscription:
         """Push expires_at forward. Works on ``active`` (extend-ahead) and
         ``expired`` (rescue). On expired→active, preserves the row's identity
-        (same started_at, price, plan) and logs ``days_late``."""
+        (same started_at, price, plan) and logs ``days_late``.
+
+        Optional ``new_payment_method`` handles the common "member moved
+        from cash to standing order" flow at renewal time. If omitted,
+        the existing method + detail stay as-is.
+        """
         sub, caller_id = await self._prepare_transition(caller, sub_id)
         if not sub.can_renew():
             raise InvalidSubscriptionStateTransitionError(current=sub.status.value, action="renew")
@@ -235,12 +248,24 @@ class SubscriptionService:
             sub.days_late(renewed_on=today) if sub.status == SubscriptionStatus.EXPIRED else 0
         )
 
-        updated = await self._repo.renew(
-            sub_id,
-            new_expires_at=resolved,
-            days_late=days_late,
-            created_by=caller_id,
-        )
+        # Pass detail ONLY when method was overridden — otherwise keep as-is
+        # (the repo's _UNSET sentinel distinguishes "don't touch" from "clear").
+        if new_payment_method is not None:
+            updated = await self._repo.renew(
+                sub_id,
+                new_expires_at=resolved,
+                days_late=days_late,
+                created_by=caller_id,
+                new_payment_method=new_payment_method,
+                new_payment_method_detail=new_payment_method_detail,
+            )
+        else:
+            updated = await self._repo.renew(
+                sub_id,
+                new_expires_at=resolved,
+                days_late=days_late,
+                created_by=caller_id,
+            )
         await self._sync_member_status(sub.member_id, MemberStatus.ACTIVE)
         await self._session.commit()
         return updated
@@ -289,7 +314,9 @@ class SubscriptionService:
             },
         )
 
-        # Phase 2: create the new active sub.
+        # Phase 2: create the new active sub. Payment method + detail
+        # carry over from the old sub — a plan change is a catalog change,
+        # not a payment-style change.
         new_sub = await self._repo.create(
             tenant_id=old.tenant_id,
             member_id=old.member_id,
@@ -300,6 +327,8 @@ class SubscriptionService:
             expires_at=self._resolve_expires_at(
                 plan=new_plan, started_at=effective, caller_override=None
             ),
+            payment_method=old.payment_method,
+            payment_method_detail=old.payment_method_detail,
             created_by=caller_id,
             event_data={
                 "changed_from_subscription_id": str(old.id),

@@ -58,6 +58,7 @@ export type PlanEntitlementInput = Schemas["EntitlementInputSchema"]
 // Subscriptions
 export type SubscriptionStatus = Schemas["SubscriptionStatus"]
 export type SubscriptionEventType = Schemas["SubscriptionEventType"]
+export type PaymentMethod = Schemas["PaymentMethod"]
 export type Subscription = Schemas["SubscriptionResponse"]
 export type SubscriptionEvent = Schemas["SubscriptionEventResponse"]
 export type CreateSubscriptionRequest = Schemas["CreateSubscriptionRequest"]

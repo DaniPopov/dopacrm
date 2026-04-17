@@ -40,6 +40,7 @@ from app.adapters.storage.postgres.subscription.models import (
     SubscriptionORM,
 )
 from app.domain.entities.subscription import (
+    PaymentMethod,
     Subscription,
     SubscriptionEvent,
     SubscriptionEventType,
@@ -57,6 +58,12 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
+# Sentinel for "caller didn't pass this argument" on renew — lets us
+# distinguish "leave detail alone" (the default) from "explicitly clear
+# detail" (None). A plain `None` default can't do both.
+_UNSET: Any = object()
+
+
 # ── domain↔ORM mapping ──────────────────────────────────────────────────────
 
 
@@ -69,6 +76,8 @@ def _sub_to_domain(orm: SubscriptionORM) -> Subscription:
         status=SubscriptionStatus(orm.status),
         price_cents=orm.price_cents,
         currency=orm.currency,
+        payment_method=PaymentMethod(orm.payment_method),
+        payment_method_detail=orm.payment_method_detail,
         started_at=orm.started_at,
         expires_at=orm.expires_at,
         frozen_at=orm.frozen_at,
@@ -117,6 +126,8 @@ class SubscriptionRepository:
         started_at: date,
         expires_at: date | None,
         created_by: UUID | None,
+        payment_method: PaymentMethod = PaymentMethod.CASH,
+        payment_method_detail: str | None = None,
         event_data: dict[str, Any] | None = None,
     ) -> Subscription:
         """Insert a new ACTIVE subscription + its 'created' event.
@@ -134,6 +145,8 @@ class SubscriptionRepository:
             status=SubscriptionStatus.ACTIVE.value,
             price_cents=price_cents,
             currency=currency,
+            payment_method=payment_method.value,
+            payment_method_detail=payment_method_detail,
             started_at=started_at,
             expires_at=expires_at,
         )
@@ -409,33 +422,51 @@ class SubscriptionRepository:
         new_expires_at: date,
         days_late: int,
         created_by: UUID | None,
+        new_payment_method: PaymentMethod | None = None,
+        new_payment_method_detail: Any = _UNSET,
     ) -> Subscription:
         """Push expires_at forward. Resurrects expired → active. Keeps
         started_at, price_cents, plan_id, currency — the row's identity
-        is preserved on renewal. ``expired_at`` stays as a historical marker."""
+        is preserved on renewal. ``expired_at`` stays as a historical marker.
+
+        Optionally updates payment_method too — a member moving from cash
+        to standing order typically does so at renewal time. Pass
+        ``new_payment_method_detail=_unset`` (the default) to leave detail
+        alone; pass ``None`` to explicitly clear it; pass a string to set.
+        """
         existing = await self._require_sub(sub_id)
         previous_expires_at = existing.expires_at
+        previous_method = existing.payment_method
+
+        values: dict[str, Any] = {
+            "status": SubscriptionStatus.ACTIVE.value,
+            "expires_at": new_expires_at,
+            # expired_at stays; do not reset.
+        }
+        if new_payment_method is not None:
+            values["payment_method"] = new_payment_method.value
+        if new_payment_method_detail is not _UNSET:
+            values["payment_method_detail"] = new_payment_method_detail
+
         await self._session.execute(
-            update(SubscriptionORM)
-            .where(SubscriptionORM.id == sub_id)
-            .values(
-                status=SubscriptionStatus.ACTIVE.value,
-                expires_at=new_expires_at,
-                # expired_at stays; do not reset.
-            )
+            update(SubscriptionORM).where(SubscriptionORM.id == sub_id).values(**values)
         )
+
+        event_data: dict[str, Any] = {
+            "days_late": days_late,
+            "previous_expires_at": previous_expires_at.isoformat() if previous_expires_at else None,
+            "new_expires_at": new_expires_at.isoformat(),
+        }
+        if new_payment_method is not None and new_payment_method != previous_method:
+            event_data["previous_payment_method"] = previous_method.value
+            event_data["new_payment_method"] = new_payment_method.value
+
         self._add_event(
             tenant_id=existing.tenant_id,
             sub_id=sub_id,
             event_type=SubscriptionEventType.RENEWED,
             created_by=created_by,
-            event_data={
-                "days_late": days_late,
-                "previous_expires_at": previous_expires_at.isoformat()
-                if previous_expires_at
-                else None,
-                "new_expires_at": new_expires_at.isoformat(),
-            },
+            event_data=event_data,
         )
         await self._session.flush()
         refreshed = await self.find_by_id(sub_id)

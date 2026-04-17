@@ -9,6 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.domain.entities.subscription import (
+    PaymentMethod,
     SubscriptionEventType,
     SubscriptionStatus,
 )
@@ -31,6 +32,18 @@ class CreateSubscriptionRequest(BaseModel):
             "Cash / prepaid: set to next payment due date. "
             "Card-auto: leave null (runs until cancelled). "
             "One-time plans default to started_at + duration_days when omitted."
+        ),
+    )
+    payment_method: PaymentMethod = Field(
+        default=PaymentMethod.CASH,
+        description="How the member pays: cash / credit_card / standing_order / other.",
+    )
+    payment_method_detail: str | None = Field(
+        default=None,
+        max_length=200,
+        description=(
+            "Free-text elaboration. Required by the UI when method='other'; "
+            "optional otherwise (e.g., 'Visa 1234')."
         ),
     )
 
@@ -66,11 +79,24 @@ class RenewSubscriptionRequest(BaseModel):
     Default extension = plan's billing period (monthly=+30d, quarterly=+90d,
     yearly=+365d, one_time=+duration_days). Override via `new_expires_at`
     for "she paid 2 months upfront" and similar.
+
+    Optional `new_payment_method` / `new_payment_method_detail` handle the
+    common "member moved from cash to standing order" flow at renewal time.
+    Omit both to keep the existing payment info.
     """
 
     new_expires_at: date | None = Field(
         default=None,
         description="Override the default billing-period extension.",
+    )
+    new_payment_method: PaymentMethod | None = Field(
+        default=None,
+        description="Optional: switch payment method at renewal time.",
+    )
+    new_payment_method_detail: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Paired with new_payment_method. Ignored if method is not provided.",
     )
 
 
@@ -123,6 +149,8 @@ class SubscriptionResponse(BaseModel):
     status: SubscriptionStatus
     price_cents: int
     currency: str
+    payment_method: PaymentMethod
+    payment_method_detail: str | None
 
     started_at: date
     expires_at: date | None

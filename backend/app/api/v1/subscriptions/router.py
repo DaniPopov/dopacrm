@@ -52,6 +52,8 @@ def _sub_to_response(s: Subscription) -> SubscriptionResponse:
         status=s.status,
         price_cents=s.price_cents,
         currency=s.currency,
+        payment_method=s.payment_method,
+        payment_method_detail=s.payment_method_detail,
         started_at=s.started_at,
         expires_at=s.expires_at,
         frozen_at=s.frozen_at,
@@ -102,6 +104,8 @@ async def create_subscription(
         plan_id=body.plan_id,
         started_at=body.started_at,
         expires_at=body.expires_at,
+        payment_method=body.payment_method,
+        payment_method_detail=body.payment_method_detail,
     )
     return _sub_to_response(sub)
 
@@ -156,7 +160,13 @@ async def renew_subscription(
     caller: TokenPayload = Depends(get_current_user),
     service: SubscriptionService = Depends(_get_service),
 ) -> SubscriptionResponse:
-    sub = await service.renew(caller=caller, sub_id=sub_id, new_expires_at=body.new_expires_at)
+    sub = await service.renew(
+        caller=caller,
+        sub_id=sub_id,
+        new_expires_at=body.new_expires_at,
+        new_payment_method=body.new_payment_method,
+        new_payment_method_detail=body.new_payment_method_detail,
+    )
     return _sub_to_response(sub)
 
 

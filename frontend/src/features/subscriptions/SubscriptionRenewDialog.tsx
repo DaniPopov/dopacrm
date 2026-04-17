@@ -8,6 +8,8 @@ import {
   inputClass,
   Modal,
 } from "./SubscriptionEnrollDialog"
+import { PAYMENT_METHOD_OPTIONS } from "./paymentMethods"
+import type { PaymentMethod } from "./types"
 
 /**
  * Renew a subscription (extend expires_at).
@@ -22,24 +24,37 @@ import {
 export default function SubscriptionRenewDialog({
   subscriptionId,
   currentExpiresAt,
+  currentPaymentMethod,
   onClose,
   onSuccess,
 }: {
   subscriptionId: string
   /** Shown as helper text so staff can see what they're extending. */
   currentExpiresAt: string | null
+  /** Current payment method, shown + prefilled in the optional override dropdown. */
+  currentPaymentMethod: PaymentMethod
   onClose: () => void
   onSuccess?: () => void
 }) {
   const renew = useRenewSubscription()
   const [newExpiresAt, setNewExpiresAt] = useState("")
+  // "" sentinel = "don't change method". Actual enum values trigger an update.
+  const [newPaymentMethod, setNewPaymentMethod] = useState<"" | PaymentMethod>("")
+  const [newPaymentDetail, setNewPaymentDetail] = useState("")
+
+  const methodChanged =
+    newPaymentMethod !== "" && newPaymentMethod !== currentPaymentMethod
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     renew.mutate(
       {
         id: subscriptionId,
-        data: { new_expires_at: newExpiresAt || null },
+        data: {
+          new_expires_at: newExpiresAt || null,
+          new_payment_method: methodChanged ? newPaymentMethod : null,
+          new_payment_method_detail: methodChanged ? newPaymentDetail.trim() || null : null,
+        },
       },
       {
         onSuccess: () => {
@@ -71,6 +86,45 @@ export default function SubscriptionRenewDialog({
             className={inputClass}
           />
         </Field>
+
+        <Field
+          label="החלפת אמצעי תשלום (אופציונלי)"
+          helper="למשל: מעבר מתשלום במזומן להוראת קבע. השאירו ריק כדי לא לשנות."
+        >
+          <select
+            value={newPaymentMethod}
+            onChange={(e) =>
+              setNewPaymentMethod(e.target.value as "" | PaymentMethod)
+            }
+            className={inputClass}
+          >
+            <option value="">ללא שינוי</option>
+            {PAYMENT_METHOD_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        {methodChanged && (
+          <Field
+            label="פרטים (אופציונלי)"
+            helper={
+              newPaymentMethod === "other"
+                ? "מומלץ לציין תיאור חופשי"
+                : "אופציונלי — למשל מספר כרטיס/אסמכתה"
+            }
+          >
+            <input
+              type="text"
+              maxLength={200}
+              value={newPaymentDetail}
+              onChange={(e) => setNewPaymentDetail(e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+        )}
 
         {renew.error && <ErrorBox message={humanizeSubscriptionError(renew.error)} />}
 
