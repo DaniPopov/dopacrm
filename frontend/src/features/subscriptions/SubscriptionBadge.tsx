@@ -1,47 +1,31 @@
+import { StatusBadge, type StatusVariant } from "@/components/ui/status-badge"
 import type { SubscriptionStatus } from "./types"
 
 /**
- * Reusable status pill. Shared by the member detail page, the expiring
- * list, and the history table so colors stay consistent across the app.
+ * Subscription-specific wrapper around the shared ``StatusBadge``. Keeps
+ * the Hebrew labels + variant mapping local to the domain (other pages
+ * that happen to show a subscription status see the same colors as the
+ * member/plan/tenant status pills).
  *
- * Hebrew labels + the same palette used elsewhere for member status
- * (active = emerald, frozen = amber, expired = slate, cancelled = red).
- * `replaced` is shown in indigo — a distinct color because it's a
- * "history" state, not a terminal-churn state.
+ * Variant choices:
+ *   active    → success (paid-up & live)
+ *   frozen    → warning (paused, needs attention)
+ *   expired   → neutral (lapsed, renewable)
+ *   cancelled → danger  (actively left)
+ *   replaced  → info    (history / chain-link)
  */
 const STATUS_META: Record<
   SubscriptionStatus,
-  { label: string; className: string }
+  { label: string; variant: StatusVariant }
 > = {
-  active: {
-    label: "פעיל",
-    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  },
-  frozen: {
-    label: "מוקפא",
-    className: "border-amber-200 bg-amber-50 text-amber-700",
-  },
-  expired: {
-    label: "פג תוקף",
-    className: "border-slate-200 bg-slate-50 text-slate-600",
-  },
-  cancelled: {
-    label: "בוטל",
-    className: "border-red-200 bg-red-50 text-red-700",
-  },
-  replaced: {
-    label: "הוחלף",
-    className: "border-indigo-200 bg-indigo-50 text-indigo-700",
-  },
+  active: { label: "פעיל", variant: "success" },
+  frozen: { label: "מוקפא", variant: "warning" },
+  expired: { label: "פג תוקף", variant: "neutral" },
+  cancelled: { label: "בוטל", variant: "danger" },
+  replaced: { label: "הוחלף", variant: "info" },
 }
 
 export function SubscriptionBadge({ status }: { status: SubscriptionStatus }) {
   const meta = STATUS_META[status]
-  return (
-    <span
-      className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${meta.className}`}
-    >
-      {meta.label}
-    </span>
-  )
+  return <StatusBadge variant={meta.variant}>{meta.label}</StatusBadge>
 }
