@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.api.dependencies.rate_limit import api_rate_limit
 from app.api.v1.admin.router import router as admin_router
+from app.api.v1.attendance.router import router as attendance_router
 from app.api.v1.auth.router import router as auth_router
 from app.api.v1.classes.router import router as classes_router
 from app.api.v1.members.router import router as members_router
@@ -57,5 +58,11 @@ v1_router.include_router(
     subscriptions_router,
     prefix="/subscriptions",
     tags=["Subscriptions"],
+    dependencies=api_rate_limit,
+)
+v1_router.include_router(
+    attendance_router,
+    prefix="/attendance",
+    tags=["Attendance"],
     dependencies=api_rate_limit,
 )
