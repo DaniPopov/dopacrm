@@ -150,3 +150,64 @@ class InvalidMemberStatusTransitionError(AppError):
             f"Cannot {action} member in status '{current}'",
             "MEMBER_INVALID_TRANSITION",
         )
+
+
+# ── Subscription ─────────────────────────────────────────────────────────────
+class SubscriptionNotFoundError(AppError):
+    """No subscription matches the given id in the caller's tenant."""
+
+    def __init__(self, sub_id: str) -> None:
+        super().__init__(f"Subscription not found: {sub_id}", "SUBSCRIPTION_NOT_FOUND")
+
+
+class InvalidSubscriptionStateTransitionError(AppError):
+    """Attempted a transition the state machine doesn't allow.
+
+    Examples: freezing a cancelled sub, renewing a cancelled sub,
+    changing the plan of an expired sub (must renew or create new).
+    """
+
+    def __init__(self, current: str, action: str) -> None:
+        super().__init__(
+            f"Cannot {action} subscription in status '{current}'",
+            "SUBSCRIPTION_INVALID_TRANSITION",
+        )
+
+
+class MemberAlreadyHasActiveSubscriptionError(AppError):
+    """Enrolling a member who already has a live (active/frozen) sub.
+
+    Enforced in the service for a clean 409; the DB partial UNIQUE
+    index is the last line of defense.
+    """
+
+    def __init__(self, member_id: str) -> None:
+        super().__init__(
+            f"Member already has a live subscription: {member_id}",
+            "MEMBER_HAS_ACTIVE_SUBSCRIPTION",
+        )
+
+
+class SamePlanChangeError(AppError):
+    """change-plan was called with the same plan as the current subscription.
+
+    Prevents ghost ``replaced`` rows that point at an identical plan —
+    those would pollute churn/upgrade reports with no-op transitions.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(
+            "New plan must differ from the current plan",
+            "SUBSCRIPTION_SAME_PLAN",
+        )
+
+
+class SubscriptionPlanMismatchError(AppError):
+    """Plan and member belong to different tenants. Belt-and-suspenders
+    vs the FK — surfaces as 422 with a useful code."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Plan and member belong to different tenants",
+            "SUBSCRIPTION_PLAN_TENANT_MISMATCH",
+        )
