@@ -211,3 +211,78 @@ class SubscriptionPlanMismatchError(AppError):
             "Plan and member belong to different tenants",
             "SUBSCRIPTION_PLAN_TENANT_MISMATCH",
         )
+
+
+# ── Attendance / class entries ───────────────────────────────────────────────
+class ClassEntryNotFoundError(AppError):
+    """No class entry matches the given id in the caller's tenant."""
+
+    def __init__(self, entry_id: str) -> None:
+        super().__init__(f"Class entry not found: {entry_id}", "CLASS_ENTRY_NOT_FOUND")
+
+
+class MemberHasNoActiveSubscriptionError(AppError):
+    """Can't check in a member who has no live subscription.
+
+    Returned as 409 — the UI shows "no active subscription, enroll first"
+    with a link to the subscription section on the member page.
+    """
+
+    def __init__(self, member_id: str) -> None:
+        super().__init__(
+            f"Member has no active subscription: {member_id}",
+            "MEMBER_NO_ACTIVE_SUBSCRIPTION",
+        )
+
+
+class QuotaExceededError(AppError):
+    """Entitlement exists but the reset-period quota is full.
+
+    The service raises this if the caller didn't pass ``override=true``.
+    The UI catches the 409 + kind=quota_exceeded and shows the override
+    modal; if staff confirms, the request is replayed with override=true.
+    """
+
+    def __init__(self, used: int, quantity: int) -> None:
+        super().__init__(
+            f"Quota exceeded: {used}/{quantity} used in the current window",
+            "ATTENDANCE_QUOTA_EXCEEDED",
+        )
+
+
+class ClassNotCoveredByPlanError(AppError):
+    """Member's plan has no entitlement for this class (neither exact-class
+    nor any-class wildcard).
+
+    Same pattern as QuotaExceededError — UI shows override modal.
+    """
+
+    def __init__(self, class_id: str) -> None:
+        super().__init__(
+            f"Class not covered by the member's plan: {class_id}",
+            "ATTENDANCE_CLASS_NOT_COVERED",
+        )
+
+
+class UndoWindowExpiredError(AppError):
+    """The 24h undo window has closed. Entry stays as-is.
+
+    Corrections past the window are future work (audit log / owner
+    approval). v1 just refuses.
+    """
+
+    def __init__(self, hours_since_entry: float) -> None:
+        super().__init__(
+            f"Undo window expired ({hours_since_entry:.1f}h since entry)",
+            "ATTENDANCE_UNDO_WINDOW_EXPIRED",
+        )
+
+
+class ClassEntryAlreadyUndoneError(AppError):
+    """Double-undo guard — entry was already soft-deleted."""
+
+    def __init__(self, entry_id: str) -> None:
+        super().__init__(
+            f"Class entry already undone: {entry_id}",
+            "ATTENDANCE_ALREADY_UNDONE",
+        )
