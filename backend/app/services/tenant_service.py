@@ -179,9 +179,26 @@ class TenantService:
 
     # ── Queries ──────────────────────────────────────────────────────────────
 
-    async def get_tenant(self, tenant_id: UUID) -> Tenant:
-        """Get a single tenant by ID."""
-        return await self._get_or_raise(tenant_id)
+    async def get_tenant(self, *, caller: TokenPayload, tenant_id: UUID) -> Tenant:
+        """Get a single tenant by ID, tenant-scoped.
+
+        - ``super_admin`` can read any tenant (platform support).
+        - tenant users can only read their own tenant; requests for
+          other tenants return ``TenantNotFoundError`` → 404. We do NOT
+          return 403 because a 403 leaks that the tenant exists.
+
+        Fixes a cross-tenant read leak discovered by the
+        ``test_cross_tenant_isolation`` suite: previously this method
+        took no caller and any authenticated user could GET any tenant's
+        record (including logo URL, contact info, billing status).
+        """
+        tenant = await self._get_or_raise(tenant_id)
+        if caller.role == Role.SUPER_ADMIN.value:
+            return tenant
+        # Tenant users see only their own tenant.
+        if caller.tenant_id is None or str(caller.tenant_id) != str(tenant_id):
+            raise TenantNotFoundError(str(tenant_id))
+        return tenant
 
     async def get_tenant_by_slug(self, slug: str) -> Tenant:
         """Get a single tenant by slug."""

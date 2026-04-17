@@ -102,10 +102,10 @@ async def list_users(
 )
 async def get_user(
     user_id: UUID,
-    _caller: TokenPayload = Depends(get_current_user),
+    caller: TokenPayload = Depends(get_current_user),
     service: UserService = Depends(_get_service),
 ) -> UserResponse:
-    user = await service.get_user(user_id)
+    user = await service.get_user(caller=caller, user_id=user_id)
     return _to_response(user)
 
 
@@ -118,11 +118,11 @@ async def get_user(
 async def update_user(
     user_id: UUID,
     body: UpdateUserRequest,
-    _caller: TokenPayload = Depends(require_owner),
+    caller: TokenPayload = Depends(require_owner),
     service: UserService = Depends(_get_service),
 ) -> UserResponse:
     updates = body.model_dump(exclude_unset=True)
-    user = await service.update_user(user_id, **updates)
+    user = await service.update_user(caller=caller, user_id=user_id, **updates)
     return _to_response(user)
 
 
@@ -134,7 +134,7 @@ async def update_user(
 )
 async def delete_user(
     user_id: UUID,
-    _caller: TokenPayload = Depends(require_owner),
+    caller: TokenPayload = Depends(require_owner),
     service: UserService = Depends(_get_service),
 ) -> None:
-    await service.soft_delete_user(user_id)
+    await service.soft_delete_user(caller=caller, user_id=user_id)

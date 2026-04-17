@@ -135,10 +135,10 @@ async def list_tenants(
 )
 async def get_tenant(
     tenant_id: UUID,
-    _caller: TokenPayload = Depends(get_current_user),
+    caller: TokenPayload = Depends(get_current_user),
     service: TenantService = Depends(_get_service),
 ) -> TenantResponse:
-    tenant = await service.get_tenant(tenant_id)
+    tenant = await service.get_tenant(caller=caller, tenant_id=tenant_id)
     return _to_response(tenant)
 
 

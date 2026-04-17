@@ -78,10 +78,25 @@ class UserService:
         await self._session.commit()
         return user
 
-    async def get_user(self, user_id: UUID) -> User:
-        """Get a single user by ID."""
+    async def get_user(self, *, caller: TokenPayload, user_id: UUID) -> User:
+        """Get a single user by ID, tenant-scoped.
+
+        - ``super_admin`` can read any user (platform support).
+        - tenant users can only read users in their own tenant. Requests
+          for users in other tenants return ``UserNotFoundError`` → 404
+          (not 403 — don't leak existence).
+        """
         user = await self._repo.find_by_id(user_id)
         if not user:
+            raise UserNotFoundError(str(user_id))
+        if caller.role == Role.SUPER_ADMIN.value:
+            return user
+        # Tenant users see only their own tenant's users.
+        if (
+            caller.tenant_id is None
+            or user.tenant_id is None
+            or str(user.tenant_id) != str(caller.tenant_id)
+        ):
             raise UserNotFoundError(str(user_id))
         return user
 
@@ -109,16 +124,23 @@ class UserService:
 
     async def update_user(
         self,
+        *,
+        caller: TokenPayload,
         user_id: UUID,
         **fields,
     ) -> User:
-        """Partial update — only provided fields are changed.
+        """Partial update — only provided fields are changed. Tenant-scoped.
 
         If ``password`` is provided, it's hashed with argon2 and stored as
         ``password_hash``. The plaintext never touches the repository. Pass
         ``password=None`` (or omit) to leave the existing password alone.
+
+        Cross-tenant protection: caller-based scoping prevents owner in
+        tenant A from patching users in tenant B. Foreign user IDs → 404
+        (via get_user's tenant check).
         """
-        await self.get_user(user_id)  # raises UserNotFoundError if missing
+        # Verify caller can see this user (raises 404 for cross-tenant)
+        await self.get_user(caller=caller, user_id=user_id)
 
         # Map plaintext password → hashed column name
         if "password" in fields:
@@ -130,8 +152,8 @@ class UserService:
         await self._session.commit()
         return updated
 
-    async def soft_delete_user(self, user_id: UUID) -> None:
-        """Soft-delete — sets is_active=False. No row is removed."""
-        await self.get_user(user_id)  # raises UserNotFoundError if missing
+    async def soft_delete_user(self, *, caller: TokenPayload, user_id: UUID) -> None:
+        """Soft-delete — sets is_active=False. No row is removed. Tenant-scoped."""
+        await self.get_user(caller=caller, user_id=user_id)
         await self._repo.update(user_id, is_active=False)
         await self._session.commit()
