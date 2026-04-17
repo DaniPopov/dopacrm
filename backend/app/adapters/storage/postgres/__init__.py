@@ -8,6 +8,7 @@ Adding a new entity? Create the folder + ``models.py`` then re-export the
 ORM class here.
 """
 
+from app.adapters.storage.postgres.class_entry.models import ClassEntryORM
 from app.adapters.storage.postgres.database import Base, async_session_factory, get_engine
 from app.adapters.storage.postgres.gym_class.models import GymClassORM
 from app.adapters.storage.postgres.member.models import MemberORM
@@ -26,6 +27,7 @@ from app.adapters.storage.postgres.user.models import UserORM
 
 __all__ = [
     "Base",
+    "ClassEntryORM",
     "GymClassORM",
     "MemberORM",
     "MembershipPlanORM",

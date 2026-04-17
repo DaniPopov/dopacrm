@@ -46,8 +46,7 @@ class ClassEntry(BaseModel):
     member_id: UUID
     subscription_id: UUID = Field(
         description=(
-            "Every entry ties to exactly one live subscription. "
-            "No subscriptionless entries."
+            "Every entry ties to exactly one live subscription. No subscriptionless entries."
         )
     )
     class_id: UUID
