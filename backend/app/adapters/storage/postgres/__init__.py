@@ -17,6 +17,10 @@ from app.adapters.storage.postgres.membership_plan.models import (
 )
 from app.adapters.storage.postgres.refresh_token.models import RefreshTokenORM
 from app.adapters.storage.postgres.saas_plan.models import SaasPlanORM
+from app.adapters.storage.postgres.subscription.models import (
+    SubscriptionEventORM,
+    SubscriptionORM,
+)
 from app.adapters.storage.postgres.tenant.models import TenantORM
 from app.adapters.storage.postgres.user.models import UserORM
 
@@ -28,6 +32,8 @@ __all__ = [
     "PlanEntitlementORM",
     "RefreshTokenORM",
     "SaasPlanORM",
+    "SubscriptionEventORM",
+    "SubscriptionORM",
     "TenantORM",
     "UserORM",
     "async_session_factory",

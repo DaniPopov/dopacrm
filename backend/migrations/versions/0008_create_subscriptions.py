@@ -132,10 +132,16 @@ def upgrade() -> None:
             "OR (status = 'cancelled' AND cancelled_at IS NOT NULL)",
             name="ck_subs_cancelled_shape",
         ),
+        # replaced_at is tied to status, but replaced_by_id is NOT required
+        # at the row level: the plan-change flow updates the old sub to
+        # status='replaced' FIRST (clearing it from the live-set so the
+        # partial UNIQUE lets the new sub insert), THEN fills replaced_by_id
+        # in a second UPDATE after the new sub's id is known. Committed-state
+        # invariant ("replaced subs always have replaced_by_id set") is a
+        # service-layer guarantee, not a row CHECK.
         sa.CheckConstraint(
             "(status <> 'replaced' AND replaced_at IS NULL AND replaced_by_id IS NULL) "
-            "OR (status = 'replaced' AND replaced_at IS NOT NULL "
-            "AND replaced_by_id IS NOT NULL)",
+            "OR (status = 'replaced' AND replaced_at IS NOT NULL)",
             name="ck_subs_replaced_shape",
         ),
         # frozen_until, if set, must be >= frozen_at
