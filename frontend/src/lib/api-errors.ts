@@ -120,6 +120,43 @@ export function humanizeClassError(err: unknown): string {
 }
 
 /**
+ * Overrides for attendance errors (record / undo / quota-check).
+ *
+ * Two 409 cases are "business" responses that the UI handles inline
+ * (override modal) rather than toasts:
+ *   - ATTENDANCE_QUOTA_EXCEEDED
+ *   - ATTENDANCE_CLASS_NOT_COVERED
+ * For those, the UI should show the override dialog, not this string.
+ * Other 409s (MEMBER_NO_ACTIVE_SUBSCRIPTION, UNDO_WINDOW_EXPIRED,
+ * ALREADY_UNDONE) are genuine errors → fall through to a toast-friendly
+ * Hebrew message.
+ */
+export function humanizeAttendanceError(err: unknown): string {
+  if (err instanceof ApiError || (err instanceof Error && "status" in err)) {
+    const status = (err as ApiError).status
+    const message = (err as ApiError).message.toLowerCase()
+    if (status === 403) return "אין לכם הרשאה לפעולה זו"
+    if (status === 404) return "הפריט לא נמצא"
+    if (status === 409) {
+      if (message.includes("no active subscription"))
+        return "למנוי זה אין מנוי פעיל. יש להרשום תחילה"
+      if (message.includes("undo window"))
+        return "חלון הביטול (24 שעות) פג"
+      if (message.includes("already undone"))
+        return "הכניסה כבר בוטלה"
+      if (message.includes("quota exceeded"))
+        return "המנוי מיצה את המכסה לתקופה"
+      if (message.includes("not covered"))
+        return "השיעור לא כלול במסלול"
+      return "לא ניתן לבצע פעולה זו"
+    }
+    if (status === 422) return "הפרטים שהוזנו אינם תקינים"
+    return genericMessage(status)
+  }
+  return "אירעה שגיאה ברישום הכניסה"
+}
+
+/**
  * Overrides for subscription CRUD errors (enroll / freeze / renew / change-plan / cancel).
  *
  * Status-code semantics:

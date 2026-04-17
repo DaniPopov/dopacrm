@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom"
 import { humanizeMemberError } from "@/lib/api-errors"
+import MemberQrButton from "@/features/attendance/MemberQrButton"
 import MemberSubscriptionSection from "@/features/subscriptions/MemberSubscriptionSection"
 import MemberForm, { type MemberFormValues } from "./MemberForm"
 import { useMember, useUpdateMember } from "./hooks"
@@ -79,6 +80,10 @@ export default function MemberDetailPage() {
             {member.phone}
           </p>
         </div>
+        <MemberQrButton
+          memberId={member.id}
+          memberName={`${member.first_name} ${member.last_name}`}
+        />
       </div>
 
       <div className="space-y-8">

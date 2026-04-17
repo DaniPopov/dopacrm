@@ -10,6 +10,7 @@ import ClassListPage from "@/features/classes/ClassListPage"
 import ClassDetailPage from "@/features/classes/ClassDetailPage"
 import PlanListPage from "@/features/plans/PlanListPage"
 import PlanDetailPage from "@/features/plans/PlanDetailPage"
+import CheckInPage from "@/features/attendance/CheckInPage"
 import ProtectedRoute from "@/components/layout/ProtectedRoute"
 import RequireFeature from "@/components/layout/RequireFeature"
 import DashboardLayout from "@/components/layout/DashboardLayout"
@@ -46,6 +47,11 @@ export default function App() {
           <Route element={<RequireFeature feature="plans" />}>
             <Route path="/plans" element={<PlanListPage />} />
             <Route path="/plans/:id" element={<PlanDetailPage />} />
+          </Route>
+
+          {/* Gym-scoped: attendance / check-in. Staff+ daily operations. */}
+          <Route element={<RequireFeature feature="attendance" />}>
+            <Route path="/check-in" element={<CheckInPage />} />
           </Route>
         </Route>
       </Route>

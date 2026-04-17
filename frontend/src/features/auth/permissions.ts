@@ -60,6 +60,7 @@ export type Feature =
   | "members"
   | "classes" // class-type catalog (gym-scoped)
   | "plans"
+  | "attendance" // check-in / front desk
   | "leads"
   | "payments"
   | "reports"
@@ -80,15 +81,17 @@ const BASELINE: Record<Role, Feature[]> = {
     "members",
     "classes",
     "plans",
+    "attendance",
     "leads",
     "payments",
     "reports",
     "settings",
   ],
-  // Staff handles day-to-day ops (check-in, member updates). Reads the
-  // class catalog to pick what a walk-in wants.
-  staff: ["dashboard", "members", "classes"],
-  // Sales converts leads → members. Reads classes when enrolling.
+  // Staff handles day-to-day ops — attendance is the highest-frequency
+  // front-desk task. Members + classes context for the check-in flow.
+  staff: ["dashboard", "members", "classes", "attendance"],
+  // Sales converts leads → members. Reads classes when enrolling; no
+  // attendance (check-in is a staff/operations task).
   sales: ["dashboard", "members", "classes"],
 }
 
@@ -102,6 +105,7 @@ export const GRANTABLE_FEATURES: Feature[] = [
   "members",
   "classes",
   "plans",
+  "attendance",
   "leads",
   "payments",
   "reports",

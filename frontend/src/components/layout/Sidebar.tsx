@@ -39,6 +39,7 @@ const NAV_ITEMS: NavItem[] = [
 
   // Gym-scoped
   { to: "/members", label: "מנויים", icon: "👥", feature: "members" },
+  { to: "/check-in", label: "כניסות", icon: "🚪", feature: "attendance" },
   { to: "/classes", label: "שיעורים", icon: "🏃", feature: "classes" },
   { to: "/plans", label: "מסלולים", icon: "📋", feature: "plans" },
 

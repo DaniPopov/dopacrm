@@ -104,11 +104,14 @@ describe("canAccess — tenant overrides", () => {
 
 describe("accessibleFeatures", () => {
   it("returns baseline for roles with no overrides", () => {
+    // Staff baseline includes attendance (front-desk check-in).
     expect(accessibleFeatures(makeUser("staff"))).toEqual([
       "dashboard",
       "members",
       "classes",
+      "attendance",
     ])
+    // Sales does NOT — check-in is an operations task.
     expect(accessibleFeatures(makeUser("sales"))).toEqual([
       "dashboard",
       "members",
@@ -121,8 +124,13 @@ describe("accessibleFeatures", () => {
       staff: ["payments"],
       sales: [],
     })
-    // baseline = [dashboard, members, classes]; override adds payments
-    expect(features).toEqual(["dashboard", "members", "classes", "payments"])
+    expect(features).toEqual([
+      "dashboard",
+      "members",
+      "classes",
+      "attendance",
+      "payments",
+    ])
   })
 
   it("owner always sees full gym feature set", () => {

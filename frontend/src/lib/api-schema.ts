@@ -24,6 +24,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/attendance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List entries in the caller's tenant
+         * @description Filterable: ``member_id``, ``class_id``, ``date_from``, ``date_to``, ``include_undone``, ``undone_only``, ``override_only``. The last two power the owner's 'mistakes / overrides this week' views.
+         */
+        get: operations["list_entries_api_v1_attendance_get"];
+        put?: never;
+        /**
+         * Record a check-in
+         * @description staff+. Quota is checked first. If the member is at quota or the class isn't covered, the server returns 409 and the UI shows an override modal; retry with ``override=true`` to record anyway (flagged for owner audit).
+         */
+        post: operations["record_entry_api_v1_attendance_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attendance/members/{member_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Full attendance history for one member
+         * @description Shown on the member detail page. Includes undone entries.
+         */
+        get: operations["list_member_entries_api_v1_attendance_members__member_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attendance/members/{member_id}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Per-entitlement usage summary for a member
+         * @description One row per entitlement on the member's live sub. UNLIMITED shows up with ``remaining=null``. Empty list if no live sub. Used by the check-in page header + the member self-view (future).
+         */
+        get: operations["member_summary_api_v1_attendance_members__member_id__summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attendance/quota-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Peek at whether a check-in would be allowed
+         * @description Returns the quota status for one (member, class) pair WITHOUT recording anything. Used by the check-in page to color class cards (covered / not-covered / at-quota with a remaining count).
+         */
+        get: operations["quota_check_api_v1_attendance_quota_check_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attendance/{entry_id}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Undo a check-in (within 24h)
+         * @description staff+. Soft-deletes the entry. Returns 409 if past the 24h window or already undone. The row stays in the DB so reporting remains honest.
+         */
+        post: operations["undo_entry_api_v1_attendance__entry_id__undo_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -1135,6 +1239,52 @@ export interface components {
             quantity: number | null;
             reset_period: components["schemas"]["ResetPeriod"];
         };
+        /** EntryResponse */
+        EntryResponse: {
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /**
+             * Entered At
+             * Format: date-time
+             */
+            entered_at: string;
+            /** Entered By */
+            entered_by: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Member Id
+             * Format: uuid
+             */
+            member_id: string;
+            /** Override */
+            override: boolean;
+            override_kind: components["schemas"]["OverrideKind"] | null;
+            /** Override Reason */
+            override_reason: string | null;
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Undone At */
+            undone_at: string | null;
+            /** Undone By */
+            undone_by: string | null;
+            /** Undone Reason */
+            undone_reason: string | null;
+        };
         /**
          * FreezeMemberRequest
          * @description POST /api/v1/members/{id}/freeze — optional body.
@@ -1303,6 +1453,12 @@ export interface components {
          */
         MemberStatus: "active" | "frozen" | "cancelled" | "expired";
         /**
+         * OverrideKind
+         * @description Why this entry was an override (null for normal entries).
+         * @enum {string}
+         */
+        OverrideKind: "quota_exceeded" | "not_covered";
+        /**
          * PaymentMethod
          * @description How the member pays for this subscription.
          *
@@ -1412,6 +1568,56 @@ export interface components {
             total_tenants: number;
             /** Total Users */
             total_users: number;
+        };
+        /**
+         * QuotaCheckResponse
+         * @description Result of the quota peek — used by the check-in page to color
+         *     class cards before staff taps one.
+         */
+        QuotaCheckResponse: {
+            /** Allowed */
+            allowed: boolean;
+            /** Quantity */
+            quantity?: number | null;
+            /** Reason */
+            reason?: string | null;
+            /** Remaining */
+            remaining?: number | null;
+            /** Reset Period */
+            reset_period?: string | null;
+            /** Used */
+            used?: number | null;
+        };
+        /**
+         * RecordEntryRequest
+         * @description POST /api/v1/attendance — record one check-in.
+         * @example {
+         *       "class_id": "22222222-2222-2222-2222-222222222222",
+         *       "member_id": "11111111-1111-1111-1111-111111111111"
+         *     }
+         */
+        RecordEntryRequest: {
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /**
+             * Member Id
+             * Format: uuid
+             */
+            member_id: string;
+            /**
+             * Override
+             * @description Set to true to bypass quota-exceeded or not-covered guards. The UI shows a confirmation modal + sets this on retry.
+             * @default false
+             */
+            override: boolean;
+            /**
+             * Override Reason
+             * @description Free text — only recorded when override=true.
+             */
+            override_reason?: string | null;
         };
         /**
          * RenewSubscriptionRequest
@@ -1599,6 +1805,24 @@ export interface components {
          */
         SubscriptionStatus: "active" | "frozen" | "expired" | "cancelled" | "replaced";
         /**
+         * SummaryItem
+         * @description One row in the member's entitlement-usage summary.
+         */
+        SummaryItem: {
+            /** Allowed */
+            allowed: boolean;
+            /** Quantity */
+            quantity: number | null;
+            /** Reason */
+            reason: string | null;
+            /** Remaining */
+            remaining: number | null;
+            /** Reset Period */
+            reset_period: string | null;
+            /** Used */
+            used: number | null;
+        };
+        /**
          * TenantResponse
          * @description Standard tenant response.
          * @example {
@@ -1726,6 +1950,14 @@ export interface components {
              * @default bearer
              */
             token_type: string;
+        };
+        /**
+         * UndoEntryRequest
+         * @description POST /api/v1/attendance/{id}/undo — soft-delete within 24h.
+         */
+        UndoEntryRequest: {
+            /** Reason */
+            reason?: string | null;
         };
         /**
          * UpdateGymClassRequest
@@ -1988,6 +2220,209 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlatformStatsResponse"];
+                };
+            };
+        };
+    };
+    list_entries_api_v1_attendance_get: {
+        parameters: {
+            query?: {
+                member_id?: string | null;
+                class_id?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                include_undone?: boolean;
+                undone_only?: boolean;
+                override_only?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_entry_api_v1_attendance_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordEntryRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_member_entries_api_v1_attendance_members__member_id__get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                member_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    member_summary_api_v1_attendance_members__member_id__summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                member_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SummaryItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    quota_check_api_v1_attendance_quota_check_get: {
+        parameters: {
+            query: {
+                member_id: string;
+                class_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotaCheckResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    undo_entry_api_v1_attendance__entry_id__undo_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UndoEntryRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
