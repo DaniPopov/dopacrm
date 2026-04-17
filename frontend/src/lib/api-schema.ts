@@ -356,6 +356,167 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List subscriptions in the caller's tenant
+         * @description Filterable: ``member_id``, ``status``, ``plan_id``, ``expires_before``, ``expires_within_days`` (the 'about to expire' dashboard query).
+         */
+        get: operations["list_subscriptions_api_v1_subscriptions_get"];
+        put?: never;
+        /**
+         * Enroll a member in a plan
+         * @description staff+. Creates an active subscription with the plan's current price snapshotted. Fails 409 if the member already has a live sub.
+         */
+        post: operations["create_subscription_api_v1_subscriptions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subscriptions/{sub_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a subscription by ID */
+        get: operations["get_subscription_api_v1_subscriptions__sub_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subscriptions/{sub_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a subscription (hard-terminal)
+         * @description staff+. Member actively left. Optional reason + detail for churn analytics. Rejoin = new sub (this one stays as history).
+         */
+        post: operations["cancel_subscription_api_v1_subscriptions__sub_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subscriptions/{sub_id}/change-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Switch the member to a different plan
+         * @description staff+. Old sub → `replaced` (NOT cancelled — different for reports). New sub is active with a fresh price snapshot from the new plan. Atomic: both rows land or neither does. Returns the NEW sub.
+         */
+        post: operations["change_plan_api_v1_subscriptions__sub_id__change_plan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subscriptions/{sub_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the timeline of events for a subscription
+         * @description All state transitions for this sub, newest first. The member detail page renders this as a human-readable timeline. System events (nightly auto-unfreeze / auto-expire) have ``created_by = null``.
+         */
+        get: operations["list_subscription_events_api_v1_subscriptions__sub_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subscriptions/{sub_id}/freeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Freeze a subscription
+         * @description staff+. Optional ``frozen_until`` for auto-unfreeze. Paused time extends expires_at on unfreeze.
+         */
+        post: operations["freeze_subscription_api_v1_subscriptions__sub_id__freeze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subscriptions/{sub_id}/renew": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Renew a subscription (extend expires_at)
+         * @description staff+. Default extension = plan's billing period. Works on `active` (extend ahead) and `expired` (rescue a late member — same row, fresh expires_at, `days_late` logged).
+         */
+        post: operations["renew_subscription_api_v1_subscriptions__sub_id__renew_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subscriptions/{sub_id}/unfreeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unfreeze a subscription
+         * @description staff+. Extends expires_at by the frozen duration.
+         */
+        post: operations["unfreeze_subscription_api_v1_subscriptions__sub_id__unfreeze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tenants": {
         parameters: {
             query?: never;
@@ -603,6 +764,43 @@ export interface components {
             file: string;
         };
         /**
+         * CancelSubscriptionRequest
+         * @description POST /api/v1/subscriptions/{id}/cancel
+         *
+         *     HARD-terminal. Reason is a canonical dropdown key; detail is free text.
+         */
+        CancelSubscriptionRequest: {
+            /**
+             * Detail
+             * @description Optional free-text elaboration.
+             */
+            detail?: string | null;
+            /**
+             * Reason
+             * @description Canonical key: 'moved_away' | 'too_expensive' | 'not_using' | 'injury' | 'other'. Free text allowed but the UI emits one of these.
+             */
+            reason?: string | null;
+        };
+        /**
+         * ChangePlanRequest
+         * @description POST /api/v1/subscriptions/{id}/change-plan
+         *
+         *     Creates a new sub with the new plan's current price snapshot; marks
+         *     the old sub ``replaced`` (NOT cancelled — different for reports).
+         */
+        ChangePlanRequest: {
+            /**
+             * Effective Date
+             * @description Defaults to today. New sub's started_at.
+             */
+            effective_date?: string | null;
+            /**
+             * New Plan Id
+             * Format: uuid
+             */
+            new_plan_id: string;
+        };
+        /**
          * CreateGymClassRequest
          * @description POST /api/v1/classes — create a class in the caller's tenant.
          * @example {
@@ -722,6 +920,38 @@ export interface components {
             /** Price Cents */
             price_cents: number;
             type: components["schemas"]["PlanType"];
+        };
+        /**
+         * CreateSubscriptionRequest
+         * @description POST /api/v1/subscriptions — enroll a member in a plan.
+         * @example {
+         *       "expires_at": "2026-05-17",
+         *       "member_id": "11111111-1111-1111-1111-111111111111",
+         *       "plan_id": "22222222-2222-2222-2222-222222222222",
+         *       "started_at": "2026-04-17"
+         *     }
+         */
+        CreateSubscriptionRequest: {
+            /**
+             * Expires At
+             * @description Cash / prepaid: set to next payment due date. Card-auto: leave null (runs until cancelled). One-time plans default to started_at + duration_days when omitted.
+             */
+            expires_at?: string | null;
+            /**
+             * Member Id
+             * Format: uuid
+             */
+            member_id: string;
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /**
+             * Started At
+             * @description Defaults to today. Future dates allowed ('starts Monday').
+             */
+            started_at?: string | null;
         };
         /**
          * CreateTenantRequest
@@ -905,6 +1135,17 @@ export interface components {
              * @description Optional auto-unfreeze date. Null means indefinite freeze.
              */
             until?: string | null;
+        };
+        /**
+         * FreezeSubscriptionRequest
+         * @description POST /api/v1/subscriptions/{id}/freeze
+         */
+        FreezeSubscriptionRequest: {
+            /**
+             * Frozen Until
+             * @description Optional auto-unfreeze date. Null = open-ended freeze (manual only).
+             */
+            frozen_until?: string | null;
         };
         /**
          * GymClassResponse
@@ -1152,6 +1393,21 @@ export interface components {
             total_users: number;
         };
         /**
+         * RenewSubscriptionRequest
+         * @description POST /api/v1/subscriptions/{id}/renew
+         *
+         *     Default extension = plan's billing period (monthly=+30d, quarterly=+90d,
+         *     yearly=+365d, one_time=+duration_days). Override via `new_expires_at`
+         *     for "she paid 2 months upfront" and similar.
+         */
+        RenewSubscriptionRequest: {
+            /**
+             * New Expires At
+             * @description Override the default billing-period extension.
+             */
+            new_expires_at?: string | null;
+        };
+        /**
          * ResetPeriod
          * @description How often an entitlement quota resets.
          * @enum {string}
@@ -1170,6 +1426,143 @@ export interface components {
          * @enum {string}
          */
         Role: "super_admin" | "owner" | "staff" | "sales";
+        /**
+         * SubscriptionEventResponse
+         * @description Timeline entry as returned to the frontend.
+         * @example {
+         *       "created_by": "55555555-5555-5555-5555-555555555555",
+         *       "event_data": {
+         *         "days_late": 3,
+         *         "new_expires_at": "2026-05-18",
+         *         "previous_expires_at": "2026-04-15"
+         *       },
+         *       "event_type": "renewed",
+         *       "id": "44444444-4444-4444-4444-444444444444",
+         *       "occurred_at": "2026-04-18T12:00:00+03:00",
+         *       "subscription_id": "33333333-3333-3333-3333-333333333333",
+         *       "tenant_id": "550e8400-e29b-41d4-a716-446655440000"
+         *     }
+         */
+        SubscriptionEventResponse: {
+            /** Created By */
+            created_by: string | null;
+            /** Event Data */
+            event_data: {
+                [key: string]: unknown;
+            };
+            event_type: components["schemas"]["SubscriptionEventType"];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+        };
+        /**
+         * SubscriptionEventType
+         * @description Discrete event types in the subscription timeline.
+         *
+         *     Written into ``subscription_events`` inside the same transaction
+         *     as the state change. ``created_by`` is None for system events
+         *     (nightly expiry / auto-unfreeze jobs).
+         * @enum {string}
+         */
+        SubscriptionEventType: "created" | "frozen" | "unfrozen" | "expired" | "renewed" | "replaced" | "changed_plan" | "cancelled";
+        /**
+         * SubscriptionResponse
+         * @description Subscription as returned to the frontend.
+         * @example {
+         *       "created_at": "2026-04-17T12:00:00+03:00",
+         *       "currency": "ILS",
+         *       "expires_at": "2026-05-01",
+         *       "id": "33333333-3333-3333-3333-333333333333",
+         *       "member_id": "11111111-1111-1111-1111-111111111111",
+         *       "plan_id": "22222222-2222-2222-2222-222222222222",
+         *       "price_cents": 45000,
+         *       "started_at": "2026-04-01",
+         *       "status": "active",
+         *       "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
+         *       "updated_at": "2026-04-17T12:00:00+03:00"
+         *     }
+         */
+        SubscriptionResponse: {
+            /** Cancellation Reason */
+            cancellation_reason: string | null;
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Currency */
+            currency: string;
+            /** Expired At */
+            expired_at: string | null;
+            /** Expires At */
+            expires_at: string | null;
+            /** Frozen At */
+            frozen_at: string | null;
+            /** Frozen Until */
+            frozen_until: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Member Id
+             * Format: uuid
+             */
+            member_id: string;
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /** Price Cents */
+            price_cents: number;
+            /** Replaced At */
+            replaced_at: string | null;
+            /** Replaced By Id */
+            replaced_by_id: string | null;
+            /**
+             * Started At
+             * Format: date
+             */
+            started_at: string;
+            status: components["schemas"]["SubscriptionStatus"];
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * SubscriptionStatus
+         * @description Lifecycle status of a subscription.
+         * @enum {string}
+         */
+        SubscriptionStatus: "active" | "frozen" | "expired" | "cancelled" | "replaced";
         /**
          * TenantResponse
          * @description Standard tenant response.
@@ -2242,6 +2635,309 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_subscriptions_api_v1_subscriptions_get: {
+        parameters: {
+            query?: {
+                member_id?: string | null;
+                status?: components["schemas"]["SubscriptionStatus"] | null;
+                plan_id?: string | null;
+                expires_before?: string | null;
+                expires_within_days?: number | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_subscription_api_v1_subscriptions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSubscriptionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_subscription_api_v1_subscriptions__sub_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sub_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_subscription_api_v1_subscriptions__sub_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sub_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelSubscriptionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_plan_api_v1_subscriptions__sub_id__change_plan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sub_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePlanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_subscription_events_api_v1_subscriptions__sub_id__events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sub_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionEventResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    freeze_subscription_api_v1_subscriptions__sub_id__freeze_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sub_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FreezeSubscriptionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    renew_subscription_api_v1_subscriptions__sub_id__renew_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sub_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenewSubscriptionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unfreeze_subscription_api_v1_subscriptions__sub_id__unfreeze_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sub_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionResponse"];
                 };
             };
             /** @description Validation Error */

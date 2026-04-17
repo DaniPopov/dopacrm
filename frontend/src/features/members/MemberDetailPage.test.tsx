@@ -35,6 +35,13 @@ vi.mock("./hooks", () => ({
   useUpdateMember: vi.fn(),
 }))
 
+// The subscriptions section has its own tests + pulls in a lot of
+// providers (auth, plans query). For this file — which tests the
+// identity form — stub it to keep the surface focused.
+vi.mock("@/features/subscriptions/MemberSubscriptionSection", () => ({
+  default: () => null,
+}))
+
 import { useMember, useUpdateMember } from "./hooks"
 const mockUseMember = vi.mocked(useMember)
 const mockUseUpdateMember = vi.mocked(useUpdateMember)
@@ -125,7 +132,10 @@ describe("MemberDetailPage", () => {
     expect(screen.getByRole("button", { name: "שמור שינויים" })).toBeInTheDocument()
   })
 
-  it("submits with the member id and navigates back on success", async () => {
+  it("submits with the member id and stays on the page on success", async () => {
+    // After shipping subscriptions, save keeps the user on the detail
+    // page so they can proceed to the sub section below. Previously we
+    // navigated to /members; the new behavior is intentional.
     const mutate = vi.fn((_args, opts) => opts?.onSuccess?.())
     mockUseUpdateMember.mockReturnValue({
       mutate,
@@ -147,7 +157,7 @@ describe("MemberDetailPage", () => {
     const [args] = mutate.mock.calls[0]
     expect(args.id).toBe("m1")
     expect(args.data.first_name).toBe("Dana")
-    expect(mockNavigate).toHaveBeenCalledWith("/members")
+    expect(mockNavigate).not.toHaveBeenCalled()
   })
 
   it("cancel navigates back without calling the mutation", async () => {

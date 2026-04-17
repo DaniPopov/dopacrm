@@ -120,6 +120,33 @@ export function humanizeClassError(err: unknown): string {
 }
 
 /**
+ * Overrides for subscription CRUD errors (enroll / freeze / renew / change-plan / cancel).
+ *
+ * Status-code semantics:
+ * - 403: staff-gated op performed by sales or super_admin
+ * - 404: sub not found OR in another tenant (server returns 404 either way)
+ * - 409: either a state-machine violation OR "member already has active sub"
+ *        OR "change-plan with same plan". Backend detail differentiates.
+ * - 422: invalid input shape
+ */
+export function humanizeSubscriptionError(err: unknown): string {
+  if (err instanceof ApiError || (err instanceof Error && "status" in err)) {
+    const status = (err as ApiError).status
+    const message = (err as ApiError).message.toLowerCase()
+    if (status === 403) return "אין לכם הרשאה לפעולה זו"
+    if (status === 404) return "המנוי לא נמצא"
+    if (status === 409) {
+      if (message.includes("already")) return "למנוי זה כבר יש מנוי פעיל"
+      if (message.includes("same plan")) return "יש לבחור מסלול שונה מהנוכחי"
+      return "לא ניתן לבצע פעולה זו בסטטוס הנוכחי"
+    }
+    if (status === 422) return "הפרטים שהוזנו אינם תקינים, בדקו את הטופס"
+    return genericMessage(status)
+  }
+  return "אירעה שגיאה בעדכון המנוי"
+}
+
+/**
  * Overrides for membership-plan CRUD errors (create / update / deactivate).
  *
  * The backend returns PLAN_INVALID_SHAPE (422) for bad combos like

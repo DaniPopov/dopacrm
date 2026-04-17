@@ -1,15 +1,20 @@
 import { useNavigate, useParams } from "react-router-dom"
 import { humanizeMemberError } from "@/lib/api-errors"
+import MemberSubscriptionSection from "@/features/subscriptions/MemberSubscriptionSection"
 import MemberForm, { type MemberFormValues } from "./MemberForm"
 import { useMember, useUpdateMember } from "./hooks"
 
 /**
- * Member edit page — `/members/:id`.
+ * Member detail page — `/members/:id`.
  *
- * Opened from clicking a member's name in the list, or the "עריכה"
- * action. On save, navigates back to `/members`. Fetching happens via
- * TanStack Query; the list cache usually has the member already so
- * this page loads instantly.
+ * Two sections:
+ * 1. Identity form (name, phone, DOB, notes, etc). Edit + save.
+ * 2. Subscription section (current sub card + timeline + history).
+ *    The sub section owns all commercial actions: enroll / freeze /
+ *    renew / change-plan / cancel.
+ *
+ * Fetching happens via TanStack Query; list cache usually has the
+ * member already so the page loads instantly.
  */
 export default function MemberDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -24,7 +29,10 @@ export default function MemberDetailPage() {
       {
         onSuccess: () => {
           update.reset()
-          navigate("/members")
+          // Stay on the detail page after save so staff can continue
+          // with the subscription section below. Previously we navigated
+          // away to /members on save, which was jarring when editing a
+          // member right before enrolling them.
         },
       },
     )
@@ -73,15 +81,22 @@ export default function MemberDetailPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <MemberForm
-          initial={member}
-          submitting={update.isPending}
-          error={update.error ? humanizeMemberError(update.error) : null}
-          submitLabel="שמור שינויים"
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-        />
+      <div className="space-y-8">
+        {/* Identity form */}
+        <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-base font-semibold text-gray-900">פרטי חבר</h2>
+          <MemberForm
+            initial={member}
+            submitting={update.isPending}
+            error={update.error ? humanizeMemberError(update.error) : null}
+            submitLabel="שמור שינויים"
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+          />
+        </section>
+
+        {/* Subscriptions — current + timeline + history + actions */}
+        <MemberSubscriptionSection memberId={member.id} />
       </div>
     </div>
   )

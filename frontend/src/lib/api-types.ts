@@ -55,6 +55,17 @@ export type UpdatePlanRequest = Schemas["UpdatePlanRequest"]
 export type PlanEntitlement = Schemas["EntitlementResponseSchema"]
 export type PlanEntitlementInput = Schemas["EntitlementInputSchema"]
 
+// Subscriptions
+export type SubscriptionStatus = Schemas["SubscriptionStatus"]
+export type SubscriptionEventType = Schemas["SubscriptionEventType"]
+export type Subscription = Schemas["SubscriptionResponse"]
+export type SubscriptionEvent = Schemas["SubscriptionEventResponse"]
+export type CreateSubscriptionRequest = Schemas["CreateSubscriptionRequest"]
+export type FreezeSubscriptionRequest = Schemas["FreezeSubscriptionRequest"]
+export type RenewSubscriptionRequest = Schemas["RenewSubscriptionRequest"]
+export type ChangePlanRequest = Schemas["ChangePlanRequest"]
+export type CancelSubscriptionRequest = Schemas["CancelSubscriptionRequest"]
+
 // Users
 export type CreateUserRequest = Schemas["CreateUserRequest"]
 export type UpdateUserRequest = Schemas["UpdateUserRequest"]
