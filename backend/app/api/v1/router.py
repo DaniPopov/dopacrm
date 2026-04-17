@@ -8,6 +8,7 @@ from app.api.v1.auth.router import router as auth_router
 from app.api.v1.classes.router import router as classes_router
 from app.api.v1.members.router import router as members_router
 from app.api.v1.plans.router import router as plans_router
+from app.api.v1.subscriptions.router import router as subscriptions_router
 from app.api.v1.tenants.router import router as tenants_router
 from app.api.v1.uploads.router import router as uploads_router
 from app.api.v1.users.router import router as users_router
@@ -50,5 +51,11 @@ v1_router.include_router(
     plans_router,
     prefix="/plans",
     tags=["Membership Plans"],
+    dependencies=api_rate_limit,
+)
+v1_router.include_router(
+    subscriptions_router,
+    prefix="/subscriptions",
+    tags=["Subscriptions"],
     dependencies=api_rate_limit,
 )
