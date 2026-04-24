@@ -40,6 +40,7 @@ def _coach(
 
 # ── fixed_prorated ────────────────────────────────────────────────────
 
+
 def test_full_month_returns_monthly_amount() -> None:
     assert fixed_prorated(300000, date(2026, 5, 1), date(2026, 5, 31)) == 300000
 
@@ -87,13 +88,11 @@ def test_zero_monthly_is_zero() -> None:
 def test_year_wrap() -> None:
     # Dec 1, 2026 → Jan 31, 2027 spans two different years.
     # Dec 2026 has 31 days, Jan 2027 has 31 days — both full → 2 × monthly.
-    assert (
-        fixed_prorated(200000, date(2026, 12, 1), date(2027, 1, 31))
-        == 400000
-    )
+    assert fixed_prorated(200000, date(2026, 12, 1), date(2027, 1, 31)) == 400000
 
 
 # ── _first_of_next_month ──────────────────────────────────────────────
+
 
 def test_first_of_next_month_mid_year() -> None:
     assert _first_of_next_month(date(2026, 3, 15)) == date(2026, 4, 1)
@@ -104,6 +103,7 @@ def test_first_of_next_month_december_rolls_year() -> None:
 
 
 # ── _coach_effective_window ───────────────────────────────────────────
+
 
 def test_active_coach_window_is_unchanged() -> None:
     c = _coach(hired_at=date(2026, 1, 1))

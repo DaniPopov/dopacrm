@@ -157,25 +157,19 @@ def upgrade() -> None:
         sa.Column(
             "tenant_id",
             postgresql.UUID(as_uuid=True),
-            sa.ForeignKey(
-                "tenants.id", name="fk_class_coaches_tenant_id", ondelete="CASCADE"
-            ),
+            sa.ForeignKey("tenants.id", name="fk_class_coaches_tenant_id", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column(
             "class_id",
             postgresql.UUID(as_uuid=True),
-            sa.ForeignKey(
-                "classes.id", name="fk_class_coaches_class_id", ondelete="CASCADE"
-            ),
+            sa.ForeignKey("classes.id", name="fk_class_coaches_class_id", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column(
             "coach_id",
             postgresql.UUID(as_uuid=True),
-            sa.ForeignKey(
-                "coaches.id", name="fk_class_coaches_coach_id", ondelete="CASCADE"
-            ),
+            sa.ForeignKey("coaches.id", name="fk_class_coaches_coach_id", ondelete="CASCADE"),
             nullable=False,
         ),
         # Free-form text — owner types "ראשי", "עוזר", "night-shift", etc.
@@ -259,9 +253,7 @@ def upgrade() -> None:
         sa.Column(
             "coach_id",
             postgresql.UUID(as_uuid=True),
-            sa.ForeignKey(
-                "coaches.id", name="fk_entries_coach_id", ondelete="SET NULL"
-            ),
+            sa.ForeignKey("coaches.id", name="fk_entries_coach_id", ondelete="SET NULL"),
             nullable=True,
         ),
     )

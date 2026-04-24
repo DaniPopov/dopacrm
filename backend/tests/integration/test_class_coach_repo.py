@@ -53,9 +53,7 @@ async def _seed(tenant_repo, class_repo, coach_repo, default_plan_id):
         slug=f"t-{uuid4().hex[:8]}", name="Gym", saas_plan_id=default_plan_id
     )
     cls = await class_repo.create(tenant_id=t.id, name="Boxing")
-    c = await coach_repo.create(
-        tenant_id=t.id, first_name="David", last_name="Cohen"
-    )
+    c = await coach_repo.create(tenant_id=t.id, first_name="David", last_name="Cohen")
     return t, cls, c
 
 
@@ -183,9 +181,7 @@ async def test_find_attribution_candidates_weekday_filter(
     repo, class_repo, coach_repo, tenant_repo, default_plan_id
 ) -> None:
     t, cls, c = await _seed(tenant_repo, class_repo, coach_repo, default_plan_id)
-    other = await coach_repo.create(
-        tenant_id=t.id, first_name="Yoni", last_name="Levi"
-    )
+    other = await coach_repo.create(tenant_id=t.id, first_name="Yoni", last_name="Levi")
 
     await repo.create(
         tenant_id=t.id,

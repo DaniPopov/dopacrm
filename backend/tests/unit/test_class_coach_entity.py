@@ -43,6 +43,7 @@ def _make(
 
 # ── WEEKDAYS + weekday_code helper ─────────────────────────────────────
 
+
 def test_weekdays_tuple_shape() -> None:
     assert WEEKDAYS == ("sun", "mon", "tue", "wed", "thu", "fri", "sat")
 
@@ -64,6 +65,7 @@ def test_weekday_code_all_seven_distinct() -> None:
 
 # ── ClassCoach.covers() ────────────────────────────────────────────────
 
+
 def test_covers_before_start_returns_false() -> None:
     link = _make(starts_on=date(2026, 5, 1))
     assert link.covers(date(2026, 4, 30)) is False
@@ -83,13 +85,14 @@ def test_covers_empty_weekdays_means_all_days() -> None:
 
 def test_covers_restricts_to_listed_weekdays() -> None:
     link = _make(weekdays=["sun", "tue"], starts_on=date(2026, 1, 1))
-    assert link.covers(date(2026, 4, 19)) is True   # sunday
-    assert link.covers(date(2026, 4, 21)) is True   # tuesday
+    assert link.covers(date(2026, 4, 19)) is True  # sunday
+    assert link.covers(date(2026, 4, 21)) is True  # tuesday
     assert link.covers(date(2026, 4, 20)) is False  # monday
     assert link.covers(date(2026, 4, 22)) is False  # wednesday
 
 
 # ── validators ─────────────────────────────────────────────────────────
+
 
 def test_invalid_weekday_rejected() -> None:
     with pytest.raises(ValueError, match="invalid weekday"):

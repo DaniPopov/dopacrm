@@ -81,18 +81,14 @@ class CoachRepository:
 
     async def find_by_id(self, coach_id: UUID) -> Coach | None:
         """Lookup by PK. Tenant scoping is the service's job."""
-        result = await self._session.execute(
-            select(CoachORM).where(CoachORM.id == coach_id)
-        )
+        result = await self._session.execute(select(CoachORM).where(CoachORM.id == coach_id))
         orm = result.scalar_one_or_none()
         return _to_domain(orm) if orm else None
 
     async def find_by_user_id(self, user_id: UUID) -> Coach | None:
         """Used by the coach-portal login flow — given a user, is there
         a linked coach row?"""
-        result = await self._session.execute(
-            select(CoachORM).where(CoachORM.user_id == user_id)
-        )
+        result = await self._session.execute(select(CoachORM).where(CoachORM.user_id == user_id))
         orm = result.scalar_one_or_none()
         return _to_domain(orm) if orm else None
 
@@ -127,9 +123,7 @@ class CoachRepository:
         result = await self._session.execute(stmt)
         return [_to_domain(o) for o in result.scalars()]
 
-    async def count_for_tenant(
-        self, tenant_id: UUID, *, status: CoachStatus | None = None
-    ) -> int:
+    async def count_for_tenant(self, tenant_id: UUID, *, status: CoachStatus | None = None) -> int:
         stmt = select(func.count(CoachORM.id)).where(CoachORM.tenant_id == tenant_id)
         if status:
             stmt = stmt.where(CoachORM.status == status.value)

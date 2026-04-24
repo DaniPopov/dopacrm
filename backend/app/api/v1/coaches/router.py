@@ -207,9 +207,7 @@ async def unfreeze_coach(
     caller: TokenPayload = Depends(get_current_user),
     service: CoachService = Depends(_get_service),
 ) -> CoachResponse:
-    return _to_coach_response(
-        await service.unfreeze_coach(caller=caller, coach_id=coach_id)
-    )
+    return _to_coach_response(await service.unfreeze_coach(caller=caller, coach_id=coach_id))
 
 
 @coaches_router.post(
@@ -271,9 +269,7 @@ async def coach_earnings(
     caller: TokenPayload = Depends(get_current_user),
     service: CoachService = Depends(_get_service),
 ) -> EarningsBreakdownResponse:
-    bd = await service.earnings_for(
-        caller=caller, coach_id=coach_id, from_=from_, to=to
-    )
+    bd = await service.earnings_for(caller=caller, coach_id=coach_id, from_=from_, to=to)
     return _to_earnings_response(bd)
 
 

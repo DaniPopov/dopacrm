@@ -64,9 +64,7 @@ async def test_create_basic_coach(repo, tenant_repo, default_plan_id) -> None:
     assert c.full_name == "דוד כהן"
 
 
-async def test_create_with_user_link(
-    repo, tenant_repo, user_repo, default_plan_id
-) -> None:
+async def test_create_with_user_link(repo, tenant_repo, user_repo, default_plan_id) -> None:
     t = await _mk_tenant(tenant_repo, default_plan_id)
     u = await user_repo.create(
         email=f"coach-{uuid4().hex[:6]}@gym.com",
@@ -93,18 +91,14 @@ async def test_find_by_user_id(repo, tenant_repo, user_repo, default_plan_id) ->
         role=Role.COACH,
         tenant_id=t.id,
     )
-    created = await repo.create(
-        tenant_id=t.id, first_name="A", last_name="B", user_id=u.id
-    )
+    created = await repo.create(tenant_id=t.id, first_name="A", last_name="B", user_id=u.id)
 
     found = await repo.find_by_user_id(u.id)
     assert found is not None
     assert found.id == created.id
 
 
-async def test_freeze_unfreeze_cancel_transitions(
-    repo, tenant_repo, default_plan_id
-) -> None:
+async def test_freeze_unfreeze_cancel_transitions(repo, tenant_repo, default_plan_id) -> None:
     t = await _mk_tenant(tenant_repo, default_plan_id)
     c = await repo.create(tenant_id=t.id, first_name="A", last_name="B")
 
@@ -136,9 +130,7 @@ async def test_list_filters_status(repo, tenant_repo, default_plan_id) -> None:
     assert {c.id for c in actives} == {active.id}
 
 
-async def test_list_search_matches_name_and_phone(
-    repo, tenant_repo, default_plan_id
-) -> None:
+async def test_list_search_matches_name_and_phone(repo, tenant_repo, default_plan_id) -> None:
     t = await _mk_tenant(tenant_repo, default_plan_id)
     await repo.create(tenant_id=t.id, first_name="David", last_name="Cohen", phone="0501")
     await repo.create(tenant_id=t.id, first_name="Yoni", last_name="Levi", phone="0502")

@@ -55,7 +55,6 @@ from app.domain.exceptions import (
 )
 
 if TYPE_CHECKING:
-
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from app.core.security import TokenPayload
@@ -103,9 +102,7 @@ class EarningsBreakdown:
     by_pay_model_cents: dict[str, int] = field(default_factory=dict)
 
     @classmethod
-    def zero(
-        cls, coach_id: _UUID, from_: date, to: date, currency: str
-    ) -> EarningsBreakdown:
+    def zero(cls, coach_id: _UUID, from_: date, to: date, currency: str) -> EarningsBreakdown:
         return cls(
             coach_id=coach_id,
             from_=from_,
@@ -206,9 +203,7 @@ class CoachService:
             tenant_id, status=status, search=search, limit=limit, offset=offset
         )
 
-    async def update_coach(
-        self, *, caller: TokenPayload, coach_id: _UUID, **fields: Any
-    ) -> Coach:
+    async def update_coach(self, *, caller: TokenPayload, coach_id: _UUID, **fields: Any) -> Coach:
         self._require_owner(caller)
         await self.get_coach(caller=caller, coach_id=coach_id)
         # Strip fields that only the state-transition methods should touch.
@@ -225,9 +220,7 @@ class CoachService:
         self._require_owner(caller)
         coach = await self.get_coach(caller=caller, coach_id=coach_id)
         if not coach.can_freeze():
-            raise CoachStatusTransitionError(
-                str(coach_id), coach.status.value, "freeze"
-            )
+            raise CoachStatusTransitionError(str(coach_id), coach.status.value, "freeze")
         updated = await self._repo.freeze(coach_id, frozen_at=utcnow())
         await self._session.commit()
         self._log_status_change(coach, updated, caller)
@@ -237,9 +230,7 @@ class CoachService:
         self._require_owner(caller)
         coach = await self.get_coach(caller=caller, coach_id=coach_id)
         if not coach.can_unfreeze():
-            raise CoachStatusTransitionError(
-                str(coach_id), coach.status.value, "unfreeze"
-            )
+            raise CoachStatusTransitionError(str(coach_id), coach.status.value, "unfreeze")
         updated = await self._repo.unfreeze(coach_id)
         await self._session.commit()
         self._log_status_change(coach, updated, caller)
@@ -249,9 +240,7 @@ class CoachService:
         self._require_owner(caller)
         coach = await self.get_coach(caller=caller, coach_id=coach_id)
         if not coach.can_cancel():
-            raise CoachStatusTransitionError(
-                str(coach_id), coach.status.value, "cancel"
-            )
+            raise CoachStatusTransitionError(str(coach_id), coach.status.value, "cancel")
         updated = await self._repo.cancel(coach_id, cancelled_at=utcnow())
         await self._session.commit()
         self._log_status_change(coach, updated, caller)
@@ -380,9 +369,7 @@ class CoachService:
         self, *, caller: TokenPayload, class_id: _UUID, only_current: bool = False
     ) -> list[ClassCoach]:
         tenant_id = self._require_tenant(caller)
-        return await self._link_repo.list_for_class(
-            tenant_id, class_id, only_current=only_current
-        )
+        return await self._link_repo.list_for_class(tenant_id, class_id, only_current=only_current)
 
     async def list_classes_for_coach(
         self, *, caller: TokenPayload, coach_id: _UUID, only_current: bool = False
@@ -390,9 +377,7 @@ class CoachService:
         tenant_id = self._require_tenant(caller)
         # Ensures scoping + coach-user-reads-own check.
         await self.get_coach(caller=caller, coach_id=coach_id)
-        return await self._link_repo.list_for_coach(
-            tenant_id, coach_id, only_current=only_current
-        )
+        return await self._link_repo.list_for_coach(tenant_id, coach_id, only_current=only_current)
 
     # ── Earnings math (the interesting part) ─────────────────────────
 
@@ -411,9 +396,7 @@ class CoachService:
         the link's ``pay_model``. Sum across links.
         """
         if to < from_:
-            raise InvalidEarningsRangeError(
-                f"to ({to}) must be >= from ({from_})"
-            )
+            raise InvalidEarningsRangeError(f"to ({to}) must be >= from ({from_})")
         coach = await self.get_coach(caller=caller, coach_id=coach_id)
         tenant_id = _UUID(caller.tenant_id) if caller.tenant_id else coach.tenant_id
         currency = await self._tenant_currency(tenant_id)
@@ -443,9 +426,7 @@ class CoachService:
         by_class: dict[_UUID, int] = defaultdict(int)
         by_pm: dict[str, int] = defaultdict(int)
 
-        class_names = await self._class_names_map(
-            tenant_id, [link.class_id for link in links]
-        )
+        class_names = await self._class_names_map(tenant_id, [link.class_id for link in links])
 
         for link in links:
             span_from = max(eff_from, link.starts_on)
@@ -567,9 +548,7 @@ class CoachService:
         tenant = await TenantRepository(self._session).find_by_id(tenant_id)
         return tenant.currency if tenant else "ILS"
 
-    async def _class_names_map(
-        self, tenant_id: _UUID, class_ids: list[_UUID]
-    ) -> dict[_UUID, str]:
+    async def _class_names_map(self, tenant_id: _UUID, class_ids: list[_UUID]) -> dict[_UUID, str]:
         """Batch lookup of class names for the earnings breakdown. Small
         N (few classes per coach) so one query-per-class is fine."""
         result: dict[_UUID, str] = {}
@@ -579,9 +558,7 @@ class CoachService:
                 result[cid] = cls.name
         return result
 
-    def _log_status_change(
-        self, before: Coach, after: Coach, caller: TokenPayload
-    ) -> None:
+    def _log_status_change(self, before: Coach, after: Coach, caller: TokenPayload) -> None:
         logger.info(
             "coach.status_changed",
             extra={
@@ -643,9 +620,7 @@ def fixed_prorated(monthly_cents: int, span_from: date, span_to: date) -> int:
         ov_end = min(month_end, span_to)
         overlap_days = (ov_end - ov_start).days + 1
         if overlap_days > 0:
-            total += Decimal(monthly_cents) * Decimal(overlap_days) / Decimal(
-                days_in_month
-            )
+            total += Decimal(monthly_cents) * Decimal(overlap_days) / Decimal(days_in_month)
         cursor = _first_of_next_month(cursor)
     return int(total.quantize(Decimal("1"), rounding=ROUND_HALF_EVEN))
 
@@ -660,9 +635,7 @@ def _datetime_start_of_day_utc(d: date) -> datetime:
     return datetime.combine(d, time.min, tzinfo=UTC)
 
 
-def _coach_effective_window(
-    coach: Coach, from_: date, to: date
-) -> tuple[date | None, date | None]:
+def _coach_effective_window(coach: Coach, from_: date, to: date) -> tuple[date | None, date | None]:
     """Clip [from_, to] to the coach's active lifetime.
 
     - hired_at pushes the start forward.

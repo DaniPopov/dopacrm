@@ -238,9 +238,7 @@ def test_assign_coach_to_class(client: TestClient) -> None:
     assert link["pay_model"] == "per_attendance"
     assert set(link["weekdays"]) == {"sun", "tue"}
 
-    listed = client.get(
-        f"/api/v1/classes/{env['class_id']}/coaches", headers=env["owner_headers"]
-    )
+    listed = client.get(f"/api/v1/classes/{env['class_id']}/coaches", headers=env["owner_headers"])
     assert listed.status_code == 200
     assert len(listed.json()) == 1
 
@@ -304,9 +302,7 @@ def test_patch_and_delete_link(client: TestClient) -> None:
     assert r.status_code == 200
     assert r.json()["pay_amount_cents"] == 250000
 
-    r2 = client.delete(
-        f"/api/v1/class-coaches/{link['id']}", headers=env["owner_headers"]
-    )
+    r2 = client.delete(f"/api/v1/class-coaches/{link['id']}", headers=env["owner_headers"])
     assert r2.status_code == 204
 
 

@@ -242,7 +242,5 @@ async def reassign_coach(
     caller: TokenPayload = Depends(get_current_user),
     service: AttendanceService = Depends(_get_service),
 ) -> EntryResponse:
-    entry = await service.reassign_coach(
-        caller=caller, entry_id=entry_id, coach_id=body.coach_id
-    )
+    entry = await service.reassign_coach(caller=caller, entry_id=entry_id, coach_id=body.coach_id)
     return _to_response(entry)

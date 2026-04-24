@@ -155,9 +155,7 @@ class ClassCoachRepository:
             return await self.find_by_id(link_id)
         try:
             await self._session.execute(
-                update(ClassCoachORM)
-                .where(ClassCoachORM.id == link_id)
-                .values(**fields)
+                update(ClassCoachORM).where(ClassCoachORM.id == link_id).values(**fields)
             )
             await self._session.flush()
         except IntegrityError as exc:

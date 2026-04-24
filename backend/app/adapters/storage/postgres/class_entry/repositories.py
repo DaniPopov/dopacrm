@@ -215,15 +215,11 @@ class ClassEntryRepository:
 
     # ── Coach attribution / correction ────────────────────────────────
 
-    async def reassign_coach(
-        self, entry_id: UUID, coach_id: UUID | None
-    ) -> ClassEntry | None:
+    async def reassign_coach(self, entry_id: UUID, coach_id: UUID | None) -> ClassEntry | None:
         """Owner-only correction of a mis-attributed entry. Logged by the
         service as ``attendance.coach_reassigned``."""
         await self._session.execute(
-            update(ClassEntryORM)
-            .where(ClassEntryORM.id == entry_id)
-            .values(coach_id=coach_id)
+            update(ClassEntryORM).where(ClassEntryORM.id == entry_id).values(coach_id=coach_id)
         )
         await self._session.flush()
         return await self.find_by_id(entry_id)

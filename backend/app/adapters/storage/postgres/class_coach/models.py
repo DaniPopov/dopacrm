@@ -55,9 +55,7 @@ class ClassCoachORM(Base):
     )
 
     role: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'ראשי'"))
-    is_primary: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("false")
-    )
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
 
     pay_model: Mapped[str] = mapped_column(Text, nullable=False)
     pay_amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -96,9 +94,7 @@ class ClassCoachORM(Base):
             "ends_on IS NULL OR ends_on >= starts_on",
             name="ck_class_coaches_range_valid",
         ),
-        UniqueConstraint(
-            "class_id", "coach_id", "role", name="ux_class_coaches_role"
-        ),
+        UniqueConstraint("class_id", "coach_id", "role", name="ux_class_coaches_role"),
         Index("ix_class_coaches_tenant", "tenant_id"),
         Index("ix_class_coaches_class", "class_id"),
         Index("ix_class_coaches_coach", "coach_id"),

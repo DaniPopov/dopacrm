@@ -57,15 +57,9 @@ class CoachORM(Base):
     hired_at: Mapped[date] = mapped_column(
         Date, nullable=False, server_default=text("CURRENT_DATE")
     )
-    status: Mapped[str] = mapped_column(
-        String, nullable=False, server_default=text("'active'")
-    )
-    frozen_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    cancelled_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'active'"))
+    frozen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     custom_attrs: Mapped[dict[str, Any]] = mapped_column(
         JSONB,

@@ -601,9 +601,7 @@ def test_coaches_list_scopes_to_caller_tenant(client: TestClient, two_gyms: dict
     assert two_gyms["b"]["coach_id"] not in ids
 
 
-def test_owner_cannot_list_classes_of_foreign_coach(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_cannot_list_classes_of_foreign_coach(client: TestClient, two_gyms: dict) -> None:
     r = client.get(
         f"/api/v1/coaches/{two_gyms['b']['coach_id']}/classes",
         headers=two_gyms["a"]["owner_headers"],
@@ -611,9 +609,7 @@ def test_owner_cannot_list_classes_of_foreign_coach(
     assert r.status_code == 404
 
 
-def test_owner_cannot_query_foreign_coach_earnings(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_cannot_query_foreign_coach_earnings(client: TestClient, two_gyms: dict) -> None:
     r = client.get(
         f"/api/v1/coaches/{two_gyms['b']['coach_id']}/earnings?from=2026-05-01&to=2026-05-31",
         headers=two_gyms["a"]["owner_headers"],
@@ -621,9 +617,7 @@ def test_owner_cannot_query_foreign_coach_earnings(
     assert r.status_code == 404
 
 
-def test_earnings_summary_scopes_to_caller_tenant(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_earnings_summary_scopes_to_caller_tenant(client: TestClient, two_gyms: dict) -> None:
     r = client.get(
         "/api/v1/coaches/earnings/summary?from=2026-05-01&to=2026-05-31",
         headers=two_gyms["a"]["owner_headers"],
@@ -634,9 +628,7 @@ def test_earnings_summary_scopes_to_caller_tenant(
     assert two_gyms["b"]["coach_id"] not in coach_ids
 
 
-def test_owner_cannot_assign_foreign_coach_to_own_class(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_cannot_assign_foreign_coach_to_own_class(client: TestClient, two_gyms: dict) -> None:
     """Cross-tenant payload: A's class, B's coach → 404 on the coach."""
     r = client.post(
         f"/api/v1/classes/{two_gyms['a']['class_id']}/coaches",
@@ -653,9 +645,7 @@ def test_owner_cannot_assign_foreign_coach_to_own_class(
     assert r.status_code == 404
 
 
-def test_owner_cannot_assign_own_coach_to_foreign_class(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_cannot_assign_own_coach_to_foreign_class(client: TestClient, two_gyms: dict) -> None:
     """Cross-tenant payload: B's class, A's coach → 404 on the class."""
     r = client.post(
         f"/api/v1/classes/{two_gyms['b']['class_id']}/coaches",
@@ -672,9 +662,7 @@ def test_owner_cannot_assign_own_coach_to_foreign_class(
     assert r.status_code == 404
 
 
-def test_owner_cannot_list_coaches_of_foreign_class(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_cannot_list_coaches_of_foreign_class(client: TestClient, two_gyms: dict) -> None:
     """A's owner hitting B's class/coaches — list returns empty rather
     than raising; this is the ''scoped list'' pattern. Verify it's empty."""
     r = client.get(
@@ -685,9 +673,7 @@ def test_owner_cannot_list_coaches_of_foreign_class(
     assert r.json() == []
 
 
-def test_owner_cannot_patch_foreign_class_coach_link(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_cannot_patch_foreign_class_coach_link(client: TestClient, two_gyms: dict) -> None:
     r = client.patch(
         f"/api/v1/class-coaches/{two_gyms['b']['class_coach_id']}",
         headers=two_gyms["a"]["owner_headers"],
@@ -696,9 +682,7 @@ def test_owner_cannot_patch_foreign_class_coach_link(
     assert r.status_code == 404
 
 
-def test_owner_cannot_delete_foreign_class_coach_link(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_cannot_delete_foreign_class_coach_link(client: TestClient, two_gyms: dict) -> None:
     r = client.delete(
         f"/api/v1/class-coaches/{two_gyms['b']['class_coach_id']}",
         headers=two_gyms["a"]["owner_headers"],
@@ -706,9 +690,7 @@ def test_owner_cannot_delete_foreign_class_coach_link(
     assert r.status_code == 404
 
 
-def test_owner_cannot_reassign_coach_on_foreign_entry(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_cannot_reassign_coach_on_foreign_entry(client: TestClient, two_gyms: dict) -> None:
     r = client.post(
         f"/api/v1/attendance/{two_gyms['b']['entry_id']}/reassign-coach",
         headers=two_gyms["a"]["owner_headers"],
@@ -717,9 +699,7 @@ def test_owner_cannot_reassign_coach_on_foreign_entry(
     assert r.status_code == 404
 
 
-def test_owner_cannot_reassign_to_foreign_coach(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_cannot_reassign_to_foreign_coach(client: TestClient, two_gyms: dict) -> None:
     """A's entry, B's coach → 404 on the coach, not a silent accept."""
     r = client.post(
         f"/api/v1/attendance/{two_gyms['a']['entry_id']}/reassign-coach",
