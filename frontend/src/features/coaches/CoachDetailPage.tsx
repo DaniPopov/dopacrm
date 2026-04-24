@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useParams, Link } from "react-router-dom"
 import { PageHeader } from "@/components/ui/page-header"
+import PasswordInput from "@/components/ui/password-input"
 import { SectionCard } from "@/components/ui/section-card"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { useAuth } from "@/features/auth/auth-provider"
@@ -247,15 +248,14 @@ function InviteLoginSection({ coachId }: { coachId: string }) {
           dir="ltr"
           className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
         />
-        <input
-          type="password"
+        <PasswordInput
           placeholder="סיסמה ראשונית (8+ תווים)"
           required
           minLength={8}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           dir="ltr"
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
         />
         <button
           type="submit"
