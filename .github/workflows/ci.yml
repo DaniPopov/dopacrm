@@ -44,6 +44,75 @@ jobs:
       - name: Pytest (unit only — no DB required)
         run: uv run pytest backend/tests/unit/ backend/tests/test_health.py -v
 
+  integration-and-e2e:
+    name: Backend Integration + E2E
+    runs-on: ubuntu-latest
+    # Bring up real Postgres + Redis as sidecars. Image tags match
+    # docker-compose.dev.yml so CI behaves the same as local dev.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: dopacrm
+          POSTGRES_PASSWORD: dopacrm
+          POSTGRES_DB: dopacrm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dopacrm -d dopacrm"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # APP_ENV must be one of development/staging/production; treat CI as dev.
+      APP_ENV: development
+      # E2E tests sign JWTs with this — must be set before the app boots.
+      APP_SECRET_KEY: ci-test-secret-key-32-bytes-long-xx
+      # Real services — sidecars above.
+      NEON_DATABASE_URL: postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm
+      REDIS_URL: redis://127.0.0.1:6379/0
+      # Required by Settings but not actually hit by integration/E2E tests.
+      # Dummy values keep Pydantic happy without spinning up Mongo/RabbitMQ.
+      MONGODB_URI: mongodb://127.0.0.1:27017
+      MONGODB_DATABASE: dopacrm_ci
+      RABBITMQ_URL: amqp://guest:guest@127.0.0.1:5672/
+      AWS_REGION: us-east-1
+      AWS_S3_BUCKET: dopacrm-ci
+      AWS_ACCESS_KEY_ID: ci
+      AWS_SECRET_ACCESS_KEY: ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Apply Alembic migrations (creates schema + seeds saas_plans)
+        run: uv run alembic upgrade head
+
+      - name: Pytest — integration (real Postgres)
+        run: uv run pytest backend/tests/integration/ -v
+
+      - name: Pytest — E2E (TestClient + Postgres + Redis)
+        run: uv run pytest backend/tests/e2e/ -v
+
   frontend-test:
     name: Frontend Lint & Test
     runs-on: ubuntu-latest
