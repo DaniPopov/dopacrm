@@ -11,7 +11,6 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from app.domain.entities.class_coach import WEEKDAYS, PayModel
 from app.domain.entities.coach import CoachStatus
 
-
 # ── Coach ─────────────────────────────────────────────────────────────
 
 

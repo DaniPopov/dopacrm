@@ -4,10 +4,8 @@ These run without a DB — they exercise the pro-ration formula, month
 boundary handling, leap years, and the coach-lifetime clipping rule.
 """
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 from uuid import uuid4
-
-import pytest
 
 from app.domain.entities.coach import Coach, CoachStatus
 from app.services.coach_service import (

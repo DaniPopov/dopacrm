@@ -45,7 +45,6 @@ from app.domain.entities.class_coach import ClassCoach, PayModel
 from app.domain.entities.coach import Coach, CoachStatus
 from app.domain.entities.user import Role
 from app.domain.exceptions import (
-    ClassCoachConflictError,
     ClassCoachLinkNotFoundError,
     CoachAlreadyLinkedToUserError,
     CoachNotFoundError,
@@ -56,7 +55,6 @@ from app.domain.exceptions import (
 )
 
 if TYPE_CHECKING:
-    from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -320,8 +318,11 @@ class CoachService:
         self._require_owner(caller)
         tenant_id = self._require_tenant(caller)
 
-        # Cross-tenant guard on both sides of the link.
-        coach = await self.get_coach(caller=caller, coach_id=coach_id)
+        # Cross-tenant guard on both sides of the link. ``get_coach`` raises
+        # ``CoachNotFoundError`` (→ 404) if the coach isn't in this tenant,
+        # so we call it purely for the side effect (the return value is
+        # unused — the class-coach repo only needs the id).
+        await self.get_coach(caller=caller, coach_id=coach_id)
         cls = await self._class_repo.find_by_id(class_id)
         if cls is None or str(cls.tenant_id) != str(tenant_id):
             raise GymClassNotFoundError(str(class_id))

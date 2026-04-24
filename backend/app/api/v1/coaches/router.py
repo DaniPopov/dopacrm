@@ -16,7 +16,6 @@ from fastapi import APIRouter, Depends, Query, status
 from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.database import get_session
 from app.api.v1.coaches.schemas import (
-    AssignCoachRequest,
     ClassCoachResponse,
     CoachResponse,
     CreateCoachRequest,

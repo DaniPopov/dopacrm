@@ -18,7 +18,6 @@ from app.adapters.storage.postgres.gym_class.repositories import GymClassReposit
 from app.adapters.storage.postgres.saas_plan.repositories import SaasPlanRepository
 from app.adapters.storage.postgres.tenant.repositories import TenantRepository
 from app.domain.entities.class_coach import PayModel
-from app.domain.entities.coach import CoachStatus
 from app.domain.exceptions import ClassCoachConflictError
 
 
