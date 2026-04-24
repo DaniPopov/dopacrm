@@ -26,12 +26,17 @@ class Role(StrEnum):
     - owner: full tenant access, billing, configuration
     - staff: day-to-day operations (check-in, payments, members)
     - sales: lead pipeline, trials, conversions
+    - coach: trainer. Tied 1:1 to a ``coaches`` row via
+      ``coaches.user_id``. Baseline view is read-only + narrow
+      (their own classes, attendance, earnings). See
+      ``docs/features/coaches.md`` §8.
     """
 
     SUPER_ADMIN = "super_admin"
     OWNER = "owner"
     STAFF = "staff"
     SALES = "sales"
+    COACH = "coach"
 
 
 class User(BaseModel):

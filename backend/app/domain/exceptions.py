@@ -286,3 +286,72 @@ class ClassEntryAlreadyUndoneError(AppError):
             f"Class entry already undone: {entry_id}",
             "ATTENDANCE_ALREADY_UNDONE",
         )
+
+
+# ── Coaches ──────────────────────────────────────────────────────────────────
+class CoachNotFoundError(AppError):
+    """No coach matches the given id (or exists in another tenant)."""
+
+    def __init__(self, coach_id: str) -> None:
+        super().__init__(f"Coach not found: {coach_id}", "COACH_NOT_FOUND")
+
+
+class CoachAlreadyLinkedToUserError(AppError):
+    """invite-user called on a coach that already has ``user_id`` set."""
+
+    def __init__(self, coach_id: str) -> None:
+        super().__init__(
+            f"Coach already linked to a user: {coach_id}",
+            "COACH_ALREADY_LINKED",
+        )
+
+
+class CoachStatusTransitionError(AppError):
+    """Illegal state transition on a coach (e.g. freeze a cancelled one)."""
+
+    def __init__(self, coach_id: str, current: str, attempted: str) -> None:
+        super().__init__(
+            f"Cannot {attempted} coach {coach_id} in status {current}",
+            "COACH_STATUS_TRANSITION",
+        )
+
+
+class ClassCoachLinkNotFoundError(AppError):
+    """No (class, coach) link row matches."""
+
+    def __init__(self, link_id: str) -> None:
+        super().__init__(
+            f"Class-coach link not found: {link_id}",
+            "CLASS_COACH_LINK_NOT_FOUND",
+        )
+
+
+class ClassCoachConflictError(AppError):
+    """A duplicate (class, coach, role) link — enforced by ``ux_class_coaches_role``.
+
+    Also raised when the service detects two primaries on overlapping
+    weekdays (the unique index can't express the "array overlap" rule,
+    so the service does the check).
+    """
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail, "CLASS_COACH_CONFLICT")
+
+
+class InvalidPayModelError(AppError):
+    """``pay_model`` outside the allowed enum values."""
+
+    def __init__(self, value: str) -> None:
+        super().__init__(
+            f"Invalid pay_model: {value!r}. Expected one of "
+            "'fixed', 'per_session', 'per_attendance'.",
+            "COACH_INVALID_PAY_MODEL",
+        )
+
+
+class InvalidEarningsRangeError(AppError):
+    """``from`` > ``to`` in an earnings query, or range outside a reasonable
+    bound (e.g. negative window)."""
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail, "COACH_INVALID_EARNINGS_RANGE")
