@@ -157,12 +157,25 @@ purpose is to show undone rows.
 
 ---
 
-## 5. Coach attribution — weekday lookup at check-in
+## 5. Coach attribution — session first, weekday fallback
 
-Every `class_entries` row gets a `coach_id` set server-side at insert.
-The rule (v1):
+Every `class_entries` row gets a `coach_id` (and optionally a
+`session_id`) set server-side at insert. The order of precedence:
 
 ```
+# 1. SCHEDULE BRANCH — only if tenant has Schedule feature enabled.
+if is_feature_enabled(tenant, "schedule"):
+    session := class_sessions WHERE class_id = entry.class_id
+                            AND status = 'scheduled'
+                            AND starts_at - 30min <= entry.entered_at <= ends_at + 30min
+                            ORDER BY ABS(starts_at - entry.entered_at) LIMIT 1
+    if session is not None:
+        entry.session_id := session.id
+        entry.coach_id   := session.head_coach_id
+        method           := "session"
+        return
+
+# 2. WEEKDAY BRANCH — fallback when Schedule is off OR no matching session.
 weekday     := entry.entered_at.astimezone(tenant_tz).weekday()
 candidates  := class_coaches WHERE class_id = entry.class_id
                          AND (weekdays IS EMPTY OR weekday IN weekdays)
@@ -176,17 +189,30 @@ else:                        entry.coach_id := ORDER BY coach_id ASC LIMIT 1
                                               (deterministic, corrigible)
 
 if no candidate at all:      entry.coach_id := NULL + WARN log event
+method := "weekday" | "null"
 ```
+
+The 30-minute tolerance on the session lookup lets members arrive
+early or leave late without breaking attribution. If multiple
+sessions overlap (unusual — same class scheduled twice at once),
+the closest `starts_at` wins.
 
 **Invariants:**
 
-- The column is written **once** at insert. Changing `class_coaches`
-  rows later does NOT update history. Payroll for past periods is
-  locked.
-- Owner can correct via `POST /attendance/{id}/reassign-coach` —
-  logs an `attendance.coach_reassigned` event for audit.
-- When Schedule lands, the lookup becomes "session for this class+date
-  first, weekday fallback second". Everything else stays the same.
+- `session_id` and `coach_id` are written **once** at insert. Changing
+  `class_sessions` or `class_coaches` later does NOT update history.
+  Payroll for past periods is locked.
+- Owner can correct `coach_id` via
+  `POST /attendance/{id}/reassign-coach` — logs
+  `attendance.coach_reassigned`. `session_id` is not user-editable
+  post-insert (cancel the session instead).
+- The `attendance.coach_attributed` event's `method` field records
+  which branch fired (`session` / `weekday` / `null`) — owner audit
+  surface for "how many drop-ins did I have last month?" (entries
+  with `method='null'` or `session_id IS NULL` answer that).
+- If the tenant toggles Schedule OFF after entries have been recorded
+  with `session_id`, those entries keep their `session_id` — history
+  is immutable. New entries fall through to weekday.
 
 ---
 
@@ -211,12 +237,34 @@ constant.
 
 ### `per_session`
 
-**v1 (no Schedule):** count distinct days the coach had ≥1 attributed
-entry for this class. This is an approximation — a coach who shows up
-for a session that no one attends gets ₪0. The gym owner knows this;
-it surfaces in the earnings note as "N sessions counted". When
-Schedule lands, this becomes "count of non-cancelled sessions" and
-the approximation disappears.
+Branches on whether the tenant has Schedule enabled:
+
+- **Schedule ON (post-Schedule-PR):**
+  ```
+  count(class_sessions WHERE
+      head_coach_id = coach
+      AND class_id  = link.class_id
+      AND status    = 'scheduled'
+      AND starts_at ∈ [from, to])
+  ```
+  Deterministic. A coach who shows up for a session that no one
+  attends still gets paid. A cancelled session contributes 0
+  (intentional — see `schedule.md` §5 "Cancellation pay = no pay").
+
+- **Schedule OFF (original v1):** count distinct days the coach had
+  ≥1 attributed entry for this class. Approximation — surfaces in
+  the earnings response note as "v1 per-session approximation" so
+  the owner knows why the number may differ from their expectation.
+
+Which branch runs depends on `tenant.features_enabled.schedule`. The
+earnings endpoint's response includes a `per_session_source` field
+(`'scheduled_sessions'` or `'distinct_entry_days'`) so the UI can
+show the right copy.
+
+**Why the branch instead of migrating all tenants to the Schedule
+math?** Tenants that never enable Schedule still need `per_session`
+pay to work. Forcing Schedule + templates on them would violate the
+Feature Flags contract (§12 below).
 
 ### `per_attendance`
 
@@ -334,20 +382,44 @@ Rule: **all date math uses `Asia/Jerusalem` today, always**.
 
 ---
 
-## 12. Permission layering — three checks, always
+## 12. Permission layering — four checks, always
 
-Every mutation endpoint is gated three times:
+Every mutation endpoint in a gated feature is checked four times:
 
 1. **JWT validity** (middleware) — forged / expired tokens → 401.
 2. **Role gate** (service) — e.g. "owner or above". `InsufficientPermissionsError` → 403.
-3. **Tenant scope** (service) — resource's `tenant_id` must match
+3. **Tenant feature gate** (service) — for gated features only:
+   `is_feature_enabled(tenant, feature)` must be True.
+   `FeatureDisabledError` → 403. Ungated features skip this step.
+4. **Tenant scope** (service) — resource's `tenant_id` must match
    caller's. Mismatch → 404 (not 403).
 
-A single missed layer = a security bug. All three must be present.
+A single missed layer = a security bug. All four must be present for
+gated features; ungated features skip #3.
+
+**Why feature gate goes between role gate and tenant scope:**
+
+- After role gate: no point checking the feature is enabled if the
+  user doesn't have the role to use it anyway. Role gate gives 403
+  first.
+- Before tenant scope: if the feature is disabled, we want 403
+  "feature not enabled" — NOT 404 "resource not found," which would
+  leak that the resource exists.
+
+**403 vs 404 distinction:**
+
+- 403 = "we know you, we know the resource exists, we refuse." Used
+  for role + feature checks.
+- 404 = "this resource doesn't exist for you." Used for tenant
+  scope to avoid existence leaks.
 
 Reads follow the same pattern except the role gate is usually weaker
-(any tenant user). The tenant scope check is **identical** for reads
-and writes.
+(any tenant user). Feature gate + tenant scope are **identical** for
+reads and writes.
+
+**Gated features today:** `coaches`, `schedule`.
+**Ungated features today:** `members`, `classes`, `plans`,
+`subscriptions`, `attendance`, `users`, `tenants`.
 
 ---
 
@@ -357,4 +429,7 @@ and writes.
 - `backend.md` — how the 4 layers (api → service → domain ← adapter) fit.
 - `security/cross-tenant-isolation.md` — §8 enforced in detail.
 - `standards/architecture.md` — project structure + layer rules.
+- `features/feature-flags.md` — the mechanism §12 step 3 checks.
+- `features/schedule.md` — session-based attribution (§5) + updated
+  `per_session` pay (§6).
 - `features/*.md` — per-feature specs that lean on this doc.
