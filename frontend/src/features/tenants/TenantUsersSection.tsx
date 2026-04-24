@@ -1,15 +1,17 @@
 import { useState } from "react"
+import { GYM_ROLE_LABELS } from "@/features/auth/types"
 import CreateUserForm from "@/features/users/CreateUserForm"
 import EditUserDialog from "@/features/users/EditUserDialog"
 import { useTenantUsers } from "@/features/users/hooks"
 import type { User } from "@/features/users/types"
 
-/** Hebrew labels for each role. Used in the role badge. */
+/** Hebrew labels for each role. Used in the role badge.
+ * Sourced from the canonical GYM_ROLE_LABELS so additions (e.g. coach)
+ * propagate automatically. ``super_admin`` is overridden because that
+ * label only appears here (the gym-role dropdowns don't show it). */
 const ROLE_LABELS: Record<string, string> = {
+  ...GYM_ROLE_LABELS,
   super_admin: "מנהל על",
-  owner: "בעלים",
-  staff: "צוות",
-  sales: "מכירות",
 }
 
 /**
