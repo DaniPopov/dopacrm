@@ -47,6 +47,7 @@ def _to_domain(orm: ClassEntryORM) -> ClassEntry:
         override_kind=OverrideKind(orm.override_kind) if orm.override_kind else None,
         override_reason=orm.override_reason,
         coach_id=orm.coach_id,
+        session_id=orm.session_id,
     )
 
 
@@ -70,6 +71,7 @@ class ClassEntryRepository:
         override_kind: OverrideKind | None = None,
         override_reason: str | None = None,
         coach_id: UUID | None = None,
+        session_id: UUID | None = None,
     ) -> ClassEntry:
         """Insert a new entry. ``entered_at`` is set by the DB (NOW())."""
         orm = ClassEntryORM(
@@ -82,6 +84,7 @@ class ClassEntryRepository:
             override_kind=override_kind.value if override_kind else None,
             override_reason=override_reason,
             coach_id=coach_id,
+            session_id=session_id,
         )
         self._session.add(orm)
         await self._session.flush()

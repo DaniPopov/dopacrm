@@ -10,6 +10,10 @@ ORM class here.
 
 from app.adapters.storage.postgres.class_coach.models import ClassCoachORM
 from app.adapters.storage.postgres.class_entry.models import ClassEntryORM
+from app.adapters.storage.postgres.class_schedule_template.models import (
+    ClassScheduleTemplateORM,
+)
+from app.adapters.storage.postgres.class_session.models import ClassSessionORM
 from app.adapters.storage.postgres.coach.models import CoachORM
 from app.adapters.storage.postgres.database import Base, async_session_factory, get_engine
 from app.adapters.storage.postgres.gym_class.models import GymClassORM
@@ -31,6 +35,8 @@ __all__ = [
     "Base",
     "ClassCoachORM",
     "ClassEntryORM",
+    "ClassScheduleTemplateORM",
+    "ClassSessionORM",
     "CoachORM",
     "GymClassORM",
     "MemberORM",
