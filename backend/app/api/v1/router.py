@@ -7,6 +7,10 @@ from app.api.v1.admin.router import router as admin_router
 from app.api.v1.attendance.router import router as attendance_router
 from app.api.v1.auth.router import router as auth_router
 from app.api.v1.classes.router import router as classes_router
+from app.api.v1.coaches.router import (
+    class_coaches_router,
+    coaches_router,
+)
 from app.api.v1.members.router import router as members_router
 from app.api.v1.plans.router import router as plans_router
 from app.api.v1.subscriptions.router import router as subscriptions_router
@@ -64,5 +68,17 @@ v1_router.include_router(
     attendance_router,
     prefix="/attendance",
     tags=["Attendance"],
+    dependencies=api_rate_limit,
+)
+v1_router.include_router(
+    coaches_router,
+    prefix="/coaches",
+    tags=["Coaches"],
+    dependencies=api_rate_limit,
+)
+v1_router.include_router(
+    class_coaches_router,
+    prefix="/class-coaches",
+    tags=["Coaches"],
     dependencies=api_rate_limit,
 )

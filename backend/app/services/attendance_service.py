@@ -37,6 +37,9 @@ from uuid import UUID as _UUID
 
 from pydantic import BaseModel
 
+from app.adapters.storage.postgres.class_coach.repositories import (
+    ClassCoachRepository,
+)
 from app.adapters.storage.postgres.class_entry.repositories import (
     ClassEntryRepository,
 )
@@ -115,6 +118,7 @@ class AttendanceService:
         self._repo = ClassEntryRepository(session)
         self._member_repo = MemberRepository(session)
         self._sub_repo = SubscriptionRepository(session)
+        self._class_coach_repo = ClassCoachRepository(session)
 
     # ── Commands ─────────────────────────────────────────────────────────
 
@@ -161,6 +165,13 @@ class AttendanceService:
                 else OverrideKind.NOT_COVERED
             )
 
+        # Coach attribution — look up via the (class_id, weekday) pattern
+        # on class_coaches. Empty → NULL + warn log; multiple → primary →
+        # deterministic sort (repo already orders the query that way).
+        coach_id, attribution_method = await self._attribute_coach(
+            tenant_id=tenant_id, class_id=class_id, at=utcnow()
+        )
+
         entry = await self._repo.create(
             tenant_id=tenant_id,
             member_id=member_id,
@@ -170,8 +181,21 @@ class AttendanceService:
             override=override_kind is not None,
             override_kind=override_kind,
             override_reason=override_reason if override_kind else None,
+            coach_id=coach_id,
         )
         await self._session.commit()
+
+        logger.info(
+            "attendance.coach_attributed",
+            extra={
+                "event": "attendance.coach_attributed",
+                "tenant_id": str(tenant_id),
+                "entry_id": str(entry.id),
+                "class_id": str(class_id),
+                "coach_id": str(coach_id) if coach_id else None,
+                "method": attribution_method,
+            },
+        )
 
         logger.info(
             "attendance.recorded",
@@ -201,6 +225,54 @@ class AttendanceService:
                 },
             )
         return entry
+
+    async def reassign_coach(
+        self,
+        *,
+        caller: TokenPayload,
+        entry_id: UUID,
+        coach_id: UUID | None,
+    ) -> ClassEntry:
+        """Owner-only correction of a mis-attributed ``coach_id`` on an
+        existing entry. Passing ``coach_id=None`` clears the attribution.
+
+        Validates that the new coach (if any) is in the caller's tenant
+        and is currently active. Logs ``attendance.coach_reassigned``.
+        """
+        if caller.role not in (Role.OWNER.value, Role.SUPER_ADMIN.value):
+            raise InsufficientPermissionsError()
+        tenant_id = self._require_tenant(caller)
+        caller_id = self._caller_uuid(caller)
+        entry = await self._get_in_tenant(caller, entry_id, tenant_id)
+
+        if coach_id is not None:
+            # Lazy import to avoid a circular (attendance ↔ coach services).
+            from app.adapters.storage.postgres.coach.repositories import (
+                CoachRepository,
+            )
+
+            coach = await CoachRepository(self._session).find_by_id(coach_id)
+            if coach is None or str(coach.tenant_id) != str(tenant_id):
+                from app.domain.exceptions import CoachNotFoundError
+
+                raise CoachNotFoundError(str(coach_id))
+
+        old_coach_id = entry.coach_id
+        updated = await self._repo.reassign_coach(entry_id, coach_id)
+        await self._session.commit()
+
+        logger.info(
+            "attendance.coach_reassigned",
+            extra={
+                "event": "attendance.coach_reassigned",
+                "tenant_id": str(tenant_id),
+                "entry_id": str(entry_id),
+                "old_coach_id": str(old_coach_id) if old_coach_id else None,
+                "new_coach_id": str(coach_id) if coach_id else None,
+                "by": str(caller_id) if caller_id else None,
+            },
+        )
+        return updated
 
     async def undo(
         self,
@@ -332,6 +404,36 @@ class AttendanceService:
         for ent in (await self._resolve_entitlements(sub)) or []:
             results.append(await self._quota_for_entitlement(sub=sub, entitlement=ent, now=now))
         return results
+
+    # ── Coach attribution (server-side, at-insert) ───────────────────
+
+    async def _attribute_coach(
+        self, *, tenant_id: _UUID, class_id: UUID, at: datetime
+    ) -> tuple[_UUID | None, str]:
+        """Pick the coach responsible for this class on this date.
+
+        Returns ``(coach_id_or_None, method)`` where ``method`` names
+        which branch of the rule fired — used in the structlog event
+        so the owner can see how attribution was decided.
+
+        Branches (matching ``crm_logic.md`` §5):
+        - ``primary`` — a single row matched and it's the primary (or
+          there's only one match).
+        - ``deterministic`` — multiple matched, primary fell back to
+          ``ORDER BY coach_id ASC``.
+        - ``null`` — no match. Entry is recorded with NULL coach_id.
+        """
+        entry_date = at.date()
+        candidates = await self._class_coach_repo.find_attribution_candidates(
+            tenant_id, class_id, entry_date
+        )
+        if not candidates:
+            return None, "null"
+        # Repo already orders by (is_primary DESC, coach_id ASC).
+        first = candidates[0]
+        if len(candidates) == 1 or first.is_primary:
+            return first.coach_id, "primary"
+        return first.coach_id, "deterministic"
 
     # ── Private helpers ──────────────────────────────────────────────────
 

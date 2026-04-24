@@ -74,6 +74,16 @@ class EntryResponse(BaseModel):
     override: bool
     override_kind: OverrideKind | None
     override_reason: str | None
+    #: Coach attributed server-side at insert via the weekday pattern.
+    #: ``None`` when no matching coach was found. Immutable history —
+    #: corrections go through ``POST /{id}/reassign-coach``.
+    coach_id: UUID | None = None
+
+
+class ReassignCoachRequest(BaseModel):
+    """POST /api/v1/attendance/{id}/reassign-coach — owner correction."""
+
+    coach_id: UUID | None
 
 
 class SummaryItem(BaseModel):
