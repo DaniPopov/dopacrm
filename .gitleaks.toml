@@ -2,5 +2,11 @@
 useDefault = true
 
 [allowlist]
-description = "Allow test files with fake tokens"
-paths = ['backend/tests/']
+description = "Ignore fake tokens in test + CI files"
+paths = [
+  'backend/tests/',
+  # CI workflow sets obvious placeholder env vars (APP_SECRET_KEY,
+  # AWS_ACCESS_KEY_ID, etc.) for the integration+E2E job. Real
+  # secrets go through GitHub's Actions secrets, never in this file.
+  '.github/workflows/ci\.yml',
+]
