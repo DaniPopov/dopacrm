@@ -82,6 +82,16 @@ class ClassEntryORM(Base):
     override_kind: Mapped[str | None] = mapped_column(String(30), nullable=True)
     override_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Coach attribution — set server-side at insert by the attendance
+    # service (weekday lookup). Immutable once written; correction goes
+    # through POST /attendance/{id}/reassign-coach. Nullable so a check-in
+    # that can't find a matching coach still records.
+    coach_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("coaches.id", name="fk_entries_coach_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     __table_args__ = (
         CheckConstraint(
             "override_kind IS NULL OR override_kind IN ('quota_exceeded', 'not_covered')",
@@ -117,5 +127,11 @@ class ClassEntryORM(Base):
             "class_id",
             "entered_at",
             postgresql_where=text("undone_at IS NULL"),
+        ),
+        Index(
+            "ix_entries_coach_entered",
+            "coach_id",
+            text("entered_at DESC"),
+            postgresql_where=text("undone_at IS NULL AND coach_id IS NOT NULL"),
         ),
     )

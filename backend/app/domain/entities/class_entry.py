@@ -73,6 +73,12 @@ class ClassEntry(BaseModel):
     override_kind: OverrideKind | None = None
     override_reason: str | None = None
 
+    # Coach attribution — set at INSERT by the attendance service via the
+    # class_coaches weekday lookup. Immutable history; corrections go
+    # through POST /attendance/{id}/reassign-coach. Nullable for entries
+    # recorded before Coaches shipped + cases where no coach matched.
+    coach_id: UUID | None = None
+
     # ── Pure state-machine helpers ─────────────────────────────────────
 
     def is_effective(self) -> bool:
