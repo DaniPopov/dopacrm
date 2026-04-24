@@ -1184,7 +1184,7 @@ export interface components {
             oauth_provider?: string | null;
             /**
              * Password
-             * @description Min 8 chars, at least 1 uppercase and 1 special character
+             * @description Minimum 8 characters.
              */
             password?: string | null;
             /** Phone */
@@ -1577,6 +1577,8 @@ export interface components {
         QuotaCheckResponse: {
             /** Allowed */
             allowed: boolean;
+            /** Class Id */
+            class_id?: string | null;
             /** Quantity */
             quantity?: number | null;
             /** Reason */
@@ -1811,6 +1813,8 @@ export interface components {
         SummaryItem: {
             /** Allowed */
             allowed: boolean;
+            /** Class Id */
+            class_id?: string | null;
             /** Quantity */
             quantity: number | null;
             /** Reason */
@@ -2101,7 +2105,7 @@ export interface components {
             last_name?: string | null;
             /**
              * Password
-             * @description New password. Min 8 chars, 1 uppercase, 1 special character.
+             * @description New password. Minimum 8 characters.
              */
             password?: string | null;
             /** Phone */

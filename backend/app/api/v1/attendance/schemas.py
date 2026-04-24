@@ -56,6 +56,8 @@ class QuotaCheckResponse(BaseModel):
     quantity: int | None = None
     reset_period: str | None = None
     reason: str | None = None
+    #: The entitlement's class_id. ``None`` = any-class wildcard.
+    class_id: UUID | None = None
 
 
 class EntryResponse(BaseModel):
@@ -83,6 +85,8 @@ class SummaryItem(BaseModel):
     quantity: int | None
     reset_period: str | None
     reason: str | None
+    #: The entitlement's class_id. ``None`` = any-class wildcard.
+    class_id: UUID | None = None
 
 
 class AttendanceListResponse(BaseModel):

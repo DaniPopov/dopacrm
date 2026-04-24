@@ -63,6 +63,7 @@ def _quota_to_response(q: QuotaCheckResult) -> QuotaCheckResponse:
         quantity=q.quantity,
         reset_period=q.reset_period,
         reason=q.reason,
+        class_id=q.class_id,
     )
 
 
@@ -217,6 +218,7 @@ async def member_summary(
             quantity=r.quantity,
             reset_period=r.reset_period,
             reason=r.reason,
+            class_id=r.class_id,
         )
         for r in results
     ]

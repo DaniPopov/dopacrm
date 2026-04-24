@@ -100,6 +100,8 @@ class QuotaCheckResult(BaseModel):
     reset_period: str | None = None
     #: One of 'quota_exceeded' / 'not_covered' when allowed=False.
     reason: str | None = None
+    #: The entitlement's class_id. ``None`` = any-class wildcard or no match.
+    class_id: _UUID | None = None
 
 
 # ── Service ───────────────────────────────────────────────────────────
@@ -368,6 +370,7 @@ class AttendanceService:
             return QuotaCheckResult(
                 allowed=True,
                 reset_period=entitlement.reset_period.value,
+                class_id=entitlement.class_id,
             )
 
         plan = await self._resolve_plan(sub)
@@ -393,6 +396,7 @@ class AttendanceService:
             remaining=remaining,
             reset_period=entitlement.reset_period.value,
             reason=None if allowed else "quota_exceeded",
+            class_id=entitlement.class_id,
         )
 
     async def _resolve_entitlements(self, sub: Subscription) -> list[PlanEntitlement]:
