@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom"
+import ClassCoachesSection from "@/features/coaches/ClassCoachesSection"
 import { humanizeClassError } from "@/lib/api-errors"
 import ClassForm, { type ClassFormValues } from "./ClassForm"
 import { useClass, useUpdateClass } from "./hooks"
@@ -79,6 +80,8 @@ export default function ClassDetailPage() {
           onCancel={handleCancel}
         />
       </div>
+
+      <ClassCoachesSection classId={cls.id} />
     </div>
   )
 }

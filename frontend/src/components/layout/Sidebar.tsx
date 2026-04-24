@@ -42,6 +42,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/check-in", label: "כניסות", icon: "🚪", feature: "attendance" },
   { to: "/classes", label: "שיעורים", icon: "🏃", feature: "classes" },
   { to: "/plans", label: "מסלולים", icon: "📋", feature: "plans" },
+  { to: "/coaches", label: "מאמנים", icon: "🥋", feature: "coaches" },
 
   // Future (placeholders — routes land with feature work)
   // { to: "/leads", label: "לידים", icon: "🎯", feature: "leads" },

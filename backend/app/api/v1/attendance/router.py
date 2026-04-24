@@ -18,6 +18,7 @@ from app.api.dependencies.database import get_session
 from app.api.v1.attendance.schemas import (
     EntryResponse,
     QuotaCheckResponse,
+    ReassignCoachRequest,
     RecordEntryRequest,
     SummaryItem,
     UndoEntryRequest,
@@ -52,6 +53,7 @@ def _to_response(entry: ClassEntry) -> EntryResponse:
         override=entry.override,
         override_kind=entry.override_kind,
         override_reason=entry.override_reason,
+        coach_id=entry.coach_id,
     )
 
 
@@ -63,6 +65,7 @@ def _quota_to_response(q: QuotaCheckResult) -> QuotaCheckResponse:
         quantity=q.quantity,
         reset_period=q.reset_period,
         reason=q.reason,
+        class_id=q.class_id,
     )
 
 
@@ -217,6 +220,27 @@ async def member_summary(
             quantity=r.quantity,
             reset_period=r.reset_period,
             reason=r.reason,
+            class_id=r.class_id,
         )
         for r in results
     ]
+
+
+@router.post(
+    "/{entry_id}/reassign-coach",
+    response_model=EntryResponse,
+    summary="Reassign the coach_id on an entry (owner+)",
+    description=(
+        "Admin correction of a mis-attributed entry. Pass ``coach_id=null`` "
+        "to clear the attribution. Emits ``attendance.coach_reassigned`` to "
+        "the structlog audit trail."
+    ),
+)
+async def reassign_coach(
+    entry_id: UUID,
+    body: ReassignCoachRequest,
+    caller: TokenPayload = Depends(get_current_user),
+    service: AttendanceService = Depends(_get_service),
+) -> EntryResponse:
+    entry = await service.reassign_coach(caller=caller, entry_id=entry_id, coach_id=body.coach_id)
+    return _to_response(entry)

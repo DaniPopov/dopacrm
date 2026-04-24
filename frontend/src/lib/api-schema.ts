@@ -108,6 +108,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/attendance/{entry_id}/reassign-coach": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reassign the coach_id on an entry (owner+)
+         * @description Admin correction of a mis-attributed entry. Pass ``coach_id=null`` to clear the attribution. Emits ``attendance.coach_reassigned`` to the structlog audit trail.
+         */
+        post: operations["reassign_coach_api_v1_attendance__entry_id__reassign_coach_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/attendance/{entry_id}/undo": {
         parameters: {
             query?: never;
@@ -188,6 +208,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/class-coaches/{link_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a class-coach link (owner+) */
+        delete: operations["delete_link_api_v1_class_coaches__link_id__delete"];
+        options?: never;
+        head?: never;
+        /** Edit a class-coach link (owner+) */
+        patch: operations["update_link_api_v1_class_coaches__link_id__patch"];
+        trace?: never;
+    };
     "/api/v1/classes": {
         parameters: {
             query?: never;
@@ -253,6 +291,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/classes/{class_id}/coaches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List coaches attached to a class */
+        get: operations["list_class_coaches_api_v1_classes__class_id__coaches_get"];
+        put?: never;
+        /** Assign a coach to a class (owner+) */
+        post: operations["assign_coach_api_v1_classes__class_id__coaches_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/classes/{class_id}/deactivate": {
         parameters: {
             query?: never;
@@ -267,6 +323,161 @@ export interface paths {
          * @description Owner-only. Sets is_active=false — existing plan_entitlements and class_passes keep working, but new subscriptions can't reference this class.
          */
         post: operations["deactivate_class_api_v1_classes__class_id__deactivate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coaches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List coaches in the caller's tenant */
+        get: operations["list_coaches_api_v1_coaches_get"];
+        put?: never;
+        /** Create a coach */
+        post: operations["create_coach_api_v1_coaches_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coaches/earnings/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Earnings across all coaches (owner+) */
+        get: operations["earnings_summary_api_v1_coaches_earnings_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coaches/{coach_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch a single coach */
+        get: operations["get_coach_api_v1_coaches__coach_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update coach fields (owner+) */
+        patch: operations["update_coach_api_v1_coaches__coach_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/coaches/{coach_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a coach — terminal (owner+) */
+        post: operations["cancel_coach_api_v1_coaches__coach_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coaches/{coach_id}/classes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List classes this coach teaches */
+        get: operations["list_classes_for_coach_api_v1_coaches__coach_id__classes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coaches/{coach_id}/earnings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Payroll estimate for a coach over a date range */
+        get: operations["coach_earnings_api_v1_coaches__coach_id__earnings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coaches/{coach_id}/freeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Freeze a coach (owner+) */
+        post: operations["freeze_coach_api_v1_coaches__coach_id__freeze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coaches/{coach_id}/invite-user": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a login for the coach (owner+) */
+        post: operations["invite_user_api_v1_coaches__coach_id__invite_user_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coaches/{coach_id}/unfreeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Unfreeze a coach (owner+) */
+        post: operations["unfreeze_coach_api_v1_coaches__coach_id__unfreeze_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -857,6 +1068,50 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * AssignCoachRequest
+         * @description POST /api/v1/classes/{class_id}/coaches — attach a coach to a class.
+         * @example {
+         *       "coach_id": "11111111-1111-1111-1111-111111111111",
+         *       "is_primary": true,
+         *       "pay_amount_cents": 5000,
+         *       "pay_model": "per_attendance",
+         *       "role": "ראשי",
+         *       "weekdays": [
+         *         "sun",
+         *         "tue"
+         *       ]
+         *     }
+         */
+        AssignCoachRequest: {
+            /**
+             * Coach Id
+             * Format: uuid
+             */
+            coach_id: string;
+            /** Ends On */
+            ends_on?: string | null;
+            /**
+             * Is Primary
+             * @default false
+             */
+            is_primary: boolean;
+            /** Pay Amount Cents */
+            pay_amount_cents: number;
+            pay_model: components["schemas"]["PayModel"];
+            /**
+             * Role
+             * @default ראשי
+             */
+            role: string;
+            /** Starts On */
+            starts_on?: string | null;
+            /**
+             * Weekdays
+             * @description Lowercase 3-letter codes ('sun'..'sat'). Empty = all days.
+             */
+            weekdays?: string[];
+        };
+        /**
          * BillingPeriod
          * @description How often the plan bills.
          * @enum {string}
@@ -903,6 +1158,139 @@ export interface components {
              * Format: uuid
              */
             new_plan_id: string;
+        };
+        /** ClassCoachResponse */
+        ClassCoachResponse: {
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /**
+             * Coach Id
+             * Format: uuid
+             */
+            coach_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Ends On */
+            ends_on: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Primary */
+            is_primary: boolean;
+            /** Pay Amount Cents */
+            pay_amount_cents: number;
+            pay_model: components["schemas"]["PayModel"];
+            /** Role */
+            role: string;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Weekdays */
+            weekdays: string[];
+        };
+        /** CoachResponse */
+        CoachResponse: {
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Custom Attrs */
+            custom_attrs: {
+                [key: string]: unknown;
+            };
+            /** Email */
+            email: string | null;
+            /** First Name */
+            first_name: string;
+            /** Frozen At */
+            frozen_at: string | null;
+            /**
+             * Hired At
+             * Format: date
+             */
+            hired_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Last Name */
+            last_name: string;
+            /** Phone */
+            phone: string | null;
+            status: components["schemas"]["CoachStatus"];
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** User Id */
+            user_id: string | null;
+        };
+        /**
+         * CoachStatus
+         * @description Lifecycle status of a coach.
+         * @enum {string}
+         */
+        CoachStatus: "active" | "frozen" | "cancelled";
+        /**
+         * CreateCoachRequest
+         * @description POST /api/v1/coaches — add a coach to the caller's tenant.
+         * @example {
+         *       "email": "david@gym.com",
+         *       "first_name": "David",
+         *       "last_name": "Cohen",
+         *       "phone": "+972-50-123-4567"
+         *     }
+         */
+        CreateCoachRequest: {
+            /** Custom Attrs */
+            custom_attrs?: {
+                [key: string]: unknown;
+            } | null;
+            /** Email */
+            email?: string | null;
+            /** First Name */
+            first_name: string;
+            /** Hired At */
+            hired_at?: string | null;
+            /** Last Name */
+            last_name: string;
+            /** Phone */
+            phone?: string | null;
+            /**
+             * User Id
+             * @description Optional existing user to link. Must be in the caller's tenant.
+             */
+            user_id?: string | null;
         };
         /**
          * CreateGymClassRequest
@@ -1184,7 +1572,7 @@ export interface components {
             oauth_provider?: string | null;
             /**
              * Password
-             * @description Min 8 chars, at least 1 uppercase and 1 special character
+             * @description Minimum 8 characters.
              */
             password?: string | null;
             /** Phone */
@@ -1195,6 +1583,61 @@ export interface components {
              * @description Required for owner/staff/sales. Null for super_admin.
              */
             tenant_id?: string | null;
+        };
+        /** EarningsBreakdownResponse */
+        EarningsBreakdownResponse: {
+            /** By Class Cents */
+            by_class_cents: {
+                [key: string]: number;
+            };
+            /** By Link */
+            by_link: components["schemas"]["EarningsLinkRowResponse"][];
+            /** By Pay Model Cents */
+            by_pay_model_cents: {
+                [key: string]: number;
+            };
+            /**
+             * Coach Id
+             * Format: uuid
+             */
+            coach_id: string;
+            /** Currency */
+            currency: string;
+            /** Effective From */
+            effective_from: string | null;
+            /** Effective To */
+            effective_to: string | null;
+            /**
+             * From
+             * Format: date
+             */
+            from: string;
+            /**
+             * To
+             * Format: date
+             */
+            to: string;
+            /** Total Cents */
+            total_cents: number;
+        };
+        /** EarningsLinkRowResponse */
+        EarningsLinkRowResponse: {
+            /** Cents */
+            cents: number;
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /** Class Name */
+            class_name: string | null;
+            /** Pay Amount Cents */
+            pay_amount_cents: number;
+            pay_model: components["schemas"]["PayModel"];
+            /** Role */
+            role: string;
+            /** Unit Count */
+            unit_count: number;
         };
         /**
          * EntitlementInputSchema
@@ -1246,6 +1689,8 @@ export interface components {
              * Format: uuid
              */
             class_id: string;
+            /** Coach Id */
+            coach_id?: string | null;
             /**
              * Entered At
              * Format: date-time
@@ -1357,6 +1802,22 @@ export interface components {
             detail?: components["schemas"]["ValidationError"][];
         };
         /**
+         * InviteCoachUserRequest
+         * @description POST /api/v1/coaches/{id}/invite-user — create a login for the coach.
+         */
+        InviteCoachUserRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /**
+             * Password
+             * @description Minimum 8 characters.
+             */
+            password: string;
+        };
+        /**
          * LoginRequest
          * @description POST /api/v1/auth/login
          * @example {
@@ -1458,6 +1919,12 @@ export interface components {
          * @enum {string}
          */
         OverrideKind: "quota_exceeded" | "not_covered";
+        /**
+         * PayModel
+         * @description How a coach gets paid for one (class) link.
+         * @enum {string}
+         */
+        PayModel: "fixed" | "per_session" | "per_attendance";
         /**
          * PaymentMethod
          * @description How the member pays for this subscription.
@@ -1577,6 +2044,8 @@ export interface components {
         QuotaCheckResponse: {
             /** Allowed */
             allowed: boolean;
+            /** Class Id */
+            class_id?: string | null;
             /** Quantity */
             quantity?: number | null;
             /** Reason */
@@ -1587,6 +2056,14 @@ export interface components {
             reset_period?: string | null;
             /** Used */
             used?: number | null;
+        };
+        /**
+         * ReassignCoachRequest
+         * @description POST /api/v1/attendance/{id}/reassign-coach — owner correction.
+         */
+        ReassignCoachRequest: {
+            /** Coach Id */
+            coach_id: string | null;
         };
         /**
          * RecordEntryRequest
@@ -1661,9 +2138,13 @@ export interface components {
          *     - owner: full tenant access, billing, configuration
          *     - staff: day-to-day operations (check-in, payments, members)
          *     - sales: lead pipeline, trials, conversions
+         *     - coach: trainer. Tied 1:1 to a ``coaches`` row via
+         *       ``coaches.user_id``. Baseline view is read-only + narrow
+         *       (their own classes, attendance, earnings). See
+         *       ``docs/features/coaches.md`` §8.
          * @enum {string}
          */
-        Role: "super_admin" | "owner" | "staff" | "sales";
+        Role: "super_admin" | "owner" | "staff" | "sales" | "coach";
         /**
          * SubscriptionEventResponse
          * @description Timeline entry as returned to the frontend.
@@ -1811,6 +2292,8 @@ export interface components {
         SummaryItem: {
             /** Allowed */
             allowed: boolean;
+            /** Class Id */
+            class_id?: string | null;
             /** Quantity */
             quantity: number | null;
             /** Reason */
@@ -1960,6 +2443,43 @@ export interface components {
             reason?: string | null;
         };
         /**
+         * UpdateClassCoachRequest
+         * @description PATCH /api/v1/class-coaches/{link_id} — edit a link (owner+).
+         */
+        UpdateClassCoachRequest: {
+            /** Ends On */
+            ends_on?: string | null;
+            /** Is Primary */
+            is_primary?: boolean | null;
+            /** Pay Amount Cents */
+            pay_amount_cents?: number | null;
+            pay_model?: components["schemas"]["PayModel"] | null;
+            /** Role */
+            role?: string | null;
+            /** Starts On */
+            starts_on?: string | null;
+            /** Weekdays */
+            weekdays?: string[] | null;
+        };
+        /**
+         * UpdateCoachRequest
+         * @description PATCH /api/v1/coaches/{id} — partial update (owner+).
+         */
+        UpdateCoachRequest: {
+            /** Custom Attrs */
+            custom_attrs?: {
+                [key: string]: unknown;
+            } | null;
+            /** Email */
+            email?: string | null;
+            /** First Name */
+            first_name?: string | null;
+            /** Last Name */
+            last_name?: string | null;
+            /** Phone */
+            phone?: string | null;
+        };
+        /**
          * UpdateGymClassRequest
          * @description PATCH /api/v1/classes/{id} — partial update.
          * @example {
@@ -2101,7 +2621,7 @@ export interface components {
             last_name?: string | null;
             /**
              * Password
-             * @description New password. Min 8 chars, 1 uppercase, 1 special character.
+             * @description New password. Minimum 8 characters.
              */
             password?: string | null;
             /** Phone */
@@ -2392,6 +2912,41 @@ export interface operations {
             };
         };
     };
+    reassign_coach_api_v1_attendance__entry_id__reassign_coach_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReassignCoachRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     undo_entry_api_v1_attendance__entry_id__undo_post: {
         parameters: {
             query?: never;
@@ -2494,6 +3049,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+        };
+    };
+    delete_link_api_v1_class_coaches__link_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_link_api_v1_class_coaches__link_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateClassCoachRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassCoachResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2661,6 +3280,74 @@ export interface operations {
             };
         };
     };
+    list_class_coaches_api_v1_classes__class_id__coaches_get: {
+        parameters: {
+            query?: {
+                only_current?: boolean;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassCoachResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assign_coach_api_v1_classes__class_id__coaches_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignCoachRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassCoachResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     deactivate_class_api_v1_classes__class_id__deactivate_post: {
         parameters: {
             query?: never;
@@ -2679,6 +3366,366 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GymClassResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_coaches_api_v1_coaches_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["CoachStatus"][] | null;
+                search?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_coach_api_v1_coaches_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCoachRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    earnings_summary_api_v1_coaches_earnings_summary_get: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EarningsBreakdownResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_coach_api_v1_coaches__coach_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                coach_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_coach_api_v1_coaches__coach_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                coach_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCoachRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_coach_api_v1_coaches__coach_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                coach_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_classes_for_coach_api_v1_coaches__coach_id__classes_get: {
+        parameters: {
+            query?: {
+                only_current?: boolean;
+            };
+            header?: never;
+            path: {
+                coach_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassCoachResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    coach_earnings_api_v1_coaches__coach_id__earnings_get: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                coach_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EarningsBreakdownResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    freeze_coach_api_v1_coaches__coach_id__freeze_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                coach_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    invite_user_api_v1_coaches__coach_id__invite_user_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                coach_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteCoachUserRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unfreeze_coach_api_v1_coaches__coach_id__unfreeze_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                coach_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachResponse"];
                 };
             };
             /** @description Validation Error */

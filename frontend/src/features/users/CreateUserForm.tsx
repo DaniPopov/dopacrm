@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react"
 import PasswordInput from "@/components/ui/password-input"
+import { ALL_GYM_ROLES, GYM_ROLE_LABELS } from "@/features/auth/types"
 import { humanizeUserError } from "@/lib/api-errors"
 import { useCreateUser } from "./hooks"
 import type { Role } from "./types"
@@ -96,7 +97,7 @@ export default function CreateUserForm({
             className={inputClass}
           />
         </Field>
-        <Field label="סיסמה *" helper="מינימום 8 תווים, אות גדולה וסימן מיוחד">
+        <Field label="סיסמה *" helper="מינימום 8 תווים">
           <PasswordInput
             required
             minLength={8}
@@ -112,9 +113,11 @@ export default function CreateUserForm({
             onChange={(e) => set("role", e.target.value as Role)}
             className={inputClass}
           >
-            <option value="owner">בעלים</option>
-            <option value="staff">צוות</option>
-            <option value="sales">מכירות</option>
+            {ALL_GYM_ROLES.map((r) => (
+              <option key={r} value={r}>
+                {GYM_ROLE_LABELS[r]}
+              </option>
+            ))}
           </select>
         </Field>
       </div>

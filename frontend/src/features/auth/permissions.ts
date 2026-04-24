@@ -61,6 +61,7 @@ export type Feature =
   | "classes" // class-type catalog (gym-scoped)
   | "plans"
   | "attendance" // check-in / front desk
+  | "coaches" // trainers + payroll estimate
   | "leads"
   | "payments"
   | "reports"
@@ -82,6 +83,7 @@ const BASELINE: Record<Role, Feature[]> = {
     "classes",
     "plans",
     "attendance",
+    "coaches",
     "leads",
     "payments",
     "reports",
@@ -93,6 +95,11 @@ const BASELINE: Record<Role, Feature[]> = {
   // Sales converts leads → members. Reads classes when enrolling; no
   // attendance (check-in is a staff/operations task).
   sales: ["dashboard", "members", "classes"],
+  // Coach (logged-in trainer) — read-only baseline. Sees only their
+  // own classes + attendance rosters + earnings. All scoping is
+  // enforced server-side by CoachService; the frontend `coaches`
+  // feature gate just controls sidebar visibility.
+  coach: ["dashboard", "classes", "attendance", "coaches"],
 }
 
 /**
@@ -106,6 +113,7 @@ export const GRANTABLE_FEATURES: Feature[] = [
   "classes",
   "plans",
   "attendance",
+  "coaches",
   "leads",
   "payments",
   "reports",

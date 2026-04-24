@@ -2,7 +2,7 @@
 
 > Living document. Last updated: 2026-04-11.
 >
-> This is the source of truth for what DopaCRM does, who it serves, and how the domain is modeled. Architecture and coding conventions live in `CLAUDE.md` and `docs/standards/`. Per-feature implementation details live in `docs/features/`.
+> This is the source of truth for what DopaCRM does, who it serves, and how the domain is modeled. Architecture and coding conventions live in `CLAUDE.md` and `docs/standards/`. Per-feature implementation details live in `docs/features/`. Cross-feature business rules (attribution, pro-ration, state machines, immutability) live in [`crm_logic.md`](./crm_logic.md).
 
 ---
 
@@ -413,13 +413,33 @@ Not implemented in v1 — gym owners get the default layout above. Customization
 
 ---
 
+### 3.10 Coaches & Payroll
+
+Coaches are the gym's trainers — the people who teach classes. DopaCRM tracks them as first-class entities with per-class pay rules, so the owner can ask the most basic operational question: *"how much do I owe this month?"*
+
+**Stored in:** PostgreSQL (`coaches` + `class_coaches` tables; `class_entries.coach_id` column). Full spec in [`features/coaches.md`](./features/coaches.md).
+
+**Key concepts:**
+
+- **A coach is not a user by default.** Coaches are their own table; optionally linked to a `users` row when the owner wants them to log in. A coach without a user row exists on the payroll, nothing more. A logged-in coach sees a read-only baseline: their classes, their attendance rosters, their earnings.
+- **Pay rules live on the (coach, class) link.** The same coach can be "head of boxing at ₪50 per attendee" AND "assistant in wrestling at ₪30 per session". Three pay models: `fixed` (monthly salary, pro-rated), `per_session`, `per_attendance`.
+- **Weekday teaching pattern.** Each (coach, class) link holds an array of weekdays. At check-in, the server looks up which coach taught based on `entered_at.weekday()` and stamps `class_entries.coach_id`. Immutable history — rate changes don't rewrite past payroll.
+- **Substitutions** (coach sick, someone covers) will be edited from the future Schedule week view, not inline at check-in. Until Schedule ships, an admin endpoint `POST /attendance/{id}/reassign-coach` handles mis-attributions.
+- **Coaches add a role.** `users.role` gains `coach` as a system-defined role. Owner + super_admin keep their current powers; dynamic roles (Phase 4) will let the owner customize what each coach sees per-tenant.
+
+**Business rules that cross features** — attribution, pay pro-ration, what counts as an "effective" entry — are captured in [`crm_logic.md`](./crm_logic.md) so Coaches, Payments, Attendance, and future Schedule stay in sync.
+
+**Roadmap slot:** Coaches is part of Phase 3 (Operations) alongside Payments and Leads. See §9 below.
+
+---
+
 ## 4. Data Architecture
 
 ### PostgreSQL (primary — transactional entities)
 
-All core business entities: `tenants`, `saas_plans`, `users`, `members`, `membership_plans`, `subscriptions`, `payments`, `leads`, `refresh_tokens`.
+All core business entities: `tenants`, `saas_plans`, `users`, `members`, `membership_plans`, `subscriptions`, `payments`, `leads`, `refresh_tokens`, `classes`, `class_entries`, `coaches`, `class_coaches`.
 
-JSONB columns for per-entity flexibility: `membership_plans.custom_attrs`, `members.custom_fields`.
+JSONB columns for per-entity flexibility: `membership_plans.custom_attrs`, `members.custom_fields`, `coaches.custom_attrs`.
 
 ### MongoDB — provisioned but currently unused
 
@@ -586,11 +606,13 @@ See [`docs/frontend.md`](./frontend.md) for the full architecture and convention
 ## 9. Roadmap
 
 1. **Phase 1 — Foundation** *(done)*: Tenants, Users, Auth, basic CRUD, Hebrew dashboard shell
-2. **Phase 2 — Core CRM** *(now)*: Members, Membership Plans, Subscriptions, Payments
-3. **Phase 3 — Growth**: Leads, Pipeline, Dashboard with real metrics
-4. **Phase 4 — Flexibility**: Dynamic roles system (see `docs/features/roles.md`), owner settings page, per-tenant feature visibility, custom fields UI
+2. **Phase 2 — Core CRM** *(done)*: Members, Classes, Membership Plans, Subscriptions, Attendance (check-in)
+3. **Phase 3 — Operations** *(now)*: Coaches & payroll, Payments, Leads + Pipeline, Class schedule (substitutions, recurring sessions), Dashboard with real metrics
+4. **Phase 4 — Flexibility**: Dynamic roles system (see `docs/features/roles.md`), owner settings page, per-tenant feature visibility, custom fields UI, private 1-on-1 workouts
 5. **Phase 5 — Integrations**: Stripe/payment processing, CSV import/export
-6. **Phase 6 — Advanced**: Class scheduling, trainer workflows, mobile, marketing automation, customizable dashboards
+6. **Phase 6 — Advanced**: Trainer mobile app, marketing automation, customizable dashboards
+
+**Ordering within Phase 3.** Coaches → Payments → Schedule → Leads. Coaches ships first because it's blocked only by Attendance (shipped). Payments is independent and can land in parallel. Schedule comes after Coaches because it upgrades coach attribution from "weekday pattern" to "per-session override" (details in `docs/features/coaches.md` §"V1 → Schedule migration path"). Leads is independent of everything else in Phase 3; it slots in whenever capacity allows.
 
 **Why Flexibility is Phase 4, not Phase 1:** The flexibility thesis (owner configures everything) is the product's core differentiator, but we can only design the permission grid after 2-3 real gym-scoped features exist to permission. Building it earlier means designing in the dark and rebuilding the grid as features land. In the meantime, the frontend's `permissions.canAccess(user, feature)` module uses a hardcoded baseline that will be swapped for backend-driven config — call sites won't change.
 

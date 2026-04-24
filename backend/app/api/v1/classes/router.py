@@ -19,6 +19,7 @@ from app.api.v1.classes.schemas import (
     GymClassResponse,
     UpdateGymClassRequest,
 )
+from app.api.v1.coaches.schemas import AssignCoachRequest, ClassCoachResponse
 from app.core.security import TokenPayload
 from app.domain.entities.gym_class import GymClass
 from app.services.gym_class_service import GymClassService
@@ -158,3 +159,90 @@ async def activate_class(
 ) -> GymClassResponse:
     cls = await service.activate(caller=caller, class_id=class_id)
     return _to_response(cls)
+
+
+# ── Coaches attached to this class ──────────────────────────────────────
+#
+# Lives on the classes router so the URL reads naturally
+# (/classes/{id}/coaches). Uses CoachService under the hood — a class
+# doesn't own coaches, it's just the natural place to query them from
+# the UI.
+
+
+def _get_coach_service(session: AsyncSession = Depends(get_session)):
+    from app.services.coach_service import CoachService
+
+    return CoachService(session)
+
+
+@router.get(
+    "/{class_id}/coaches",
+    summary="List coaches attached to a class",
+)
+async def list_class_coaches(
+    class_id: UUID,
+    only_current: bool = Query(default=False),
+    caller: TokenPayload = Depends(get_current_user),
+    service=Depends(_get_coach_service),
+) -> list[ClassCoachResponse]:
+    links = await service.list_coaches_for_class(
+        caller=caller, class_id=class_id, only_current=only_current
+    )
+    return [
+        ClassCoachResponse(
+            id=link.id,
+            tenant_id=link.tenant_id,
+            class_id=link.class_id,
+            coach_id=link.coach_id,
+            role=link.role,
+            is_primary=link.is_primary,
+            pay_model=link.pay_model,
+            pay_amount_cents=link.pay_amount_cents,
+            weekdays=link.weekdays,
+            starts_on=link.starts_on,
+            ends_on=link.ends_on,
+            created_at=link.created_at,
+            updated_at=link.updated_at,
+        )
+        for link in links
+    ]
+
+
+@router.post(
+    "/{class_id}/coaches",
+    status_code=status.HTTP_201_CREATED,
+    summary="Assign a coach to a class (owner+)",
+)
+async def assign_coach(
+    class_id: UUID,
+    body: AssignCoachRequest,
+    caller: TokenPayload = Depends(get_current_user),
+    service=Depends(_get_coach_service),
+) -> ClassCoachResponse:
+    link = await service.assign_to_class(
+        caller=caller,
+        class_id=class_id,
+        coach_id=body.coach_id,
+        role=body.role,
+        is_primary=body.is_primary,
+        pay_model=body.pay_model,
+        pay_amount_cents=body.pay_amount_cents,
+        weekdays=body.weekdays,
+        starts_on=body.starts_on,
+        ends_on=body.ends_on,
+    )
+    return ClassCoachResponse(
+        id=link.id,
+        tenant_id=link.tenant_id,
+        class_id=link.class_id,
+        coach_id=link.coach_id,
+        role=link.role,
+        is_primary=link.is_primary,
+        pay_model=link.pay_model,
+        pay_amount_cents=link.pay_amount_cents,
+        weekdays=link.weekdays,
+        starts_on=link.starts_on,
+        ends_on=link.ends_on,
+        created_at=link.created_at,
+        updated_at=link.updated_at,
+    )

@@ -11,6 +11,8 @@ import ClassDetailPage from "@/features/classes/ClassDetailPage"
 import PlanListPage from "@/features/plans/PlanListPage"
 import PlanDetailPage from "@/features/plans/PlanDetailPage"
 import CheckInPage from "@/features/attendance/CheckInPage"
+import CoachListPage from "@/features/coaches/CoachListPage"
+import CoachDetailPage from "@/features/coaches/CoachDetailPage"
 import ProtectedRoute from "@/components/layout/ProtectedRoute"
 import RequireFeature from "@/components/layout/RequireFeature"
 import DashboardLayout from "@/components/layout/DashboardLayout"
@@ -52,6 +54,13 @@ export default function App() {
           {/* Gym-scoped: attendance / check-in. Staff+ daily operations. */}
           <Route element={<RequireFeature feature="attendance" />}>
             <Route path="/check-in" element={<CheckInPage />} />
+          </Route>
+
+          {/* Gym-scoped: coaches + payroll. Owner full CRUD; coach user
+              sees their own row + earnings. */}
+          <Route element={<RequireFeature feature="coaches" />}>
+            <Route path="/coaches" element={<CoachListPage />} />
+            <Route path="/coaches/:id" element={<CoachDetailPage />} />
           </Route>
         </Route>
       </Route>

@@ -60,6 +60,19 @@ describe("canAccess — baseline", () => {
     expect(canAccess(null, "dashboard")).toBe(false)
     expect(canAccess(undefined, "dashboard")).toBe(false)
   })
+
+  it("coach sees dashboard + classes + attendance + coaches at baseline", () => {
+    const u = makeUser("coach")
+    expect(canAccess(u, "dashboard")).toBe(true)
+    expect(canAccess(u, "classes")).toBe(true)
+    expect(canAccess(u, "attendance")).toBe(true)
+    expect(canAccess(u, "coaches")).toBe(true)
+    // Owner-only / cross-feature items hidden from coach baseline.
+    expect(canAccess(u, "members")).toBe(false)
+    expect(canAccess(u, "plans")).toBe(false)
+    expect(canAccess(u, "payments")).toBe(false)
+    expect(canAccess(u, "settings")).toBe(false)
+  })
 })
 
 describe("canAccess — tenant overrides", () => {

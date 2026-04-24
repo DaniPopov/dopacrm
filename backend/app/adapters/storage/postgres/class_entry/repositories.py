@@ -46,6 +46,7 @@ def _to_domain(orm: ClassEntryORM) -> ClassEntry:
         override=orm.override,
         override_kind=OverrideKind(orm.override_kind) if orm.override_kind else None,
         override_reason=orm.override_reason,
+        coach_id=orm.coach_id,
     )
 
 
@@ -68,6 +69,7 @@ class ClassEntryRepository:
         override: bool = False,
         override_kind: OverrideKind | None = None,
         override_reason: str | None = None,
+        coach_id: UUID | None = None,
     ) -> ClassEntry:
         """Insert a new entry. ``entered_at`` is set by the DB (NOW())."""
         orm = ClassEntryORM(
@@ -79,6 +81,7 @@ class ClassEntryRepository:
             override=override,
             override_kind=override_kind.value if override_kind else None,
             override_reason=override_reason,
+            coach_id=coach_id,
         )
         self._session.add(orm)
         await self._session.flush()
@@ -209,6 +212,72 @@ class ClassEntryRepository:
         refreshed = await self.find_by_id(entry_id)
         assert refreshed is not None
         return refreshed
+
+    # ── Coach attribution / correction ────────────────────────────────
+
+    async def reassign_coach(self, entry_id: UUID, coach_id: UUID | None) -> ClassEntry | None:
+        """Owner-only correction of a mis-attributed entry. Logged by the
+        service as ``attendance.coach_reassigned``."""
+        await self._session.execute(
+            update(ClassEntryORM).where(ClassEntryORM.id == entry_id).values(coach_id=coach_id)
+        )
+        await self._session.flush()
+        return await self.find_by_id(entry_id)
+
+    # ── Earnings scans ────────────────────────────────────────────────
+
+    async def count_effective_for_coach_class(
+        self,
+        *,
+        tenant_id: UUID,
+        coach_id: UUID,
+        class_id: UUID,
+        since: datetime,
+        until: datetime,
+    ) -> int:
+        """per_attendance pay: count effective entries attributed to this
+        coach for this class in [since, until)."""
+        result = await self._session.execute(
+            select(func.count(ClassEntryORM.id)).where(
+                ClassEntryORM.tenant_id == tenant_id,
+                ClassEntryORM.coach_id == coach_id,
+                ClassEntryORM.class_id == class_id,
+                ClassEntryORM.undone_at.is_(None),
+                ClassEntryORM.entered_at >= since,
+                ClassEntryORM.entered_at < until,
+            )
+        )
+        return int(result.scalar_one())
+
+    async def count_distinct_days_for_coach_class(
+        self,
+        *,
+        tenant_id: UUID,
+        coach_id: UUID,
+        class_id: UUID,
+        since: datetime,
+        until: datetime,
+    ) -> int:
+        """per_session pay (v1 proxy): count distinct days on which this
+        coach had ≥1 effective attributed entry for this class.
+
+        Uses ``entered_at::date`` in UTC. The service converts to the
+        tenant's tz upstream if it needs wall-clock boundaries; for
+        per-session counting UTC-day granularity is fine (±3h shifts
+        don't split a session).
+        """
+        day_expr = func.date(ClassEntryORM.entered_at)
+        result = await self._session.execute(
+            select(func.count(func.distinct(day_expr))).where(
+                ClassEntryORM.tenant_id == tenant_id,
+                ClassEntryORM.coach_id == coach_id,
+                ClassEntryORM.class_id == class_id,
+                ClassEntryORM.undone_at.is_(None),
+                ClassEntryORM.entered_at >= since,
+                ClassEntryORM.entered_at < until,
+            )
+        )
+        return int(result.scalar_one())
 
     # ── Aggregates for dashboards ─────────────────────────────────────
 

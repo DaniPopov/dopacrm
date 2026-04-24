@@ -1,9 +1,12 @@
-import { useState } from "react"
+import { useCallback, useState } from "react"
+import { AsyncCombobox } from "@/components/ui/async-combobox"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { PageHeader } from "@/components/ui/page-header"
 import { SectionCard } from "@/components/ui/section-card"
 import { useClasses } from "@/features/classes/hooks"
 import type { GymClass } from "@/features/classes/types"
-import { useMember, useMembers } from "@/features/members/hooks"
+import { listMembers } from "@/features/members/api"
+import { useMember } from "@/features/members/hooks"
 import type { Member } from "@/features/members/types"
 import { humanizeAttendanceError } from "@/lib/api-errors"
 import QrScannerPanel from "./QrScannerPanel"
@@ -20,10 +23,10 @@ import type { AttendanceSummaryItem, ClassEntry } from "./types"
  * Front-desk check-in page — ``/check-in``.
  *
  * Flow:
- * 1. Staff picks a member (QR scan OR name/phone search).
+ * 1. Staff picks a member (QR scan OR AsyncCombobox search).
  * 2. Page shows the member's sub + quota summary.
- * 3. Staff taps a class:
- *    - Covered + quota remaining → immediate record, toast confirmation.
+ * 3. Staff taps a class — confirmation dialog appears:
+ *    - Covered + quota remaining → confirm records immediately.
  *    - Covered + at quota → ``QuotaOverrideDialog`` (kind=quota_exceeded).
  *    - Not covered → ``QuotaOverrideDialog`` (kind=not_covered).
  * 4. Recent-entries strip below the grid lets staff undo any mistake.
@@ -59,7 +62,7 @@ export default function CheckInPage() {
   )
 }
 
-/* ── Member picker (scan + search) ─────────────────────────────── */
+/* ── Member picker (scan + combobox) ───────────────────────────── */
 
 function MemberPicker({
   selectedMemberId,
@@ -74,11 +77,18 @@ function MemberPicker({
   onOpenScan: () => void
   onCloseScan: () => void
 }) {
-  const [search, setSearch] = useState("")
-  const { data: members, isLoading } = useMembers({
-    search: search || undefined,
-    limit: 10,
-  })
+  const { data: selectedMember } = useMember(selectedMemberId ?? "")
+
+  const loadMembers = useCallback(
+    ({ search, limit, offset }: { search: string; limit: number; offset: number }) =>
+      listMembers({
+        search: search || undefined,
+        limit,
+        offset,
+        status: ["active", "frozen"],
+      }),
+    [],
+  )
 
   function handleScan(memberId: string) {
     onCloseScan()
@@ -90,76 +100,46 @@ function MemberPicker({
       {scanOpen ? (
         <QrScannerPanel onDecode={handleScan} onClose={onCloseScan} />
       ) : (
-        <>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <button
-              onClick={onOpenScan}
-              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
-            >
-              📷 סרוק QR
-            </button>
-            <div className="flex-1">
-              <input
-                type="search"
-                placeholder="או חפשו לפי שם/טלפון..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm outline-none transition-all placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-          </div>
-
-          {search && (
-            <div className="mt-3 space-y-1">
-              {isLoading ? (
-                <div className="text-sm text-gray-400">טוען...</div>
-              ) : members && members.length > 0 ? (
-                members.map((m) => (
-                  <MemberRowButton
-                    key={m.id}
-                    member={m}
-                    selected={m.id === selectedMemberId}
-                    onClick={() => onSelect(m.id)}
-                  />
-                ))
-              ) : (
-                <div className="text-sm text-gray-400">אין תוצאות</div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <button
+            onClick={onOpenScan}
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+          >
+            📷 סרוק QR
+          </button>
+          <div className="flex-1">
+            <AsyncCombobox<Member>
+              value={selectedMember ?? null}
+              onChange={(m) => m && onSelect(m.id)}
+              loadItems={loadMembers}
+              getKey={(m) => m.id}
+              getLabel={(m) => `${m.first_name} ${m.last_name}`}
+              renderItem={(m) => (
+                <div className="flex w-full items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate font-medium text-gray-900">
+                      {m.first_name} {m.last_name}
+                    </div>
+                    <div
+                      className="truncate font-mono text-xs text-gray-400"
+                      dir="ltr"
+                    >
+                      {m.phone}
+                    </div>
+                  </div>
+                </div>
               )}
-            </div>
-          )}
-        </>
+              placeholder="חפשו מנוי לפי שם/טלפון..."
+              emptyLabel="אין תוצאות"
+              loadingLabel="טוען..."
+              loadMoreLabel="טען עוד"
+              pageSize={10}
+              ariaLabel="בחירת מנוי"
+            />
+          </div>
+        </div>
       )}
     </SectionCard>
-  )
-}
-
-function MemberRowButton({
-  member,
-  selected,
-  onClick,
-}: {
-  member: Member
-  selected: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-right text-sm transition-colors ${
-        selected
-          ? "border-blue-400 bg-blue-50"
-          : "border-gray-100 bg-white hover:bg-gray-50"
-      }`}
-    >
-      <div>
-        <div className="font-medium text-gray-900">
-          {member.first_name} {member.last_name}
-        </div>
-        <div className="font-mono text-xs text-gray-400" dir="ltr">
-          {member.phone}
-        </div>
-      </div>
-    </button>
   )
 }
 
@@ -181,6 +161,12 @@ function ActiveMemberWorkspace({
     classId: string
     className: string
     kind: "quota_exceeded" | "not_covered"
+  } | null>(null)
+
+  const [confirmFor, setConfirmFor] = useState<{
+    classId: string
+    className: string
+    quotaLabel: string
   } | null>(null)
 
   if (memberLoading) {
@@ -206,10 +192,10 @@ function ActiveMemberWorkspace({
     )
   }
 
-  async function handleClassTap(cls: GymClass) {
+  function handleClassTap(cls: GymClass) {
     if (!summary) return
     const quotaForClass = findQuotaForClass(summary, cls.id)
-    // Cover the gap: if no entitlement at all matches, treat as not_covered
+    // No entitlement at all matches → not_covered.
     if (!quotaForClass) {
       setOverrideFor({ classId: cls.id, className: cls.name, kind: "not_covered" })
       return
@@ -222,12 +208,26 @@ function ActiveMemberWorkspace({
       })
       return
     }
-    await recordMutation.mutateAsync({
-      member_id: memberId,
-      class_id: cls.id,
-      override: false,
-      override_reason: null,
+    setConfirmFor({
+      classId: cls.id,
+      className: cls.name,
+      quotaLabel: formatRemainingAfterCheckin(quotaForClass),
     })
+  }
+
+  function handleConfirmCheckin() {
+    if (!confirmFor) return
+    recordMutation.mutate(
+      {
+        member_id: memberId,
+        class_id: confirmFor.classId,
+        override: false,
+        override_reason: null,
+      },
+      {
+        onSuccess: () => setConfirmFor(null),
+      },
+    )
   }
 
   function handleConfirmOverride(reason: string | null) {
@@ -283,6 +283,35 @@ function ActiveMemberWorkspace({
         </SectionCard>
       )}
 
+      {confirmFor && (
+        <ConfirmDialog
+          title="רישום כניסה"
+          message={
+            <div className="space-y-1">
+              <div>
+                לרשום כניסה עבור{" "}
+                <span className="font-semibold text-gray-900">
+                  {member.first_name} {member.last_name}
+                </span>{" "}
+                לשיעור{" "}
+                <span className="font-semibold text-gray-900">
+                  {confirmFor.className}
+                </span>
+                ?
+              </div>
+              {confirmFor.quotaLabel && (
+                <div className="text-xs text-gray-500">{confirmFor.quotaLabel}</div>
+              )}
+            </div>
+          }
+          confirmLabel="רשום כניסה"
+          cancelLabel="ביטול"
+          loading={recordMutation.isPending}
+          onConfirm={handleConfirmCheckin}
+          onCancel={() => setConfirmFor(null)}
+        />
+      )}
+
       {overrideFor && (
         <QuotaOverrideDialog
           kind={overrideFor.kind}
@@ -307,15 +336,27 @@ function MemberSummaryStrip({
   return (
     <div className="flex flex-wrap gap-2">
       {summary.map((s, i) => {
-        const label = s.reset_period === "unlimited" ? "ללא הגבלה" : `${s.used ?? 0}/${s.quantity ?? 0}`
+        const label =
+          s.reset_period === "unlimited"
+            ? "ללא הגבלה"
+            : `${s.used ?? 0}/${s.quantity ?? 0}`
+        const scope = s.class_id
+          ? classNameById.get(s.class_id) ?? "שיעור"
+          : "כל השיעורים"
         return (
           <span
             key={i}
-            className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700"
+            className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700"
             title={s.reset_period ?? ""}
           >
-            {/* AttendanceSummaryItem doesn't carry class_id today; show the generic count. */}
-            {label} {s.reset_period ? `(${resetPeriodLabel(s.reset_period)})` : ""}
+            <span className="font-semibold">{scope}</span>
+            <span className="text-blue-500">·</span>
+            <span>{label}</span>
+            {s.reset_period ? (
+              <span className="text-blue-500">
+                ({resetPeriodLabel(s.reset_period)})
+              </span>
+            ) : null}
           </span>
         )
       })}
@@ -397,20 +438,32 @@ function ClassGrid({
 }
 
 /**
- * Find the quota row that applies to this class. The current
- * SummaryItem schema doesn't carry ``class_id``, so we use a simple
- * heuristic: if the member has exactly one non-unlimited entitlement
- * it applies to all classes; otherwise we return the first match.
+ * Look up the quota row for a specific class.
  *
- * Future: backend should return class_id per summary item so the
- * mapping is deterministic. Tracked as a spec follow-up.
+ * Precedence (matches the backend's ``_find_matching_entitlement``):
+ * 1. Exact class match (``class_id === classId``).
+ * 2. Wildcard entitlement (``class_id === null``).
+ *
+ * Before 2026-04-24 the summary didn't carry class_id and every class
+ * card read ``summary[0]`` — causing the "checking into A decrements B"
+ * visual bug. Now each card reads its own row.
  */
 function findQuotaForClass(
   summary: AttendanceSummaryItem[],
-  _classId: string,
+  classId: string,
 ): AttendanceSummaryItem | null {
   if (summary.length === 0) return null
-  return summary[0] ?? null
+  const exact = summary.find((s) => s.class_id && s.class_id === classId)
+  if (exact) return exact
+  const wildcard = summary.find((s) => s.class_id === null || s.class_id === undefined)
+  return wildcard ?? null
+}
+
+function formatRemainingAfterCheckin(q: AttendanceSummaryItem): string {
+  if (q.reset_period === "unlimited") return "ללא הגבלת כניסות"
+  if (q.remaining === null || q.remaining === undefined) return ""
+  const remainingAfter = Math.max(0, q.remaining - 1)
+  return `יישארו ${remainingAfter} כניסות${q.reset_period ? ` (${resetPeriodLabel(q.reset_period)})` : ""}`
 }
 
 /* ── Recent entries feed with undo ────────────────────────────── */
@@ -434,7 +487,7 @@ function RecentEntriesFeed() {
                 {classNameById.get(e.class_id) ?? "שיעור"}
                 {e.override && (
                   <span className="mr-2 inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-                    override
+                    חריגה
                   </span>
                 )}
                 {e.undone_at && (
