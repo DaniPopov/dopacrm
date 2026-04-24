@@ -79,6 +79,20 @@ export type CancelSubscriptionRequest = Schemas["CancelSubscriptionRequest"]
 export type CreateUserRequest = Schemas["CreateUserRequest"]
 export type UpdateUserRequest = Schemas["UpdateUserRequest"]
 
+// Coaches
+export type Coach = Schemas["CoachResponse"]
+export type CoachStatus = Schemas["CoachStatus"]
+export type CreateCoachRequest = Schemas["CreateCoachRequest"]
+export type UpdateCoachRequest = Schemas["UpdateCoachRequest"]
+export type InviteCoachUserRequest = Schemas["InviteCoachUserRequest"]
+export type PayModel = Schemas["PayModel"]
+export type ClassCoach = Schemas["ClassCoachResponse"]
+export type AssignCoachRequest = Schemas["AssignCoachRequest"]
+export type UpdateClassCoachRequest = Schemas["UpdateClassCoachRequest"]
+export type EarningsBreakdown = Schemas["EarningsBreakdownResponse"]
+export type EarningsLinkRow = Schemas["EarningsLinkRowResponse"]
+export type ReassignCoachRequest = Schemas["ReassignCoachRequest"]
+
 // Uploads
 export type UploadResponse = Schemas["UploadResponse"]
 

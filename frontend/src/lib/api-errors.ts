@@ -230,3 +230,25 @@ export function humanizeUploadError(err: unknown): string {
   }
   return "אירעה שגיאה בהעלאת הקובץ"
 }
+
+/**
+ * Overrides for Coaches API errors (CRUD + links + earnings).
+ */
+export function humanizeCoachError(err: unknown): string {
+  if (err instanceof ApiError || (err instanceof Error && "status" in err)) {
+    const apiErr = err as ApiError
+    const status = apiErr.status
+    const msg = apiErr.message
+    if (status === 404) return "המאמן או השיעור לא נמצאו"
+    if (status === 409 && msg.includes("COACH_ALREADY_LINKED"))
+      return "למאמן זה כבר יש משתמש מחובר"
+    if (status === 409 && msg.includes("CLASS_COACH_CONFLICT"))
+      return "יש כבר מאמן בתפקיד זה בשיעור זה"
+    if (status === 409) return "לא ניתן לבצע פעולה זו בסטטוס הנוכחי"
+    if (status === 422 && msg.includes("EARNINGS_RANGE"))
+      return "טווח התאריכים לא תקין"
+    if (status === 422) return "הפרטים שהוזנו אינם תקינים"
+    return genericMessage(status)
+  }
+  return "אירעה שגיאה בשמירת המאמן"
+}

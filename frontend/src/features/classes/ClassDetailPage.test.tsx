@@ -36,6 +36,12 @@ vi.mock("./hooks", () => ({
   useUpdateClass: vi.fn(),
 }))
 
+// The Coaches section is covered by its own tests; stub it so this
+// suite stays focused on the class-edit flow.
+vi.mock("@/features/coaches/ClassCoachesSection", () => ({
+  default: () => null,
+}))
+
 import { useClass, useUpdateClass } from "./hooks"
 const mockUseClass = vi.mocked(useClass)
 const mockUseUpdateClass = vi.mocked(useUpdateClass)
