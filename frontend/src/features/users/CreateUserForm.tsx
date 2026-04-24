@@ -96,7 +96,7 @@ export default function CreateUserForm({
             className={inputClass}
           />
         </Field>
-        <Field label="סיסמה *" helper="מינימום 8 תווים, אות גדולה וסימן מיוחד">
+        <Field label="סיסמה *" helper="מינימום 8 תווים">
           <PasswordInput
             required
             minLength={8}

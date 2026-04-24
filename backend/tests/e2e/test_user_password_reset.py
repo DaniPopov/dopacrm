@@ -116,37 +116,41 @@ def test_update_without_password_keeps_old_password(client: TestClient, auth_hea
     assert login.status_code == 200
 
 
-def test_password_reset_validates_complexity(client: TestClient, auth_headers: dict) -> None:
-    """Weak passwords are rejected with 422 — same complexity as create.
+def test_password_reset_enforces_min_length(client: TestClient, auth_headers: dict) -> None:
+    """Passwords shorter than 8 chars are rejected — same rule as create.
 
-    Ensures the validator on UpdateUserRequest matches CreateUserRequest
-    (uppercase + special char required).
+    Only length is enforced today. Character-class complexity (uppercase,
+    special) was dropped 2026-04-24 to keep onboarding friction low;
+    rely on 8-char minimum + argon2 hashing + rate-limited login.
     """
-    _, user_id = _seed_user_in_tenant(f"weak-{uuid4().hex[:6]}@gym.com", "OldPass1!")
+    _, user_id = _seed_user_in_tenant(f"short-{uuid4().hex[:6]}@gym.com", "OldPass1!")
 
-    # No uppercase
     r = client.patch(
         f"/api/v1/users/{user_id}",
         headers=auth_headers,
-        json={"password": "lowercase1!"},
+        json={"password": "short"},
     )
     assert r.status_code == 422
 
-    # No special char
-    r = client.patch(
-        f"/api/v1/users/{user_id}",
-        headers=auth_headers,
-        json={"password": "NoSpecial1"},
-    )
-    assert r.status_code == 422
 
-    # Too short
-    r = client.patch(
+def test_password_reset_accepts_simple_password(client: TestClient, auth_headers: dict) -> None:
+    """All-lowercase, no-special-char passwords work as long as len >= 8.
+
+    Locks in the "complexity removed" decision — if someone re-adds the
+    validator, this test fails.
+    """
+    email = f"simple-{uuid4().hex[:6]}@gym.com"
+    _, user_id = _seed_user_in_tenant(email, "OldPass1!")
+
+    resp = client.patch(
         f"/api/v1/users/{user_id}",
         headers=auth_headers,
-        json={"password": "Ab1!"},
+        json={"password": "lowercase"},
     )
-    assert r.status_code == 422
+    assert resp.status_code == 200
+
+    login = client.post("/api/v1/auth/login", json={"email": email, "password": "lowercase"})
+    assert login.status_code == 200
 
 
 def test_password_reset_requires_auth(client: TestClient) -> None:

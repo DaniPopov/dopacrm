@@ -152,7 +152,7 @@ export default function EditUserDialog({
             </Field>
             <Field
               label="איפוס סיסמה"
-              helper="השאירו ריק לשמירת הסיסמה הנוכחית. מינימום 8 תווים, אות גדולה וסימן מיוחד"
+              helper="השאירו ריק לשמירת הסיסמה הנוכחית. מינימום 8 תווים"
               className="sm:col-span-2"
             >
               <PasswordInput

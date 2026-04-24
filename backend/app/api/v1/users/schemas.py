@@ -6,11 +6,10 @@ shows a realistic pre-filled example.
 
 from __future__ import annotations
 
-import re
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field
 
 from app.domain.entities.user import Role
 
@@ -22,21 +21,8 @@ class CreateUserRequest(BaseModel):
     password: str | None = Field(
         default=None,
         min_length=8,
-        description="Min 8 chars, at least 1 uppercase and 1 special character",
+        description="Minimum 8 characters.",
     )
-
-    @field_validator("password")
-    @classmethod
-    def password_complexity(cls, v: str | None) -> str | None:
-        if v is None:
-            return v
-        if not re.search(r"[A-Z]", v):
-            msg = "Password must contain at least one uppercase letter"
-            raise ValueError(msg)
-        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", v):
-            msg = "Password must contain at least one special character (!@#$%^&*...)"
-            raise ValueError(msg)
-        return v
 
     role: Role
     tenant_id: UUID | None = Field(
@@ -81,21 +67,8 @@ class UpdateUserRequest(BaseModel):
     password: str | None = Field(
         default=None,
         min_length=8,
-        description="New password. Min 8 chars, 1 uppercase, 1 special character.",
+        description="New password. Minimum 8 characters.",
     )
-
-    @field_validator("password")
-    @classmethod
-    def password_complexity(cls, v: str | None) -> str | None:
-        if v is None:
-            return v
-        if not re.search(r"[A-Z]", v):
-            msg = "Password must contain at least one uppercase letter"
-            raise ValueError(msg)
-        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", v):
-            msg = "Password must contain at least one special character (!@#$%^&*...)"
-            raise ValueError(msg)
-        return v
 
     model_config = {
         "json_schema_extra": {
