@@ -12,6 +12,7 @@ celery_app = Celery(
     include=[
         # Import task modules here so beat + workers register them.
         "app.workers.subscription_tasks",
+        "app.workers.schedule_tasks",
     ],
 )
 
@@ -42,5 +43,11 @@ celery_app.conf.beat_schedule = {
         # past today, but we order the jobs defensively.)
         "task": "subscriptions.auto_expire_due",
         "schedule": crontab(hour=3, minute=5),
+    },
+    "schedule-extend-horizon": {
+        # Nightly at 02:00 — keeps every active template's
+        # materialized horizon at ~8 weeks ahead. Idempotent.
+        "task": "schedule.extend_horizon",
+        "schedule": crontab(hour=2, minute=0),
     },
 }

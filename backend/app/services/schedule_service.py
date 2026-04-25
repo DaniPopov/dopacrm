@@ -587,6 +587,10 @@ class ScheduleService:
             )
             if sess is not None:
                 created += 1
+        # Commit so the materialized rows are visible to subsequent
+        # requests. The request session dependency does NOT auto-commit;
+        # closing without an explicit commit rolls back our inserts.
+        await self._session.commit()
         return created
 
     async def _rematerialize_future(self, tpl: ClassScheduleTemplate) -> None:
