@@ -19,7 +19,7 @@ import { canAccess, type Feature } from "@/features/auth/permissions"
  * place — hitting this guard means someone typed a URL directly.
  */
 export default function RequireFeature({ feature }: { feature: Feature }) {
-  const { user, isLoading } = useAuth()
+  const { user, tenantFeatures, isLoading } = useAuth()
 
   if (isLoading) {
     return (
@@ -29,7 +29,7 @@ export default function RequireFeature({ feature }: { feature: Feature }) {
     )
   }
 
-  if (!canAccess(user, feature)) {
+  if (!canAccess(user, feature, undefined, tenantFeatures)) {
     return <Navigate to="/dashboard" replace />
   }
 

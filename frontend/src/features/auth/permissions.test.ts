@@ -63,15 +63,30 @@ describe("canAccess — baseline", () => {
 
   it("coach sees dashboard + classes + attendance + coaches at baseline", () => {
     const u = makeUser("coach")
-    expect(canAccess(u, "dashboard")).toBe(true)
-    expect(canAccess(u, "classes")).toBe(true)
-    expect(canAccess(u, "attendance")).toBe(true)
-    expect(canAccess(u, "coaches")).toBe(true)
+    // Coaches + schedule are gated — pass them as enabled for this test.
+    const enabled = { coaches: true, schedule: true }
+    expect(canAccess(u, "dashboard", undefined, enabled)).toBe(true)
+    expect(canAccess(u, "classes", undefined, enabled)).toBe(true)
+    expect(canAccess(u, "attendance", undefined, enabled)).toBe(true)
+    expect(canAccess(u, "coaches", undefined, enabled)).toBe(true)
+    expect(canAccess(u, "schedule", undefined, enabled)).toBe(true)
     // Owner-only / cross-feature items hidden from coach baseline.
-    expect(canAccess(u, "members")).toBe(false)
-    expect(canAccess(u, "plans")).toBe(false)
-    expect(canAccess(u, "payments")).toBe(false)
-    expect(canAccess(u, "settings")).toBe(false)
+    expect(canAccess(u, "members", undefined, enabled)).toBe(false)
+    expect(canAccess(u, "plans", undefined, enabled)).toBe(false)
+    expect(canAccess(u, "payments", undefined, enabled)).toBe(false)
+    expect(canAccess(u, "settings", undefined, enabled)).toBe(false)
+  })
+
+  it("gated feature hidden when tenant flag off, even for owner", () => {
+    const u = makeUser("owner")
+    // Owner has coaches in baseline, but tenant flag is off.
+    expect(canAccess(u, "coaches", undefined, {})).toBe(false)
+    expect(canAccess(u, "coaches", undefined, { coaches: true })).toBe(true)
+    // Schedule same.
+    expect(canAccess(u, "schedule", undefined, {})).toBe(false)
+    expect(canAccess(u, "schedule", undefined, { schedule: true })).toBe(true)
+    // Ungated members ignores tenantFeatures.
+    expect(canAccess(u, "members", undefined, {})).toBe(true)
   })
 })
 

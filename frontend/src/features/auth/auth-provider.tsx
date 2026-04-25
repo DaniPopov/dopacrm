@@ -8,10 +8,16 @@ import {
 } from "react"
 import { useNavigate } from "react-router-dom"
 import { getMe, logout as apiLogout } from "./api"
+import type { TenantFeatures } from "./permissions"
 import type { User } from "./types"
 
 interface AuthContextValue {
   user: User | null
+  /** Per-tenant feature flags from the user's tenant. Empty for
+   *  super_admin or while loading. Threaded into ``canAccess`` /
+   *  ``accessibleFeatures`` so gated features (coaches, schedule)
+   *  hide their sidebar entries when off. */
+  tenantFeatures: TenantFeatures
   isAuthenticated: boolean
   isLoading: boolean
   login: () => Promise<void>
@@ -59,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
+        tenantFeatures: user?.tenant_features_enabled ?? {},
         isAuthenticated: !!user,
         isLoading,
         login: loginRefresh,

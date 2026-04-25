@@ -232,6 +232,28 @@ export function humanizeUploadError(err: unknown): string {
 }
 
 /**
+ * Overrides for Schedule API errors.
+ */
+export function humanizeScheduleError(err: unknown): string {
+  if (err instanceof ApiError || (err instanceof Error && "status" in err)) {
+    const apiErr = err as ApiError
+    const status = apiErr.status
+    const msg = apiErr.message
+    if (status === 403 && msg.includes("FEATURE_DISABLED"))
+      return "תכונת לוח השיעורים אינה זמינה לחדר כושר זה. פנו למנהל המערכת"
+    if (status === 404) return "השיעור / התבנית לא נמצאו"
+    if (status === 409 && msg.includes("SESSION_TRANSITION"))
+      return "לא ניתן לבצע פעולה זו בסטטוס הנוכחי של השיעור"
+    if (status === 409) return "לא ניתן לבצע פעולה זו"
+    if (status === 422 && msg.includes("INVALID_BULK_RANGE"))
+      return "טווח התאריכים לא תקין"
+    if (status === 422) return "הפרטים שהוזנו אינם תקינים"
+    return genericMessage(status)
+  }
+  return "אירעה שגיאה בלוח השיעורים"
+}
+
+/**
  * Overrides for Coaches API errors (CRUD + links + earnings).
  */
 export function humanizeCoachError(err: unknown): string {

@@ -155,6 +155,8 @@ async def me(
     caller: TokenPayload = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> UserResponse:
+    from app.adapters.storage.postgres.tenant.repositories import TenantRepository
+
     repo = UserRepository(session)
     user = await repo.find_by_id(UUID(caller.sub))
     if not user:
@@ -162,13 +164,28 @@ async def me(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
+
+    # Pull tenant-level feature flags so the frontend can gate sidebar
+    # + routes locally. super_admin (no tenant_id) gets an empty dict.
+    features: dict[str, bool] = {}
+    if user.tenant_id is not None:
+        tenant = await TenantRepository(session).find_by_id(user.tenant_id)
+        if tenant is not None:
+            features = {
+                k: bool(v) for k, v in (tenant.features_enabled or {}).items()
+            }
+
     return UserResponse(
         id=user.id,
         email=user.email,
         role=user.role,
         tenant_id=user.tenant_id,
         is_active=user.is_active,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        phone=user.phone,
         oauth_provider=user.oauth_provider,
+        tenant_features_enabled=features,
         created_at=user.created_at,
         updated_at=user.updated_at,
     )

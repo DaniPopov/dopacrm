@@ -43,6 +43,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/classes", label: "שיעורים", icon: "🏃", feature: "classes" },
   { to: "/plans", label: "מסלולים", icon: "📋", feature: "plans" },
   { to: "/coaches", label: "מאמנים", icon: "🥋", feature: "coaches" },
+  { to: "/schedule", label: "לוח שיעורים", icon: "🗓️", feature: "schedule" },
 
   // Future (placeholders — routes land with feature work)
   // { to: "/leads", label: "לידים", icon: "🎯", feature: "leads" },
@@ -64,8 +65,10 @@ export default function Sidebar({
   collapsed = false,
   onToggleCollapse,
 }: SidebarProps = {}) {
-  const { user, logout } = useAuth()
-  const visibleItems = NAV_ITEMS.filter((item) => canAccess(user, item.feature))
+  const { user, tenantFeatures, logout } = useAuth()
+  const visibleItems = NAV_ITEMS.filter((item) =>
+    canAccess(user, item.feature, undefined, tenantFeatures),
+  )
 
   // Tenant branding: fetch only when user is tenant-scoped
   const tenantId = user?.tenant_id ?? ""

@@ -671,6 +671,113 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/schedule/bulk-action": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel / swap coach for every session in a date range (owner+) */
+        post: operations["bulk_action_api_v1_schedule_bulk_action_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedule/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Calendar range query */
+        get: operations["list_sessions_api_v1_schedule_sessions_get"];
+        put?: never;
+        /** Create an ad-hoc session (owner+) */
+        post: operations["create_session_api_v1_schedule_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedule/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Session Endpoint */
+        get: operations["get_session_endpoint_api_v1_schedule_sessions__session_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a session — swap coach, shift time, add notes (owner+) */
+        patch: operations["update_session_api_v1_schedule_sessions__session_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/schedule/sessions/{session_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a session (owner+) */
+        post: operations["cancel_session_api_v1_schedule_sessions__session_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedule/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List templates in the caller's tenant */
+        get: operations["list_templates_api_v1_schedule_templates_get"];
+        put?: never;
+        /** Create a template + auto-materialize 8 weeks of sessions */
+        post: operations["create_template_api_v1_schedule_templates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedule/templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Template */
+        get: operations["get_template_api_v1_schedule_templates__template_id__get"];
+        put?: never;
+        post?: never;
+        /** Deactivate + cancel future non-customized sessions (owner+) */
+        delete: operations["deactivate_template_api_v1_schedule_templates__template_id__delete"];
+        options?: never;
+        head?: never;
+        /** Edit a template — triggers re-materialization (owner+) */
+        patch: operations["update_template_api_v1_schedule_templates__template_id__patch"];
+        trace?: never;
+    };
     "/api/v1/subscriptions": {
         parameters: {
             query?: never;
@@ -917,6 +1024,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tenants/{tenant_id}/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Toggle gated features for a tenant
+         * @description super_admin only. Partial merge — unlisted keys left unchanged. See docs/features/feature-flags.md.
+         */
+        patch: operations["update_tenant_features_api_v1_tenants__tenant_id__features_patch"];
+        trace?: never;
+    };
     "/api/v1/tenants/{tenant_id}/stats": {
         parameters: {
             query?: never;
@@ -1123,6 +1250,64 @@ export interface components {
             file: string;
         };
         /**
+         * BulkActionRequest
+         * @description POST /api/v1/schedule/bulk-action (owner+).
+         *
+         *     Owner-friendly "apply to every session of this class in this date
+         *     range." Action = cancel | swap_coach.
+         */
+        BulkActionRequest: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "cancel" | "swap_coach";
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /**
+             * From
+             * Format: date
+             */
+            from: string;
+            /**
+             * New Coach Id
+             * @description Required when action='swap_coach'.
+             */
+            new_coach_id?: string | null;
+            /**
+             * Reason
+             * @description Used for cancel's audit note.
+             */
+            reason?: string | null;
+            /**
+             * To
+             * Format: date
+             */
+            to: string;
+        };
+        /** BulkActionResponse */
+        BulkActionResponse: {
+            /** Action */
+            action: string;
+            /** Affected Ids */
+            affected_ids: string[];
+            /** Cancelled Count */
+            cancelled_count: number;
+            /** Swapped Count */
+            swapped_count: number;
+        };
+        /**
+         * CancelSessionRequest
+         * @description POST /api/v1/schedule/sessions/{id}/cancel.
+         */
+        CancelSessionRequest: {
+            /** Reason */
+            reason?: string | null;
+        };
+        /**
          * CancelSubscriptionRequest
          * @description POST /api/v1/subscriptions/{id}/cancel
          *
@@ -1261,6 +1446,33 @@ export interface components {
          * @enum {string}
          */
         CoachStatus: "active" | "frozen" | "cancelled";
+        /**
+         * CreateAdHocSessionRequest
+         * @description POST /api/v1/schedule/sessions — one-off session (owner+).
+         */
+        CreateAdHocSessionRequest: {
+            /** Assistant Coach Id */
+            assistant_coach_id?: string | null;
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /**
+             * Ends At
+             * Format: date-time
+             */
+            ends_at: string;
+            /** Head Coach Id */
+            head_coach_id?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+        };
         /**
          * CreateCoachRequest
          * @description POST /api/v1/coaches — add a coach to the caller's tenant.
@@ -1454,6 +1666,40 @@ export interface components {
              * @description Defaults to today. Future dates allowed ('starts Monday').
              */
             started_at?: string | null;
+        };
+        /**
+         * CreateTemplateRequest
+         * @description POST /api/v1/schedule/templates — add a recurring rule (owner+).
+         */
+        CreateTemplateRequest: {
+            /** Assistant Coach Id */
+            assistant_coach_id?: string | null;
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /**
+             * End Time
+             * Format: time
+             */
+            end_time: string;
+            /** Ends On */
+            ends_on?: string | null;
+            /**
+             * Head Coach Id
+             * Format: uuid
+             */
+            head_coach_id: string;
+            /**
+             * Start Time
+             * Format: time
+             */
+            start_time: string;
+            /** Starts On */
+            starts_on?: string | null;
+            /** Weekdays */
+            weekdays: string[];
         };
         /**
          * CreateTenantRequest
@@ -1713,6 +1959,8 @@ export interface components {
             override_kind: components["schemas"]["OverrideKind"] | null;
             /** Override Reason */
             override_reason: string | null;
+            /** Session Id */
+            session_id?: string | null;
             /**
              * Subscription Id
              * Format: uuid
@@ -2145,6 +2393,67 @@ export interface components {
          * @enum {string}
          */
         Role: "super_admin" | "owner" | "staff" | "sales" | "coach";
+        /** SessionResponse */
+        SessionResponse: {
+            /** Assistant Coach Id */
+            assistant_coach_id: string | null;
+            /** Cancellation Reason */
+            cancellation_reason: string | null;
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /** Cancelled By */
+            cancelled_by: string | null;
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Ends At
+             * Format: date-time
+             */
+            ends_at: string;
+            /** Head Coach Id */
+            head_coach_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Customized */
+            is_customized: boolean;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            status: components["schemas"]["SessionStatus"];
+            /** Template Id */
+            template_id: string | null;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * SessionStatus
+         * @description Lifecycle status of a scheduled session.
+         * @enum {string}
+         */
+        SessionStatus: "scheduled" | "cancelled";
         /**
          * SubscriptionEventResponse
          * @description Timeline entry as returned to the frontend.
@@ -2305,6 +2614,62 @@ export interface components {
             /** Used */
             used: number | null;
         };
+        /** TemplateResponse */
+        TemplateResponse: {
+            /** Assistant Coach Id */
+            assistant_coach_id: string | null;
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * End Time
+             * Format: time
+             */
+            end_time: string;
+            /** Ends On */
+            ends_on: string | null;
+            /**
+             * Head Coach Id
+             * Format: uuid
+             */
+            head_coach_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Active */
+            is_active: boolean;
+            /**
+             * Start Time
+             * Format: time
+             */
+            start_time: string;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Weekdays */
+            weekdays: string[];
+        };
         /**
          * TenantResponse
          * @description Standard tenant response.
@@ -2349,6 +2714,10 @@ export interface components {
             currency: string;
             /** Email */
             email: string | null;
+            /** Features Enabled */
+            features_enabled?: {
+                [key: string]: boolean;
+            };
             /**
              * Id
              * Format: uuid
@@ -2559,6 +2928,57 @@ export interface components {
             type?: components["schemas"]["PlanType"] | null;
         };
         /**
+         * UpdateSessionRequest
+         * @description PATCH /api/v1/schedule/sessions/{id} (owner+).
+         */
+        UpdateSessionRequest: {
+            /** Assistant Coach Id */
+            assistant_coach_id?: string | null;
+            /** Ends At */
+            ends_at?: string | null;
+            /** Head Coach Id */
+            head_coach_id?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Starts At */
+            starts_at?: string | null;
+        };
+        /**
+         * UpdateTemplateRequest
+         * @description PATCH /api/v1/schedule/templates/{id} (owner+).
+         */
+        UpdateTemplateRequest: {
+            /** Assistant Coach Id */
+            assistant_coach_id?: string | null;
+            /** End Time */
+            end_time?: string | null;
+            /** Ends On */
+            ends_on?: string | null;
+            /** Head Coach Id */
+            head_coach_id?: string | null;
+            /** Is Active */
+            is_active?: boolean | null;
+            /** Start Time */
+            start_time?: string | null;
+            /** Starts On */
+            starts_on?: string | null;
+            /** Weekdays */
+            weekdays?: string[] | null;
+        };
+        /**
+         * UpdateTenantFeaturesRequest
+         * @description PATCH /api/v1/tenants/{id}/features — super_admin only.
+         *
+         *     Partial merge into ``tenants.features_enabled``. Keys not listed
+         *     are left unchanged; explicit False disables a feature.
+         */
+        UpdateTenantFeaturesRequest: {
+            /** Coaches */
+            coaches?: boolean | null;
+            /** Schedule */
+            schedule?: boolean | null;
+        };
+        /**
          * UpdateTenantRequest
          * @description PATCH /api/v1/tenants/{tenant_id} — partial update.
          * @example {
@@ -2694,6 +3114,13 @@ export interface components {
             /** Phone */
             phone?: string | null;
             role: components["schemas"]["Role"];
+            /**
+             * Tenant Features Enabled
+             * @default {}
+             */
+            tenant_features_enabled: {
+                [key: string]: boolean;
+            };
             /** Tenant Id */
             tenant_id: string | null;
             /**
@@ -4165,6 +4592,370 @@ export interface operations {
             };
         };
     };
+    bulk_action_api_v1_schedule_bulk_action_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkActionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_sessions_api_v1_schedule_sessions_get: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                class_id?: string | null;
+                coach_id?: string | null;
+                include_cancelled?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_session_api_v1_schedule_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAdHocSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_session_endpoint_api_v1_schedule_sessions__session_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_session_api_v1_schedule_sessions__session_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_session_api_v1_schedule_sessions__session_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_templates_api_v1_schedule_templates_get: {
+        parameters: {
+            query?: {
+                class_id?: string | null;
+                only_active?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_template_api_v1_schedule_templates_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_template_api_v1_schedule_templates__template_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deactivate_template_api_v1_schedule_templates__template_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_template_api_v1_schedule_templates__template_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_subscriptions_api_v1_subscriptions_get: {
         parameters: {
             query?: {
@@ -4642,6 +5433,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_tenant_features_api_v1_tenants__tenant_id__features_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTenantFeaturesRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

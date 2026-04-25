@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom"
+import { TenantFeaturesSection } from "@/features/schedule/TenantFeaturesSection"
 import { humanizeTenantError } from "@/lib/api-errors"
 import TenantForm, { type TenantFormValues } from "./TenantForm"
 import TenantStatsSection from "./TenantStatsSection"
@@ -74,6 +75,14 @@ export default function TenantDetailPage() {
 
       {/* Stats */}
       <TenantStatsSection tenantId={tenant.id} />
+
+      {/* Features (super_admin-only flags). The /tenants/:id page is
+          already super_admin-only via RequireFeature, so the section
+          appears unconditionally for any visitor — no extra role check. */}
+      <TenantFeaturesSection
+        tenantId={tenant.id}
+        features={tenant.features_enabled ?? {}}
+      />
 
       {/* Users */}
       <TenantUsersSection tenantId={tenant.id} />

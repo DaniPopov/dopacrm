@@ -79,6 +79,19 @@ export type CancelSubscriptionRequest = Schemas["CancelSubscriptionRequest"]
 export type CreateUserRequest = Schemas["CreateUserRequest"]
 export type UpdateUserRequest = Schemas["UpdateUserRequest"]
 
+// Schedule
+export type ScheduleTemplate = Schemas["TemplateResponse"]
+export type CreateTemplateRequest = Schemas["CreateTemplateRequest"]
+export type UpdateTemplateRequest = Schemas["UpdateTemplateRequest"]
+export type ClassSession = Schemas["SessionResponse"]
+export type SessionStatus = Schemas["SessionStatus"]
+export type CreateAdHocSessionRequest = Schemas["CreateAdHocSessionRequest"]
+export type UpdateSessionRequest = Schemas["UpdateSessionRequest"]
+export type CancelSessionRequest = Schemas["CancelSessionRequest"]
+export type BulkActionRequest = Schemas["BulkActionRequest"]
+export type BulkActionResponse = Schemas["BulkActionResponse"]
+export type UpdateTenantFeaturesRequest = Schemas["UpdateTenantFeaturesRequest"]
+
 // Coaches
 export type Coach = Schemas["CoachResponse"]
 export type CoachStatus = Schemas["CoachStatus"]
