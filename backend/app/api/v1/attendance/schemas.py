@@ -74,10 +74,15 @@ class EntryResponse(BaseModel):
     override: bool
     override_kind: OverrideKind | None
     override_reason: str | None
-    #: Coach attributed server-side at insert via the weekday pattern.
-    #: ``None`` when no matching coach was found. Immutable history —
-    #: corrections go through ``POST /{id}/reassign-coach``.
+    #: Coach attributed server-side at insert via the session lookup
+    #: (Schedule on) or the weekday pattern (fallback). ``None`` when no
+    #: matching coach was found. Immutable — corrections go through
+    #: ``POST /{id}/reassign-coach``.
     coach_id: UUID | None = None
+    #: Session attributed server-side at insert when Schedule is on and
+    #: a matching scheduled session exists. ``None`` for drop-ins and
+    #: Schedule-off tenants. Immutable.
+    session_id: UUID | None = None
 
 
 class ReassignCoachRequest(BaseModel):

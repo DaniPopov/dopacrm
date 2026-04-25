@@ -180,6 +180,11 @@ class TenantResponse(BaseModel):
     locale: str
 
     trial_ends_at: datetime | None
+
+    # Per-tenant feature gates. Missing key = OFF. See
+    # docs/features/feature-flags.md.
+    features_enabled: dict[str, bool] = Field(default_factory=dict)
+
     created_at: datetime
     updated_at: datetime
 
