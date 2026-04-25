@@ -19,6 +19,7 @@ import { AdHocSessionDialog } from "./AdHocSessionDialog"
 import { BulkActionDialog } from "./BulkActionDialog"
 import { SessionDetailPanel } from "./SessionDetailPanel"
 import { TemplateForm } from "./TemplateForm"
+import { TemplatesList } from "./TemplatesList"
 import { WeekGrid } from "./WeekGrid"
 import { useSessions } from "./hooks"
 import type { ClassSession } from "./types"
@@ -96,7 +97,7 @@ export default function SchedulePage() {
       />
 
       {/* Week navigator */}
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-4 flex items-center gap-3">
         <button
           onClick={() => setWeekStart(addDays(weekStart, -7))}
           className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -117,18 +118,35 @@ export default function SchedulePage() {
         </button>
       </div>
 
+      {canEdit && (
+        <TemplatesList classes={classes ?? []} coaches={coaches ?? []} />
+      )}
+
       {sessionsLoading ? (
         <div className="rounded-xl border border-gray-200 bg-white p-12 text-center text-sm text-gray-400 shadow-sm">
           טוען...
         </div>
       ) : (
-        <WeekGrid
-          weekStart={weekStart}
-          sessions={sessions ?? []}
-          classes={classes ?? []}
-          coaches={coaches ?? []}
-          onSessionClick={setActiveSession}
-        />
+        <>
+          {(sessions ?? []).length === 0 && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/50 px-4 py-3 text-sm text-amber-800">
+              אין שיעורים מתוזמנים בשבוע זה.
+              {canEdit && (sessions ?? []).length === 0 && (
+                <>
+                  {" "}
+                  צרו תבנית חדשה (+ תבנית) או נווטו לשבוע אחר ⟵
+                </>
+              )}
+            </div>
+          )}
+          <WeekGrid
+            weekStart={weekStart}
+            sessions={sessions ?? []}
+            classes={classes ?? []}
+            coaches={coaches ?? []}
+            onSessionClick={setActiveSession}
+          />
+        </>
       )}
 
       {showTemplateForm && (
