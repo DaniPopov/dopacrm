@@ -95,6 +95,46 @@ def test_materialize_leap_day_handled() -> None:
     assert dates == [date(2024, 2, 29)]
 
 
+def test_materialize_single_day_window_match() -> None:
+    """from_ == to and the template covers that day → single date."""
+    t = _tmpl(weekdays=["sun"], starts_on=date(2026, 1, 1))
+    dates = materialize_dates(t, date(2026, 4, 19), date(2026, 4, 19))
+    assert dates == [date(2026, 4, 19)]
+
+
+def test_materialize_single_day_window_no_match() -> None:
+    """from_ == to and the template does NOT cover that day → empty."""
+    t = _tmpl(weekdays=["sun"], starts_on=date(2026, 1, 1))
+    dates = materialize_dates(t, date(2026, 4, 20), date(2026, 4, 20))
+    assert dates == []
+
+
+def test_materialize_stops_at_template_ends_on() -> None:
+    """A template that ends mid-window should not yield dates past its
+    ends_on, even if the requested window extends further."""
+    t = _tmpl(
+        weekdays=["sun"],
+        starts_on=date(2026, 1, 1),
+        ends_on=date(2026, 4, 19),  # last Sunday in the template
+    )
+    # Request a much wider window.
+    dates = materialize_dates(t, date(2026, 1, 1), date(2026, 12, 31))
+    assert date(2026, 4, 19) in dates
+    assert all(d <= date(2026, 4, 19) for d in dates)
+
+
+def test_materialize_inactive_template_yields_nothing_even_in_active_range() -> None:
+    """Defensive — if the owner deactivates a template, even querying
+    inside its starts_on/ends_on should yield no dates."""
+    t = _tmpl(
+        weekdays=["sun"],
+        starts_on=date(2026, 1, 1),
+        ends_on=date(2026, 12, 31),
+        is_active=False,
+    )
+    assert materialize_dates(t, date(2026, 4, 19), date(2026, 4, 19)) == []
+
+
 # ── session_timestamps ────────────────────────────────────────────────
 
 

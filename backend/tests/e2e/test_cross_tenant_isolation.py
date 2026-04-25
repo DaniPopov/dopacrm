@@ -897,3 +897,25 @@ def test_owner_cannot_toggle_other_tenant_features(
         json={"schedule": False},
     )
     assert r.status_code == 403
+
+
+def test_owner_bulk_swap_to_foreign_coach_blocked(
+    client: TestClient, two_gyms: dict
+) -> None:
+    """Substitute-pay path also enforces tenant scope: even with a
+    valid pay rate in the body, the new coach has to be in the
+    caller's tenant. Foreign coach → 404."""
+    r = client.post(
+        "/api/v1/schedule/bulk-action",
+        headers=two_gyms["a"]["owner_headers"],
+        json={
+            "class_id": two_gyms["a"]["class_id"],
+            "from": "2026-06-01",
+            "to": "2026-06-07",
+            "action": "swap_coach",
+            "new_coach_id": two_gyms["b"]["coach_id"],
+            "substitute_pay_model": "per_session",
+            "substitute_pay_amount_cents": 4000,
+        },
+    )
+    assert r.status_code == 404
