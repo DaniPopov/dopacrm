@@ -8,7 +8,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.domain.entities.class_coach import WEEKDAYS
+from app.domain.entities.class_coach import WEEKDAYS, PayModel
 from app.domain.entities.class_session import SessionStatus
 
 
@@ -143,6 +143,14 @@ class BulkActionRequest(BaseModel):
 
     Owner-friendly "apply to every session of this class in this date
     range." Action = cancel | swap_coach.
+
+    Substitute pay (swap_coach only): if the new coach has no active
+    ``class_coaches`` link covering this class+range (typical
+    vacation-cover scenario), the request must include
+    ``substitute_pay_model`` + ``substitute_pay_amount_cents``. The
+    backend creates a temporary class_coaches link with
+    ``starts_on=from`` / ``ends_on=to`` so the substitute earns
+    correctly for those sessions.
     """
 
     class_id: UUID
@@ -158,6 +166,19 @@ class BulkActionRequest(BaseModel):
         max_length=500,
         description="Used for cancel's audit note.",
     )
+    substitute_pay_model: PayModel | None = Field(
+        default=None,
+        description=(
+            "Pay model for the substitute. Required when swap_coach is "
+            "used and the new coach has no existing rate for this class. "
+            "Ignored otherwise."
+        ),
+    )
+    substitute_pay_amount_cents: int | None = Field(
+        default=None,
+        ge=0,
+        description="Pay amount (cents). Paired with substitute_pay_model.",
+    )
 
     model_config = {"populate_by_name": True}
 
@@ -167,6 +188,10 @@ class BulkActionResponse(BaseModel):
     affected_ids: list[UUID]
     cancelled_count: int
     swapped_count: int
+    #: Set when the bulk action also created a temporary class_coaches
+    #: link for the substitute. Lets the frontend show "+ created
+    #: temporary pay rate" confirmation.
+    substitute_link_id: UUID | None = None
 
 
 # ── Tenant features ───────────────────────────────────────────────────

@@ -1255,6 +1255,14 @@ export interface components {
          *
          *     Owner-friendly "apply to every session of this class in this date
          *     range." Action = cancel | swap_coach.
+         *
+         *     Substitute pay (swap_coach only): if the new coach has no active
+         *     ``class_coaches`` link covering this class+range (typical
+         *     vacation-cover scenario), the request must include
+         *     ``substitute_pay_model`` + ``substitute_pay_amount_cents``. The
+         *     backend creates a temporary class_coaches link with
+         *     ``starts_on=from`` / ``ends_on=to`` so the substitute earns
+         *     correctly for those sessions.
          */
         BulkActionRequest: {
             /**
@@ -1283,6 +1291,13 @@ export interface components {
              */
             reason?: string | null;
             /**
+             * Substitute Pay Amount Cents
+             * @description Pay amount (cents). Paired with substitute_pay_model.
+             */
+            substitute_pay_amount_cents?: number | null;
+            /** @description Pay model for the substitute. Required when swap_coach is used and the new coach has no existing rate for this class. Ignored otherwise. */
+            substitute_pay_model?: components["schemas"]["PayModel"] | null;
+            /**
              * To
              * Format: date
              */
@@ -1296,6 +1311,8 @@ export interface components {
             affected_ids: string[];
             /** Cancelled Count */
             cancelled_count: number;
+            /** Substitute Link Id */
+            substitute_link_id?: string | null;
             /** Swapped Count */
             swapped_count: number;
         };

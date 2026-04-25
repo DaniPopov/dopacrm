@@ -2,21 +2,21 @@
  * BulkActionDialog — "cancel/swap every boxing session from Mar 1 to
  * Mar 14" flow. The vacation-handling power-tool.
  *
- * Three inputs:
- * - Class (AsyncCombobox)
- * - Date range (from, to)
- * - Action (cancel | swap_coach), with a coach picker when swap.
- *
- * Submits to POST /api/v1/schedule/bulk-action and shows a summary on
- * success ("3 sessions cancelled").
+ * Substitute-pay flow: when action=swap_coach and the picked
+ * substitute has no existing class_coaches link for the class, the
+ * dialog reveals a "How should this substitute be paid?" inline form
+ * (required). Submits as substitute_pay_model + substitute_pay_amount_cents
+ * — backend auto-creates a temp class_coaches link covering the range
+ * so the substitute earns correctly.
  */
 
-import { useCallback, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { AsyncCombobox } from "@/components/ui/async-combobox"
 import { listClasses } from "@/features/classes/api"
 import type { GymClass } from "@/features/classes/types"
 import { listCoaches } from "@/features/coaches/api"
-import type { Coach } from "@/features/coaches/types"
+import { useCoachesForClass } from "@/features/coaches/hooks"
+import type { Coach, PayModel } from "@/features/coaches/types"
 import { humanizeScheduleError } from "@/lib/api-errors"
 import { useBulkAction } from "./hooks"
 
@@ -33,6 +33,9 @@ export function BulkActionDialog({ onClose }: Props) {
   const [action, setAction] = useState<Action>("cancel")
   const [coach, setCoach] = useState<Coach | null>(null)
   const [reason, setReason] = useState("")
+  // Substitute pay (only filled when needed).
+  const [subPayModel, setSubPayModel] = useState<PayModel>("per_session")
+  const [subPayAmount, setSubPayAmount] = useState<number>(30)
 
   const mutation = useBulkAction()
 
@@ -46,9 +49,6 @@ export function BulkActionDialog({ onClose }: Props) {
       limit: number
       offset: number
     }) => {
-      // listClasses doesn't accept a server-side search param yet; pull
-      // a generous page and filter client-side. Gym class catalogs are
-      // small enough (typically <50) that this is fine.
       const all = await listClasses({ limit: 200, offset, includeInactive: false })
       if (!search) return all.slice(0, limit)
       const lower = search.toLowerCase()
@@ -59,7 +59,15 @@ export function BulkActionDialog({ onClose }: Props) {
     [],
   )
   const loadCoaches = useCallback(
-    ({ search, limit, offset }: { search: string; limit: number; offset: number }) =>
+    ({
+      search,
+      limit,
+      offset,
+    }: {
+      search: string
+      limit: number
+      offset: number
+    }) =>
       listCoaches({
         search: search || undefined,
         status: ["active"],
@@ -69,9 +77,29 @@ export function BulkActionDialog({ onClose }: Props) {
     [],
   )
 
+  // When action=swap_coach + class+coach are picked, look up existing
+  // links to detect if the substitute needs a pay rate.
+  const { data: classCoachLinks } = useCoachesForClass(cls?.id ?? "", false)
+  const subHasRateForRange = useMemo(() => {
+    if (!cls || !coach || action !== "swap_coach") return true
+    if (!classCoachLinks || !from || !to) return true
+    const fromD = from
+    const toD = to
+    return classCoachLinks.some(
+      (l) =>
+        l.coach_id === coach.id &&
+        l.starts_on <= toD &&
+        (l.ends_on === null || l.ends_on >= fromD),
+    )
+  }, [cls, coach, action, classCoachLinks, from, to])
+
+  const needsSubPay =
+    action === "swap_coach" && coach !== null && !subHasRateForRange
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!cls || !from || !to) return
+    if (action === "swap_coach" && !coach) return
     mutation.mutate(
       {
         class_id: cls.id,
@@ -80,6 +108,10 @@ export function BulkActionDialog({ onClose }: Props) {
         action,
         new_coach_id: action === "swap_coach" ? coach?.id ?? null : null,
         reason: reason || null,
+        substitute_pay_model: needsSubPay ? subPayModel : null,
+        substitute_pay_amount_cents: needsSubPay
+          ? Math.max(0, Math.round(subPayAmount * 100))
+          : null,
       },
       { onSuccess: () => onClose() },
     )
@@ -175,6 +207,50 @@ export function BulkActionDialog({ onClose }: Props) {
                 )}
                 placeholder="בחרו מאמן..."
               />
+            </div>
+          )}
+
+          {/* Substitute pay — only shown when needed */}
+          {needsSubPay && (
+            <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/40 p-4">
+              <div className="text-xs text-amber-900">
+                למאמן זה אין תעריף עבור השיעור הזה. הגדירו תעריף זמני
+                לתקופת ההחלפה — נוצר אוטומטית עבור הטווח שבחרתם בלבד.
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">
+                    מודל תשלום
+                  </label>
+                  <select
+                    value={subPayModel}
+                    onChange={(e) => setSubPayModel(e.target.value as PayModel)}
+                    className={inputClass}
+                  >
+                    <option value="fixed">משכורת קבועה (חודשית)</option>
+                    <option value="per_session">לפי שיעור</option>
+                    <option value="per_attendance">לפי כניסה</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">
+                    {subPayModel === "fixed"
+                      ? "סכום חודשי (₪)"
+                      : "סכום ליחידה (₪)"}
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={subPayAmount}
+                    onChange={(e) =>
+                      setSubPayAmount(Number(e.target.value) || 0)
+                    }
+                    className={inputClass}
+                    dir="ltr"
+                  />
+                </div>
+              </div>
             </div>
           )}
 

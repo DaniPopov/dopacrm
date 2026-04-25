@@ -299,10 +299,13 @@ async def bulk_action(
         action=body.action,
         new_coach_id=body.new_coach_id,
         reason=body.reason,
+        substitute_pay_model=body.substitute_pay_model,
+        substitute_pay_amount_cents=body.substitute_pay_amount_cents,
     )
     return BulkActionResponse(
         action=result.action,
         affected_ids=result.affected_ids,
         cancelled_count=result.cancelled_count,
         swapped_count=result.swapped_count,
+        substitute_link_id=result.substitute_link_id,
     )

@@ -353,6 +353,159 @@ def test_bulk_inverted_range_rejected(client: TestClient) -> None:
     assert r.status_code == 422
 
 
+def test_bulk_swap_to_coach_without_rate_requires_substitute_pay(
+    client: TestClient,
+) -> None:
+    """Vacation-cover scenario — substitute coach has no class_coaches
+    rate for this class. Without substitute_pay_* fields, bulk swap
+    returns 422 with the explanatory error code so the UI knows to
+    prompt for pay."""
+    env = _seed()
+    sub_coach = client.post(
+        "/api/v1/coaches",
+        headers=env["owner_headers"],
+        json={"first_name": "Yoni", "last_name": "Levi"},
+    ).json()
+
+    client.post(
+        "/api/v1/schedule/sessions",
+        headers=env["owner_headers"],
+        json={
+            "class_id": env["class_id"],
+            "starts_at": "2026-06-01T15:00:00Z",
+            "ends_at": "2026-06-01T16:00:00Z",
+            "head_coach_id": env["coach_id"],
+        },
+    )
+
+    r = client.post(
+        "/api/v1/schedule/bulk-action",
+        headers=env["owner_headers"],
+        json={
+            "class_id": env["class_id"],
+            "from": "2026-06-01",
+            "to": "2026-06-07",
+            "action": "swap_coach",
+            "new_coach_id": sub_coach["id"],
+        },
+    )
+    assert r.status_code == 422
+    assert "SUBSTITUTE_PAY_REQUIRED" in r.json()["detail"]
+
+
+def test_bulk_swap_with_substitute_pay_creates_temp_link(
+    client: TestClient,
+) -> None:
+    """When substitute_pay_* is provided, the service auto-creates a
+    temporary class_coaches link for the substitute that covers the
+    range. Substitute earns correctly for the swapped sessions."""
+    env = _seed()
+    sub_coach = client.post(
+        "/api/v1/coaches",
+        headers=env["owner_headers"],
+        json={"first_name": "Yoni", "last_name": "Levi"},
+    ).json()
+
+    for d in ("2026-06-01", "2026-06-04"):
+        client.post(
+            "/api/v1/schedule/sessions",
+            headers=env["owner_headers"],
+            json={
+                "class_id": env["class_id"],
+                "starts_at": f"{d}T15:00:00Z",
+                "ends_at": f"{d}T16:00:00Z",
+                "head_coach_id": env["coach_id"],
+            },
+        )
+
+    r = client.post(
+        "/api/v1/schedule/bulk-action",
+        headers=env["owner_headers"],
+        json={
+            "class_id": env["class_id"],
+            "from": "2026-06-01",
+            "to": "2026-06-07",
+            "action": "swap_coach",
+            "new_coach_id": sub_coach["id"],
+            "substitute_pay_model": "per_session",
+            "substitute_pay_amount_cents": 4000,
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["swapped_count"] == 2
+    assert body["substitute_link_id"] is not None
+
+    links = client.get(
+        f"/api/v1/classes/{env['class_id']}/coaches",
+        headers=env["owner_headers"],
+    ).json()
+    sub_links = [l for l in links if l["coach_id"] == sub_coach["id"]]
+    assert len(sub_links) == 1
+    assert sub_links[0]["pay_model"] == "per_session"
+    assert sub_links[0]["pay_amount_cents"] == 4000
+    assert sub_links[0]["starts_on"] == "2026-06-01"
+    assert sub_links[0]["ends_on"] == "2026-06-07"
+
+
+def test_bulk_swap_to_coach_with_existing_rate_does_not_create_link(
+    client: TestClient,
+) -> None:
+    """If the substitute already has a class_coaches link covering the
+    range, no auto-link is created — the existing rate is used."""
+    env = _seed()
+    sub_coach = client.post(
+        "/api/v1/coaches",
+        headers=env["owner_headers"],
+        json={"first_name": "Yoni", "last_name": "Levi"},
+    ).json()
+    client.post(
+        f"/api/v1/classes/{env['class_id']}/coaches",
+        headers=env["owner_headers"],
+        json={
+            "coach_id": sub_coach["id"],
+            "role": "עוזר",
+            "is_primary": False,
+            "pay_model": "per_session",
+            "pay_amount_cents": 3000,
+            "weekdays": [],
+            "starts_on": "2026-01-01",
+        },
+    )
+    client.post(
+        "/api/v1/schedule/sessions",
+        headers=env["owner_headers"],
+        json={
+            "class_id": env["class_id"],
+            "starts_at": "2026-06-01T15:00:00Z",
+            "ends_at": "2026-06-01T16:00:00Z",
+            "head_coach_id": env["coach_id"],
+        },
+    )
+
+    r = client.post(
+        "/api/v1/schedule/bulk-action",
+        headers=env["owner_headers"],
+        json={
+            "class_id": env["class_id"],
+            "from": "2026-06-01",
+            "to": "2026-06-07",
+            "action": "swap_coach",
+            "new_coach_id": sub_coach["id"],
+        },
+    )
+    assert r.status_code == 200
+    assert r.json()["substitute_link_id"] is None
+
+    links = client.get(
+        f"/api/v1/classes/{env['class_id']}/coaches",
+        headers=env["owner_headers"],
+    ).json()
+    sub_links = [l for l in links if l["coach_id"] == sub_coach["id"]]
+    assert len(sub_links) == 1
+    assert sub_links[0]["role"] == "עוזר"
+
+
 # ── Tenant features endpoint ─────────────────────────────────────────
 
 

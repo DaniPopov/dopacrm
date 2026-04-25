@@ -19,6 +19,9 @@ from datetime import UTC, date, datetime, time, timedelta
 from typing import TYPE_CHECKING, Any
 from uuid import UUID as _UUID
 
+from app.adapters.storage.postgres.class_coach.repositories import (
+    ClassCoachRepository,
+)
 from app.adapters.storage.postgres.class_schedule_template.repositories import (
     ClassScheduleTemplateRepository,
 )
@@ -30,6 +33,7 @@ from app.adapters.storage.postgres.gym_class.repositories import GymClassReposit
 from app.adapters.storage.postgres.tenant.repositories import TenantRepository
 from app.core.feature_flags import is_feature_enabled
 from app.core.time import utcnow
+from app.domain.entities.class_coach import PayModel
 from app.domain.entities.class_schedule_template import ClassScheduleTemplate
 from app.domain.entities.class_session import ClassSession, SessionStatus
 from app.domain.entities.user import Role
@@ -73,6 +77,9 @@ class BulkActionResult:
     affected_ids: list[_UUID]
     cancelled_count: int = 0
     swapped_count: int = 0
+    #: Set when swap_coach also auto-created a temporary class_coaches
+    #: link for a substitute coach who had no existing rate.
+    substitute_link_id: _UUID | None = None
 
 
 # ── Service ───────────────────────────────────────────────────────────
@@ -87,6 +94,7 @@ class ScheduleService:
         self._sess_repo = ClassSessionRepository(session)
         self._class_repo = GymClassRepository(session)
         self._coach_repo = CoachRepository(session)
+        self._class_coach_repo = ClassCoachRepository(session)
         self._tenant_repo = TenantRepository(session)
 
     # ── Template CRUD ────────────────────────────────────────────────
@@ -453,10 +461,22 @@ class ScheduleService:
         action: str,  # "cancel" | "swap_coach"
         new_coach_id: _UUID | None = None,
         reason: str | None = None,
+        substitute_pay_model: PayModel | None = None,
+        substitute_pay_amount_cents: int | None = None,
     ) -> BulkActionResult:
         """Apply one action to every scheduled session in a range.
 
-        Single transaction, single log event with all affected IDs."""
+        Single transaction, single log event with all affected IDs.
+
+        For ``swap_coach``: if the new coach has no active
+        ``class_coaches`` link covering the date range, the request
+        must include ``substitute_pay_model`` + ``substitute_pay_amount_cents``.
+        The service auto-creates a temporary link
+        (starts_on=from_date, ends_on=to_date) with role
+        ``"מחליף {from}–{to}"`` so the role is unique and shows up
+        clearly on payroll. Without these fields → 422 with explicit
+        error code so the UI knows to prompt.
+        """
         tenant_id = await self._require_schedule_enabled(caller)
         self._require_owner(caller)
 
@@ -468,12 +488,71 @@ class ScheduleService:
             raise InvalidBulkRangeError("bulk range > 1 year is not allowed")
 
         await self._assert_class_in_tenant(class_id, tenant_id)
+
+        substitute_link_id: _UUID | None = None
+
         if action == "swap_coach":
             if new_coach_id is None:
                 raise InvalidBulkRangeError(
                     "swap_coach requires new_coach_id"
                 )
             await self._assert_coach_in_tenant(new_coach_id, tenant_id)
+
+            # Substitute-pay logic. Check if the new coach already has
+            # a class_coaches link covering this class+range. If not,
+            # require the substitute_pay_* fields and create a temp link.
+            existing_links = await self._class_coach_repo.list_for_coach(
+                tenant_id, new_coach_id, only_current=True
+            )
+            has_rate = any(
+                str(l.class_id) == str(class_id)
+                and l.starts_on <= to_date
+                and (l.ends_on is None or l.ends_on >= from_date)
+                for l in existing_links
+            )
+            if not has_rate:
+                if (
+                    substitute_pay_model is None
+                    or substitute_pay_amount_cents is None
+                ):
+                    raise InvalidBulkRangeError(
+                        "SUBSTITUTE_PAY_REQUIRED: the new coach has no "
+                        "pay rate for this class. Provide substitute_pay_model "
+                        "+ substitute_pay_amount_cents to create a temporary "
+                        "rate for this period."
+                    )
+                # Auto-create the temp link. Role string includes the
+                # range so it's unique against ux_class_coaches_role
+                # AND human-readable on payroll reports.
+                role_label = f"מחליף {from_date.isoformat()}–{to_date.isoformat()}"
+                temp_link = await self._class_coach_repo.create(
+                    tenant_id=tenant_id,
+                    class_id=class_id,
+                    coach_id=new_coach_id,
+                    role=role_label,
+                    is_primary=True,
+                    pay_model=substitute_pay_model,
+                    pay_amount_cents=substitute_pay_amount_cents,
+                    weekdays=[],  # bound by the date range, not weekday
+                    starts_on=from_date,
+                    ends_on=to_date,
+                )
+                substitute_link_id = temp_link.id
+                logger.info(
+                    "schedule.substitute_pay_link_created",
+                    extra={
+                        "event": "schedule.substitute_pay_link_created",
+                        "tenant_id": str(tenant_id),
+                        "class_id": str(class_id),
+                        "coach_id": str(new_coach_id),
+                        "link_id": str(temp_link.id),
+                        "pay_model": substitute_pay_model.value,
+                        "pay_amount_cents": substitute_pay_amount_cents,
+                        "starts_on": from_date.isoformat(),
+                        "ends_on": to_date.isoformat(),
+                        "by": caller.sub,
+                    },
+                )
         elif action != "cancel":
             raise InvalidBulkRangeError(
                 f"unknown action {action!r}; use 'cancel' or 'swap_coach'"
@@ -520,6 +599,7 @@ class ScheduleService:
             affected_ids=affected,
             cancelled_count=len(affected) if action == "cancel" else 0,
             swapped_count=len(affected) if action == "swap_coach" else 0,
+            substitute_link_id=substitute_link_id,
         )
 
         logger.info(
