@@ -36,9 +36,14 @@ from uuid import UUID as _UUID
 
 from app.adapters.storage.postgres.class_coach.repositories import ClassCoachRepository
 from app.adapters.storage.postgres.class_entry.repositories import ClassEntryRepository
+from app.adapters.storage.postgres.class_session.repositories import (
+    ClassSessionRepository,
+)
 from app.adapters.storage.postgres.coach.repositories import CoachRepository
 from app.adapters.storage.postgres.gym_class.repositories import GymClassRepository
+from app.adapters.storage.postgres.tenant.repositories import TenantRepository
 from app.adapters.storage.postgres.user.repositories import UserRepository
+from app.core.feature_flags import is_feature_enabled
 from app.core.security import hash_password
 from app.core.time import utcnow
 from app.domain.entities.class_coach import ClassCoach, PayModel
@@ -125,7 +130,9 @@ class CoachService:
         self._repo = CoachRepository(session)
         self._link_repo = ClassCoachRepository(session)
         self._entry_repo = ClassEntryRepository(session)
+        self._session_repo = ClassSessionRepository(session)
         self._class_repo = GymClassRepository(session)
+        self._tenant_repo = TenantRepository(session)
         self._user_repo = UserRepository(session)
 
     # ── Coach CRUD ───────────────────────────────────────────────────
@@ -519,14 +526,27 @@ class CoachService:
         until = _datetime_start_of_day_utc(span_to + timedelta(days=1))
 
         if link.pay_model == PayModel.PER_SESSION:
-            days = await self._entry_repo.count_distinct_days_for_coach_class(
-                tenant_id=tenant_id,
-                coach_id=link.coach_id,
-                class_id=link.class_id,
-                since=since,
-                until=until,
-            )
-            return days * link.pay_amount_cents, days
+            # Schedule feature on → count scheduled (non-cancelled) sessions.
+            # Off → fall back to v1 "distinct days with ≥1 attributed entry"
+            # approximation. See docs/crm_logic.md §6.
+            tenant = await self._tenant_repo.find_by_id(tenant_id)
+            if tenant is not None and is_feature_enabled(tenant, "schedule"):
+                units = await self._session_repo.count_scheduled_for_coach(
+                    tenant_id=tenant_id,
+                    coach_id=link.coach_id,
+                    class_id=link.class_id,
+                    since=since,
+                    until=until,
+                )
+            else:
+                units = await self._entry_repo.count_distinct_days_for_coach_class(
+                    tenant_id=tenant_id,
+                    coach_id=link.coach_id,
+                    class_id=link.class_id,
+                    since=since,
+                    until=until,
+                )
+            return units * link.pay_amount_cents, units
 
         if link.pay_model == PayModel.PER_ATTENDANCE:
             n = await self._entry_repo.count_effective_for_coach_class(

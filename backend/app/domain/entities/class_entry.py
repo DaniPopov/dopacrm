@@ -79,6 +79,12 @@ class ClassEntry(BaseModel):
     # recorded before Coaches shipped + cases where no coach matched.
     coach_id: UUID | None = None
 
+    # Session attribution — set at INSERT when the attendance service
+    # finds a scheduled session overlapping entered_at (Schedule feature
+    # required). NULL for drop-ins and tenants with Schedule off.
+    # Immutable.
+    session_id: UUID | None = None
+
     # ── Pure state-machine helpers ─────────────────────────────────────
 
     def is_effective(self) -> bool:

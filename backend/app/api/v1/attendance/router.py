@@ -54,6 +54,7 @@ def _to_response(entry: ClassEntry) -> EntryResponse:
         override_kind=entry.override_kind,
         override_reason=entry.override_reason,
         coach_id=entry.coach_id,
+        session_id=entry.session_id,
     )
 
 

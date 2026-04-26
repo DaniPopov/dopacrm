@@ -278,6 +278,44 @@ class TenantService:
         await self._get_or_raise(tenant_id)
         return await self._user_repo.list_by_tenant(tenant_id, limit=limit, offset=offset)
 
+    async def update_features(
+        self,
+        *,
+        caller: TokenPayload,
+        tenant_id: UUID,
+        updates: dict[str, bool],
+    ) -> Tenant:
+        """Partial update of ``tenants.features_enabled``. super_admin only.
+
+        ``updates`` merges into the existing JSONB — unlisted keys left
+        untouched, explicit False disables. Empty ``updates`` dict is a
+        no-op (returns the current tenant).
+        """
+        self._require_super_admin(caller)
+        before = await self._get_or_raise(tenant_id)
+
+        if not updates:
+            return before
+
+        updated = await self._repo.merge_features(tenant_id, updates)
+        await self._session.commit()
+
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.info(
+            "tenant.features_changed",
+            extra={
+                "event": "tenant.features_changed",
+                "tenant_id": str(tenant_id),
+                "changed_by": caller.sub,
+                "before": dict(before.features_enabled),
+                "after": dict(updated.features_enabled),
+                "diff": updates,
+            },
+        )
+        return updated
+
     # ── Private helpers ──────────────────────────────────────────────────────
 
     async def _get_or_raise(self, tenant_id: UUID) -> Tenant:

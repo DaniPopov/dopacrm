@@ -43,10 +43,15 @@ from app.adapters.storage.postgres.class_coach.repositories import (
 from app.adapters.storage.postgres.class_entry.repositories import (
     ClassEntryRepository,
 )
+from app.adapters.storage.postgres.class_session.repositories import (
+    ClassSessionRepository,
+)
 from app.adapters.storage.postgres.member.repositories import MemberRepository
 from app.adapters.storage.postgres.subscription.repositories import (
     SubscriptionRepository,
 )
+from app.adapters.storage.postgres.tenant.repositories import TenantRepository
+from app.core.feature_flags import is_feature_enabled
 from app.core.time import utcnow
 from app.domain.entities.class_entry import UNDO_WINDOW, ClassEntry, OverrideKind
 from app.domain.entities.membership_plan import (
@@ -119,6 +124,8 @@ class AttendanceService:
         self._member_repo = MemberRepository(session)
         self._sub_repo = SubscriptionRepository(session)
         self._class_coach_repo = ClassCoachRepository(session)
+        self._session_repo = ClassSessionRepository(session)
+        self._tenant_repo = TenantRepository(session)
 
     # ── Commands ─────────────────────────────────────────────────────────
 
@@ -165,11 +172,12 @@ class AttendanceService:
                 else OverrideKind.NOT_COVERED
             )
 
-        # Coach attribution — look up via the (class_id, weekday) pattern
-        # on class_coaches. Empty → NULL + warn log; multiple → primary →
-        # deterministic sort (repo already orders the query that way).
-        coach_id, attribution_method = await self._attribute_coach(
-            tenant_id=tenant_id, class_id=class_id, at=utcnow()
+        # Attribution — session lookup first (Schedule feature), weekday
+        # fallback second. Both write coach_id + session_id at insert,
+        # immutable thereafter.
+        now = utcnow()
+        coach_id, session_id, attribution_method = await self._attribute(
+            tenant_id=tenant_id, class_id=class_id, at=now
         )
 
         entry = await self._repo.create(
@@ -182,6 +190,7 @@ class AttendanceService:
             override_kind=override_kind,
             override_reason=override_reason if override_kind else None,
             coach_id=coach_id,
+            session_id=session_id,
         )
         await self._session.commit()
 
@@ -193,6 +202,7 @@ class AttendanceService:
                 "entry_id": str(entry.id),
                 "class_id": str(class_id),
                 "coach_id": str(coach_id) if coach_id else None,
+                "session_id": str(session_id) if session_id else None,
                 "method": attribution_method,
             },
         )
@@ -405,35 +415,43 @@ class AttendanceService:
             results.append(await self._quota_for_entitlement(sub=sub, entitlement=ent, now=now))
         return results
 
-    # ── Coach attribution (server-side, at-insert) ───────────────────
+    # ── Attribution (server-side, at-insert) ─────────────────────────
 
-    async def _attribute_coach(
+    async def _attribute(
         self, *, tenant_id: _UUID, class_id: UUID, at: datetime
-    ) -> tuple[_UUID | None, str]:
-        """Pick the coach responsible for this class on this date.
+    ) -> tuple[_UUID | None, _UUID | None, str]:
+        """Pick the coach + session responsible for this check-in.
 
-        Returns ``(coach_id_or_None, method)`` where ``method`` names
-        which branch of the rule fired — used in the structlog event
-        so the owner can see how attribution was decided.
+        Returns ``(coach_id, session_id, method)``:
+        - ``method == "session"`` — Schedule feature on + found a
+          scheduled session. ``session_id`` set, ``coach_id`` from the
+          session's head_coach_id.
+        - ``method == "primary"`` / ``"deterministic"`` — weekday
+          fallback (v1 path). ``session_id`` is None.
+        - ``method == "null"`` — nothing matched. Both IDs None.
 
-        Branches (matching ``crm_logic.md`` §5):
-        - ``primary`` — a single row matched and it's the primary (or
-          there's only one match).
-        - ``deterministic`` — multiple matched, primary fell back to
-          ``ORDER BY coach_id ASC``.
-        - ``null`` — no match. Entry is recorded with NULL coach_id.
+        The method name fires in the ``attendance.coach_attributed``
+        event for audit.
         """
+        # Branch 1: Schedule-based lookup (if tenant has Schedule on).
+        tenant = await self._tenant_repo.find_by_id(tenant_id)
+        if tenant is not None and is_feature_enabled(tenant, "schedule"):
+            sess = await self._session_repo.find_active_for_class(tenant_id, class_id, at)
+            if sess is not None:
+                return sess.head_coach_id, sess.id, "session"
+
+        # Branch 2: weekday-pattern fallback on class_coaches.
         entry_date = at.date()
         candidates = await self._class_coach_repo.find_attribution_candidates(
             tenant_id, class_id, entry_date
         )
         if not candidates:
-            return None, "null"
-        # Repo already orders by (is_primary DESC, coach_id ASC).
+            return None, None, "null"
+        # Repo orders by (is_primary DESC, coach_id ASC).
         first = candidates[0]
         if len(candidates) == 1 or first.is_primary:
-            return first.coach_id, "primary"
-        return first.coach_id, "deterministic"
+            return first.coach_id, None, "primary"
+        return first.coach_id, None, "deterministic"
 
     # ── Private helpers ──────────────────────────────────────────────────
 

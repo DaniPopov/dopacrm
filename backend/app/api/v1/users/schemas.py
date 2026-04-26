@@ -96,6 +96,10 @@ class UserResponse(BaseModel):
     last_name: str | None = None
     phone: str | None = None
     oauth_provider: str | None
+    # Per-tenant feature flags. Populated by ``/auth/me`` so the frontend
+    # can gate sidebar / route visibility without a second round-trip.
+    # Other user-returning endpoints leave this empty.
+    tenant_features_enabled: dict[str, bool] = {}
     created_at: datetime
     updated_at: datetime
 

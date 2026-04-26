@@ -433,13 +433,56 @@ Coaches are the gym's trainers — the people who teach classes. DopaCRM tracks 
 
 ---
 
+### 3.11 Schedule
+
+Weekly calendar of when classes actually run, who teaches them, and how substitutions / cancellations are captured. **Upgrades coach attribution** from the v1 weekday pattern (per `class_coaches`) to per-session truth — when an attendance is recorded, the system looks up today's scheduled session for that class and stamps `class_entries.session_id` + `coach_id = session.head_coach_id`. Weekday attribution remains as the fallback for drop-ins with no scheduled session.
+
+**Stored in:** PostgreSQL (`class_schedule_templates` + `class_sessions` tables; `class_entries.session_id` column). Full spec in [`features/schedule.md`](./features/schedule.md).
+
+**Key concepts:**
+
+- **Templates + materialized sessions.** Owner creates a recurring template ("boxing, Sun+Tue, 18:00–19:00, head coach David"). On create, the backend materializes **8 weeks of concrete sessions**. A Celery beat job extends the horizon nightly so there's always ~8 weeks of visibility.
+- **Two coach slots per session.** `head_coach_id` drives payroll attribution; `assistant_coach_id` is informational. Not an N-coach array — 99% head+assistant, cleaner data model, single-table join.
+- **Status: `scheduled` or `cancelled`.** "Completed" is derived (`ends_at < now()`). Cancelled is terminal; uncancelling = create a new session.
+- **Individual + bulk edits.** Owner can cancel / swap coach on one session, or bulk-apply across a date range (2-week vacation scenario). Manual edits set `is_customized=TRUE` so template changes don't stomp owner choices.
+- **Cancellation = no pay** for `per_session` coaches. Per-session pay math upgrades from the v1 "distinct days with ≥1 entry" proxy to `count(status='scheduled' AND head_coach_id=coach)`.
+- **Feature-gated.** OFF by default for new tenants (see §3.12). If off, attendance attribution skips the session lookup entirely — the v1 weekday path stays.
+
+Cross-cutting rules for session-based attribution, cancellation-pay semantics, and the upgraded per-session pay math live in [`crm_logic.md`](./crm_logic.md).
+
+**Roadmap slot:** Phase 3, between Coaches and Payments. See §9.
+
+---
+
+### 3.12 Feature Flags
+
+Per-tenant on/off switches for **advanced features** (Coaches, Schedule, future modules). Lets super_admin match each gym's actual operating model instead of forcing every feature on everyone — a solo-operator boxing gym doesn't need payroll tracking, and a yoga studio without recurring classes doesn't need a weekly calendar.
+
+**Stored in:** `tenants.features_enabled JSONB`, shape `{"coaches": true, "schedule": false}`. Full spec in [`features/feature-flags.md`](./features/feature-flags.md).
+
+**Today:**
+- Super_admin toggles via `PATCH /api/v1/tenants/{id}/features` — visible on the `/tenants/{id}` page.
+- **OFF by default** for new tenants (minimal onboarding experience).
+- Existing tenants backfilled with `{"coaches": true}` so nothing regresses.
+- Gate enforced at the service layer (`FeatureDisabledError` → 403) + the frontend (`canAccess(user, feature, tenantFeatures)` skips baseline grant if gate is off).
+
+**What's gated vs ungated:**
+
+| Ungated (always on) | Gated (per-tenant) |
+|---|---|
+| dashboard, members, classes, plans, subscriptions, attendance, users | coaches, schedule (+ future leads, payments, reports when shipped) |
+
+**Where it's headed:** This mechanism is the first piece of Phase 4 flexibility. Owner self-service (via a Settings page) is a one-line role-gate change when that UI lands. Dynamic roles (`docs/features/roles.md`) build *on top* of feature flags — the flag decides if a feature is available at all; roles decide which users can use it.
+
+---
+
 ## 4. Data Architecture
 
 ### PostgreSQL (primary — transactional entities)
 
-All core business entities: `tenants`, `saas_plans`, `users`, `members`, `membership_plans`, `subscriptions`, `payments`, `leads`, `refresh_tokens`, `classes`, `class_entries`, `coaches`, `class_coaches`.
+All core business entities: `tenants`, `saas_plans`, `users`, `members`, `membership_plans`, `subscriptions`, `payments`, `leads`, `refresh_tokens`, `classes`, `class_entries`, `coaches`, `class_coaches`, `class_schedule_templates`, `class_sessions`.
 
-JSONB columns for per-entity flexibility: `membership_plans.custom_attrs`, `members.custom_fields`, `coaches.custom_attrs`.
+JSONB columns for per-entity flexibility: `membership_plans.custom_attrs`, `members.custom_fields`, `coaches.custom_attrs`, `tenants.features_enabled`.
 
 ### MongoDB — provisioned but currently unused
 
@@ -607,14 +650,19 @@ See [`docs/frontend.md`](./frontend.md) for the full architecture and convention
 
 1. **Phase 1 — Foundation** *(done)*: Tenants, Users, Auth, basic CRUD, Hebrew dashboard shell
 2. **Phase 2 — Core CRM** *(done)*: Members, Classes, Membership Plans, Subscriptions, Attendance (check-in)
-3. **Phase 3 — Operations** *(now)*: Coaches & payroll, Payments, Leads + Pipeline, Class schedule (substitutions, recurring sessions), Dashboard with real metrics
-4. **Phase 4 — Flexibility**: Dynamic roles system (see `docs/features/roles.md`), owner settings page, per-tenant feature visibility, custom fields UI, private 1-on-1 workouts
+3. **Phase 3 — Operations** *(now)*:
+   - Coaches & payroll *(shipped)*
+   - **Schedule + Feature Flags** *(in progress)* — weekly calendar, templates, materialized sessions, cancellation, substitutions; tenant-level feature gating
+   - Payments *(next)*
+   - Leads + Pipeline
+   - Dashboard with real metrics
+4. **Phase 4 — Flexibility**: Dynamic roles system (see `docs/features/roles.md`), owner-facing Settings page (flips feature flags + role grants), custom fields UI, private 1-on-1 workouts
 5. **Phase 5 — Integrations**: Stripe/payment processing, CSV import/export
 6. **Phase 6 — Advanced**: Trainer mobile app, marketing automation, customizable dashboards
 
-**Ordering within Phase 3.** Coaches → Payments → Schedule → Leads. Coaches ships first because it's blocked only by Attendance (shipped). Payments is independent and can land in parallel. Schedule comes after Coaches because it upgrades coach attribution from "weekday pattern" to "per-session override" (details in `docs/features/coaches.md` §"V1 → Schedule migration path"). Leads is independent of everything else in Phase 3; it slots in whenever capacity allows.
+**Ordering within Phase 3.** Coaches *(shipped)* → **Schedule + Feature Flags** → Payments → Leads → Dashboard metrics. Schedule follows Coaches because it upgrades the weekday-based attribution to per-session truth (details in `docs/features/schedule.md` §"Attribution upgrade"). Feature Flags ship *with* Schedule because both Coaches and Schedule need tenant-level on/off — Coaches gets a backfill flag in the same migration. Payments is independent. Leads slots in whenever capacity allows. Dashboard is last because it's a consumer of every upstream feature's metrics.
 
-**Why Flexibility is Phase 4, not Phase 1:** The flexibility thesis (owner configures everything) is the product's core differentiator, but we can only design the permission grid after 2-3 real gym-scoped features exist to permission. Building it earlier means designing in the dark and rebuilding the grid as features land. In the meantime, the frontend's `permissions.canAccess(user, feature)` module uses a hardcoded baseline that will be swapped for backend-driven config — call sites won't change.
+**Why Flexibility is Phase 4, not Phase 1:** The flexibility thesis (owner configures everything) is the product's core differentiator, but we can only design the permission grid after 2-3 real gym-scoped features exist to permission. Building it earlier means designing in the dark and rebuilding the grid as features land. **The Feature Flags mechanism shipping in Phase 3 is the first concrete piece of that vision** — tenant-level on/off, super_admin-controlled today, owner-controlled when the Settings page lands. In the meantime, the frontend's `permissions.canAccess(user, feature, tenantFeatures)` module uses a hardcoded baseline that will be swapped for backend-driven config — call sites won't change.
 
 ---
 

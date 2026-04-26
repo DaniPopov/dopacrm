@@ -13,6 +13,7 @@ import PlanDetailPage from "@/features/plans/PlanDetailPage"
 import CheckInPage from "@/features/attendance/CheckInPage"
 import CoachListPage from "@/features/coaches/CoachListPage"
 import CoachDetailPage from "@/features/coaches/CoachDetailPage"
+import SchedulePage from "@/features/schedule/SchedulePage"
 import ProtectedRoute from "@/components/layout/ProtectedRoute"
 import RequireFeature from "@/components/layout/RequireFeature"
 import DashboardLayout from "@/components/layout/DashboardLayout"
@@ -61,6 +62,12 @@ export default function App() {
           <Route element={<RequireFeature feature="coaches" />}>
             <Route path="/coaches" element={<CoachListPage />} />
             <Route path="/coaches/:id" element={<CoachDetailPage />} />
+          </Route>
+
+          {/* Gym-scoped: weekly schedule. Owner edits; coach sees own
+              sessions read-only. Gated by tenant feature flag. */}
+          <Route element={<RequireFeature feature="schedule" />}>
+            <Route path="/schedule" element={<SchedulePage />} />
           </Route>
         </Route>
       </Route>

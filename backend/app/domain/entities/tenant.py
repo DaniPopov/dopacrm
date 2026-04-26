@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -55,6 +56,13 @@ class Tenant(BaseModel):
     locale: str = Field(default="he-IL", description="BCP 47 locale")
 
     trial_ends_at: datetime | None = None
+
+    # Per-tenant feature gates — see ``app/core/feature_flags.py`` +
+    # ``docs/features/feature-flags.md``. Keys are gated feature names
+    # (e.g. "coaches", "schedule"). Missing key or False value = OFF.
+    # Ungated features aren't stored here — they're always on.
+    features_enabled: dict[str, Any] = Field(default_factory=dict)
+
     created_at: datetime
     updated_at: datetime
 

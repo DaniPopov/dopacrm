@@ -92,6 +92,19 @@ class ClassEntryORM(Base):
         nullable=True,
     )
 
+    # Session attribution — set at insert when a scheduled session
+    # overlaps ``entered_at`` (feature: Schedule). NULL for drop-ins
+    # and for tenants that have Schedule disabled. Immutable.
+    session_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey(
+            "class_sessions.id",
+            name="fk_entries_session_id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+    )
+
     __table_args__ = (
         CheckConstraint(
             "override_kind IS NULL OR override_kind IN ('quota_exceeded', 'not_covered')",
@@ -133,5 +146,11 @@ class ClassEntryORM(Base):
             "coach_id",
             text("entered_at DESC"),
             postgresql_where=text("undone_at IS NULL AND coach_id IS NOT NULL"),
+        ),
+        Index(
+            "ix_entries_session",
+            "session_id",
+            text("entered_at DESC"),
+            postgresql_where=text("undone_at IS NULL AND session_id IS NOT NULL"),
         ),
     )

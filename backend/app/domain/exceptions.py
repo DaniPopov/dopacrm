@@ -355,3 +355,59 @@ class InvalidEarningsRangeError(AppError):
 
     def __init__(self, detail: str) -> None:
         super().__init__(detail, "COACH_INVALID_EARNINGS_RANGE")
+
+
+# ── Feature flags ─────────────────────────────────────────────────────────────
+class FeatureDisabledError(AppError):
+    """The requested feature is not enabled for this tenant.
+
+    Maps to HTTP 403 — the feature *exists*, the caller is authenticated,
+    but tenant config denies access. Distinct from
+    ``InsufficientPermissionsError`` (role-level denial) and from 404
+    (tenant-scope mismatch).
+    """
+
+    def __init__(self, feature: str) -> None:
+        super().__init__(
+            f"Feature '{feature}' is not enabled for this tenant",
+            "FEATURE_DISABLED",
+        )
+        self.feature = feature
+
+
+# ── Schedule ─────────────────────────────────────────────────────────────────
+class ClassScheduleTemplateNotFoundError(AppError):
+    """No template matches the id (or it's in another tenant)."""
+
+    def __init__(self, template_id: str) -> None:
+        super().__init__(
+            f"Schedule template not found: {template_id}",
+            "SCHEDULE_TEMPLATE_NOT_FOUND",
+        )
+
+
+class ClassSessionNotFoundError(AppError):
+    """No session matches the id (or it's in another tenant)."""
+
+    def __init__(self, session_id: str) -> None:
+        super().__init__(
+            f"Class session not found: {session_id}",
+            "SCHEDULE_SESSION_NOT_FOUND",
+        )
+
+
+class SessionStatusTransitionError(AppError):
+    """Illegal state transition on a session (e.g. cancel an already-cancelled session)."""
+
+    def __init__(self, session_id: str, current: str, attempted: str) -> None:
+        super().__init__(
+            f"Cannot {attempted} session {session_id} in status {current}",
+            "SCHEDULE_SESSION_TRANSITION",
+        )
+
+
+class InvalidBulkRangeError(AppError):
+    """Bulk action range invalid (from > to, or range spans > 1 year)."""
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail, "SCHEDULE_INVALID_BULK_RANGE")

@@ -13,6 +13,7 @@ from app.api.v1.coaches.router import (
 )
 from app.api.v1.members.router import router as members_router
 from app.api.v1.plans.router import router as plans_router
+from app.api.v1.schedule.router import router as schedule_router
 from app.api.v1.subscriptions.router import router as subscriptions_router
 from app.api.v1.tenants.router import router as tenants_router
 from app.api.v1.uploads.router import router as uploads_router
@@ -80,5 +81,11 @@ v1_router.include_router(
     class_coaches_router,
     prefix="/class-coaches",
     tags=["Coaches"],
+    dependencies=api_rate_limit,
+)
+v1_router.include_router(
+    schedule_router,
+    prefix="/schedule",
+    tags=["Schedule"],
     dependencies=api_rate_limit,
 )

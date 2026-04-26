@@ -53,6 +53,7 @@ def _to_domain(orm: TenantORM) -> Tenant:
         currency=orm.currency,
         locale=orm.locale,
         trial_ends_at=orm.trial_ends_at,
+        features_enabled=orm.features_enabled or {},
         created_at=orm.created_at,
         updated_at=orm.updated_at,
     )
@@ -164,6 +165,30 @@ class TenantRepository:
         """Update specific fields on a tenant row. Returns the updated entity."""
         await self._session.execute(
             update(TenantORM).where(TenantORM.id == tenant_id).values(**fields),
+        )
+        await self._session.flush()
+        result = await self._session.execute(select(TenantORM).where(TenantORM.id == tenant_id))
+        orm = result.scalar_one_or_none()
+        if orm is None:
+            raise TenantNotFoundError(str(tenant_id))
+        await self._session.refresh(orm)
+        return _to_domain(orm)
+
+    async def merge_features(self, tenant_id: UUID, updates: dict) -> Tenant:
+        """Partial update of ``features_enabled`` — merge ``updates``
+        into the existing JSONB object. Missing keys in ``updates``
+        are left untouched; explicit False disables that feature.
+
+        Uses Postgres' ``||`` JSONB concatenation operator so the
+        merge is atomic + done in-DB.
+        """
+        from sqlalchemy import cast
+        from sqlalchemy.dialects.postgresql import JSONB
+
+        await self._session.execute(
+            update(TenantORM)
+            .where(TenantORM.id == tenant_id)
+            .values(features_enabled=TenantORM.features_enabled.op("||")(cast(updates, JSONB)))
         )
         await self._session.flush()
         result = await self._session.execute(select(TenantORM).where(TenantORM.id == tenant_id))

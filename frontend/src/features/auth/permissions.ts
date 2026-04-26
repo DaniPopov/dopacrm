@@ -61,11 +61,22 @@ export type Feature =
   | "classes" // class-type catalog (gym-scoped)
   | "plans"
   | "attendance" // check-in / front desk
-  | "coaches" // trainers + payroll estimate
+  | "coaches" // trainers + payroll estimate (GATED — per-tenant flag)
+  | "schedule" // weekly calendar + sessions (GATED — per-tenant flag)
   | "leads"
   | "payments"
   | "reports"
   | "settings" // tenant settings — owner only
+
+/**
+ * Features that require a tenant flag in addition to the role baseline.
+ * Mirror of ``GatedFeature`` on the backend (``app/core/feature_flags.py``).
+ *
+ * If a feature is in this set, ``canAccess`` returns false unless
+ * ``tenantFeatures[feature]`` is truthy. Ungated features (members,
+ * attendance, etc.) ignore the tenantFeatures map.
+ */
+export const GATED_FEATURES: Set<Feature> = new Set(["coaches", "schedule"])
 
 /**
  * Baseline: what each role sees without any owner overrides.
@@ -84,6 +95,7 @@ const BASELINE: Record<Role, Feature[]> = {
     "plans",
     "attendance",
     "coaches",
+    "schedule",
     "leads",
     "payments",
     "reports",
@@ -97,9 +109,10 @@ const BASELINE: Record<Role, Feature[]> = {
   sales: ["dashboard", "members", "classes"],
   // Coach (logged-in trainer) — read-only baseline. Sees only their
   // own classes + attendance rosters + earnings. All scoping is
-  // enforced server-side by CoachService; the frontend `coaches`
-  // feature gate just controls sidebar visibility.
-  coach: ["dashboard", "classes", "attendance", "coaches"],
+  // enforced server-side; the frontend feature gates just control
+  // sidebar visibility. Schedule baseline is read-only too — coach
+  // sees their own sessions, can't edit.
+  coach: ["dashboard", "classes", "attendance", "coaches", "schedule"],
 }
 
 /**
@@ -114,6 +127,7 @@ export const GRANTABLE_FEATURES: Feature[] = [
   "plans",
   "attendance",
   "coaches",
+  "schedule",
   "leads",
   "payments",
   "reports",
@@ -134,17 +148,46 @@ export interface TenantOverrides {
 const EMPTY_OVERRIDES: TenantOverrides = { staff: [], sales: [] }
 
 /**
+ * Per-tenant feature flags from ``tenants.features_enabled``.
+ * Map of gated feature name → enabled (true/false). Missing key = OFF.
+ *
+ * Wired through ``auth-provider`` from the user's tenant. Default empty
+ * so super_admin / not-yet-loaded states fall through cleanly (super_admin
+ * doesn't consult gated features for tenant-scoped checks anyway).
+ */
+export type TenantFeatures = Record<string, boolean>
+
+const EMPTY_TENANT_FEATURES: TenantFeatures = {}
+
+function isGated(feature: Feature): boolean {
+  return GATED_FEATURES.has(feature)
+}
+
+/**
  * Does this user have access to this feature?
  *
- * `overrides` is optional and only applies to staff/sales. Owner and
- * super_admin always use the baseline.
+ * Three layers of check:
+ * 1. Role baseline + overrides (staff/sales).
+ * 2. Tenant feature flag — for gated features (coaches, schedule), the
+ *    flag must be on regardless of role.
+ *
+ * `overrides` and `tenantFeatures` are optional; default empty so
+ * tests + non-feature-aware code paths still work.
  */
 export function canAccess(
   user: User | null | undefined,
   feature: Feature,
   overrides: TenantOverrides = EMPTY_OVERRIDES,
+  tenantFeatures: TenantFeatures = EMPTY_TENANT_FEATURES,
 ): boolean {
   if (!user) return false
+
+  // Gated feature: tenant flag must be on. super_admin is the
+  // platform role and rarely consults gated features in their
+  // baseline, but if they did (e.g. via /tenants/{id} sub-pages), we
+  // still respect the gate.
+  if (isGated(feature) && !tenantFeatures[feature]) return false
+
   const baseline = BASELINE[user.role]
   if (baseline.includes(feature)) return true
 
@@ -159,10 +202,14 @@ export function canAccess(
 export function accessibleFeatures(
   user: User | null | undefined,
   overrides: TenantOverrides = EMPTY_OVERRIDES,
+  tenantFeatures: TenantFeatures = EMPTY_TENANT_FEATURES,
 ): Feature[] {
   if (!user) return []
   const baseline = BASELINE[user.role]
-  if (user.role === "staff") return [...baseline, ...overrides.staff]
-  if (user.role === "sales") return [...baseline, ...overrides.sales]
-  return baseline
+  let raw: Feature[] = baseline
+  if (user.role === "staff") raw = [...baseline, ...overrides.staff]
+  else if (user.role === "sales") raw = [...baseline, ...overrides.sales]
+  // Filter out gated features the tenant hasn't enabled — same rule
+  // as canAccess but in bulk.
+  return raw.filter((f) => !isGated(f) || tenantFeatures[f])
 }

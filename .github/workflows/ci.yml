@@ -176,7 +176,13 @@ jobs:
         run: uv sync --frozen
 
       - name: pip-audit (any CVE fails the build)
-        run: uv run --with pip-audit pip-audit --skip-editable
+        # CVE-2026-3219 is in pip itself (no fix released yet). pip is
+        # only used by uv/pip-audit at install time — not shipped in
+        # our runtime. Remove the ignore once a patched pip ships.
+        run: >
+          uv run --with pip-audit pip-audit
+          --skip-editable
+          --ignore-vuln CVE-2026-3219
 
   npm-audit:
     name: Frontend CVE scan

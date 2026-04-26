@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, Query, status
 from app.adapters.storage.s3 import generate_presigned_url
 from app.api.dependencies.auth import get_current_user, require_super_admin
 from app.api.dependencies.database import get_session
+from app.api.v1.schedule.schemas import UpdateTenantFeaturesRequest
 from app.api.v1.tenants.schemas import (
     CreateTenantRequest,
     TenantResponse,
@@ -74,6 +75,7 @@ def _to_response(tenant) -> TenantResponse:
         currency=tenant.currency,
         locale=tenant.locale,
         trial_ends_at=tenant.trial_ends_at,
+        features_enabled=tenant.features_enabled or {},
         created_at=tenant.created_at,
         updated_at=tenant.updated_at,
     )
@@ -261,3 +263,23 @@ async def list_tenant_users(
         caller=caller, tenant_id=tenant_id, limit=limit, offset=offset
     )
     return [_user_to_response(u) for u in users]
+
+
+@router.patch(
+    "/{tenant_id}/features",
+    response_model=TenantResponse,
+    summary="Toggle gated features for a tenant",
+    description=(
+        "super_admin only. Partial merge — unlisted keys left unchanged. "
+        "See docs/features/feature-flags.md."
+    ),
+)
+async def update_tenant_features(
+    tenant_id: UUID,
+    body: UpdateTenantFeaturesRequest,
+    caller: TokenPayload = Depends(require_super_admin),
+    service: TenantService = Depends(_get_service),
+) -> TenantResponse:
+    updates = body.to_update_dict()
+    tenant = await service.update_features(caller=caller, tenant_id=tenant_id, updates=updates)
+    return _to_response(tenant)
