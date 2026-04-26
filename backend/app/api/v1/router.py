@@ -12,8 +12,8 @@ from app.api.v1.coaches.router import (
     coaches_router,
 )
 from app.api.v1.members.router import router as members_router
-from app.api.v1.schedule.router import router as schedule_router
 from app.api.v1.plans.router import router as plans_router
+from app.api.v1.schedule.router import router as schedule_router
 from app.api.v1.subscriptions.router import router as subscriptions_router
 from app.api.v1.tenants.router import router as tenants_router
 from app.api.v1.uploads.router import router as uploads_router

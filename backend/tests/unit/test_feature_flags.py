@@ -36,7 +36,7 @@ def test_gated_set_contains_coaches_and_schedule() -> None:
 
 
 def test_gated_enum_values_match_set() -> None:
-    assert GATED == frozenset(f.value for f in GatedFeature)
+    assert frozenset(f.value for f in GatedFeature) == GATED
 
 
 # ── ungated branch ────────────────────────────────────────────────────

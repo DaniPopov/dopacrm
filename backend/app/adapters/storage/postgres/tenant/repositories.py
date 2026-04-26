@@ -182,22 +182,16 @@ class TenantRepository:
         Uses Postgres' ``||`` JSONB concatenation operator so the
         merge is atomic + done in-DB.
         """
-        from sqlalchemy import cast, text as sa_text
+        from sqlalchemy import cast
         from sqlalchemy.dialects.postgresql import JSONB
 
         await self._session.execute(
             update(TenantORM)
             .where(TenantORM.id == tenant_id)
-            .values(
-                features_enabled=TenantORM.features_enabled.op("||")(
-                    cast(updates, JSONB)
-                )
-            )
+            .values(features_enabled=TenantORM.features_enabled.op("||")(cast(updates, JSONB)))
         )
         await self._session.flush()
-        result = await self._session.execute(
-            select(TenantORM).where(TenantORM.id == tenant_id)
-        )
+        result = await self._session.execute(select(TenantORM).where(TenantORM.id == tenant_id))
         orm = result.scalar_one_or_none()
         if orm is None:
             raise TenantNotFoundError(str(tenant_id))

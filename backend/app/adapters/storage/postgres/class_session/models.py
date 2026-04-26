@@ -54,9 +54,7 @@ class ClassSessionORM(Base):
 
     head_coach_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey(
-            "coaches.id", name="fk_sessions_head_coach_id", ondelete="SET NULL"
-        ),
+        ForeignKey("coaches.id", name="fk_sessions_head_coach_id", ondelete="SET NULL"),
         nullable=True,
     )
     assistant_coach_id: Mapped[UUID | None] = mapped_column(
@@ -69,21 +67,15 @@ class ClassSessionORM(Base):
         nullable=True,
     )
 
-    status: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=text("'scheduled'")
-    )
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'scheduled'"))
     is_customized: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
 
-    cancelled_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancelled_by: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey(
-            "users.id", name="fk_sessions_cancelled_by", ondelete="SET NULL"
-        ),
+        ForeignKey("users.id", name="fk_sessions_cancelled_by", ondelete="SET NULL"),
         nullable=True,
     )
     cancellation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -101,9 +93,7 @@ class ClassSessionORM(Base):
     )
 
     __table_args__ = (
-        CheckConstraint(
-            "status IN ('scheduled', 'cancelled')", name="ck_sessions_status"
-        ),
+        CheckConstraint("status IN ('scheduled', 'cancelled')", name="ck_sessions_status"),
         CheckConstraint("ends_at > starts_at", name="ck_sessions_time_order"),
         CheckConstraint(
             "(status = 'cancelled') = (cancelled_at IS NOT NULL)",
@@ -125,9 +115,7 @@ class ClassSessionORM(Base):
             "ix_sessions_head_coach",
             "head_coach_id",
             "starts_at",
-            postgresql_where=text(
-                "status = 'scheduled' AND head_coach_id IS NOT NULL"
-            ),
+            postgresql_where=text("status = 'scheduled' AND head_coach_id IS NOT NULL"),
         ),
         Index(
             "ux_sessions_template_starts",

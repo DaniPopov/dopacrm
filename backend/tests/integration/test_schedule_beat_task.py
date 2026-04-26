@@ -66,9 +66,7 @@ def tenant_repo(session) -> TenantRepository:
 
 async def _seed_template(tenant_repo, class_repo, coach_repo, tpl_repo):
     plan = await SaasPlanRepository(tenant_repo._session).find_default()
-    t = await tenant_repo.create(
-        slug=f"t-{uuid4().hex[:8]}", name="Gym", saas_plan_id=plan.id
-    )
+    t = await tenant_repo.create(slug=f"t-{uuid4().hex[:8]}", name="Gym", saas_plan_id=plan.id)
     cls = await class_repo.create(tenant_id=t.id, name="Boxing")
     c = await coach_repo.create(tenant_id=t.id, first_name="D", last_name="C")
     return await tpl_repo.create(

@@ -58,9 +58,7 @@ def test_materialize_clips_to_starts_on() -> None:
 
 
 def test_materialize_clips_to_ends_on() -> None:
-    t = _tmpl(
-        weekdays=["sun"], starts_on=date(2026, 1, 1), ends_on=date(2026, 5, 3)
-    )
+    t = _tmpl(weekdays=["sun"], starts_on=date(2026, 1, 1), ends_on=date(2026, 5, 3))
     dates = materialize_dates(t, date(2026, 4, 26), date(2026, 5, 17))
     # Sundays ≤ ends_on: 2026-04-26 and 2026-05-03. 2026-05-10, 2026-05-17 dropped.
     assert dates == [date(2026, 4, 26), date(2026, 5, 3)]
@@ -140,9 +138,7 @@ def test_materialize_inactive_template_yields_nothing_even_in_active_range() -> 
 
 def test_session_timestamps_utc_conversion() -> None:
     t = _tmpl(start_time=time(18, 0), end_time=time(19, 0))
-    starts, ends = session_timestamps(
-        t, date(2026, 4, 19), tenant_tz=ZoneInfo("Asia/Jerusalem")
-    )
+    starts, ends = session_timestamps(t, date(2026, 4, 19), tenant_tz=ZoneInfo("Asia/Jerusalem"))
     # Israel is UTC+3 in April (DST active from March-October).
     # 18:00 Jerusalem = 15:00 UTC.
     assert starts == datetime(2026, 4, 19, 15, 0, tzinfo=UTC)
@@ -152,9 +148,7 @@ def test_session_timestamps_utc_conversion() -> None:
 def test_session_timestamps_winter_no_dst() -> None:
     # January — Israel on IST (UTC+2).
     t = _tmpl(start_time=time(18, 0), end_time=time(19, 0))
-    starts, ends = session_timestamps(
-        t, date(2026, 1, 15), tenant_tz=ZoneInfo("Asia/Jerusalem")
-    )
+    starts, ends = session_timestamps(t, date(2026, 1, 15), tenant_tz=ZoneInfo("Asia/Jerusalem"))
     # 18:00 Jerusalem = 16:00 UTC in winter.
     assert starts == datetime(2026, 1, 15, 16, 0, tzinfo=UTC)
     assert ends == datetime(2026, 1, 15, 17, 0, tzinfo=UTC)
@@ -168,4 +162,4 @@ def test_session_timestamps_default_tz_is_jerusalem() -> None:
 
 
 def test_default_tenant_tz_is_jerusalem() -> None:
-    assert DEFAULT_TENANT_TZ == ZoneInfo("Asia/Jerusalem")
+    assert ZoneInfo("Asia/Jerusalem") == DEFAULT_TENANT_TZ

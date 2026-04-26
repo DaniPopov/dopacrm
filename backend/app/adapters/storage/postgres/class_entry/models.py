@@ -151,8 +151,6 @@ class ClassEntryORM(Base):
             "ix_entries_session",
             "session_id",
             text("entered_at DESC"),
-            postgresql_where=text(
-                "undone_at IS NULL AND session_id IS NOT NULL"
-            ),
+            postgresql_where=text("undone_at IS NULL AND session_id IS NOT NULL"),
         ),
     )

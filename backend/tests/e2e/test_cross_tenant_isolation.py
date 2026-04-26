@@ -149,7 +149,7 @@ def _seed_tenant(session: Session, saas_plan_id) -> dict:
     session.execute(
         text(
             "UPDATE tenants SET features_enabled = "
-            "'{\"coaches\": true, \"schedule\": true}'::jsonb "
+            '\'{"coaches": true, "schedule": true}\'::jsonb '
             "WHERE id = :t"
         ),
         {"t": tenant_id},
@@ -747,9 +747,7 @@ def test_owner_cannot_reassign_to_foreign_coach(client: TestClient, two_gyms: di
 # ══════════════════════════════════════════════════════════════════════════════
 
 
-def test_owner_cannot_read_foreign_template(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_cannot_read_foreign_template(client: TestClient, two_gyms: dict) -> None:
     r = client.get(
         f"/api/v1/schedule/templates/{two_gyms['b']['template_id']}",
         headers=two_gyms["a"]["owner_headers"],
@@ -757,9 +755,7 @@ def test_owner_cannot_read_foreign_template(
     assert r.status_code == 404
 
 
-def test_owner_cannot_patch_foreign_template(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_cannot_patch_foreign_template(client: TestClient, two_gyms: dict) -> None:
     r = client.patch(
         f"/api/v1/schedule/templates/{two_gyms['b']['template_id']}",
         headers=two_gyms["a"]["owner_headers"],
@@ -768,9 +764,7 @@ def test_owner_cannot_patch_foreign_template(
     assert r.status_code == 404
 
 
-def test_owner_cannot_deactivate_foreign_template(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_cannot_deactivate_foreign_template(client: TestClient, two_gyms: dict) -> None:
     r = client.delete(
         f"/api/v1/schedule/templates/{two_gyms['b']['template_id']}",
         headers=two_gyms["a"]["owner_headers"],
@@ -778,21 +772,15 @@ def test_owner_cannot_deactivate_foreign_template(
     assert r.status_code == 404
 
 
-def test_templates_list_scopes_to_caller_tenant(
-    client: TestClient, two_gyms: dict
-) -> None:
-    r = client.get(
-        "/api/v1/schedule/templates", headers=two_gyms["a"]["owner_headers"]
-    )
+def test_templates_list_scopes_to_caller_tenant(client: TestClient, two_gyms: dict) -> None:
+    r = client.get("/api/v1/schedule/templates", headers=two_gyms["a"]["owner_headers"])
     assert r.status_code == 200
     ids = {t["id"] for t in r.json()}
     assert two_gyms["a"]["template_id"] in ids
     assert two_gyms["b"]["template_id"] not in ids
 
 
-def test_owner_cannot_read_foreign_session(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_cannot_read_foreign_session(client: TestClient, two_gyms: dict) -> None:
     r = client.get(
         f"/api/v1/schedule/sessions/{two_gyms['b']['session_id']}",
         headers=two_gyms["a"]["owner_headers"],
@@ -800,9 +788,7 @@ def test_owner_cannot_read_foreign_session(
     assert r.status_code == 404
 
 
-def test_owner_cannot_patch_foreign_session(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_cannot_patch_foreign_session(client: TestClient, two_gyms: dict) -> None:
     r = client.patch(
         f"/api/v1/schedule/sessions/{two_gyms['b']['session_id']}",
         headers=two_gyms["a"]["owner_headers"],
@@ -811,9 +797,7 @@ def test_owner_cannot_patch_foreign_session(
     assert r.status_code == 404
 
 
-def test_owner_cannot_cancel_foreign_session(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_cannot_cancel_foreign_session(client: TestClient, two_gyms: dict) -> None:
     r = client.post(
         f"/api/v1/schedule/sessions/{two_gyms['b']['session_id']}/cancel",
         headers=two_gyms["a"]["owner_headers"],
@@ -822,12 +806,9 @@ def test_owner_cannot_cancel_foreign_session(
     assert r.status_code == 404
 
 
-def test_sessions_list_scopes_to_caller_tenant(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_sessions_list_scopes_to_caller_tenant(client: TestClient, two_gyms: dict) -> None:
     r = client.get(
-        "/api/v1/schedule/sessions"
-        "?from=2026-04-01T00:00:00Z&to=2026-12-31T00:00:00Z",
+        "/api/v1/schedule/sessions?from=2026-04-01T00:00:00Z&to=2026-12-31T00:00:00Z",
         headers=two_gyms["a"]["owner_headers"],
     )
     assert r.status_code == 200
@@ -852,9 +833,7 @@ def test_owner_cannot_create_adhoc_session_in_foreign_class(
     assert r.status_code == 404
 
 
-def test_owner_cannot_create_adhoc_with_foreign_coach(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_cannot_create_adhoc_with_foreign_coach(client: TestClient, two_gyms: dict) -> None:
     r = client.post(
         "/api/v1/schedule/sessions",
         headers=two_gyms["a"]["owner_headers"],
@@ -868,9 +847,7 @@ def test_owner_cannot_create_adhoc_with_foreign_coach(
     assert r.status_code == 404
 
 
-def test_owner_bulk_action_on_foreign_class(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_bulk_action_on_foreign_class(client: TestClient, two_gyms: dict) -> None:
     r = client.post(
         "/api/v1/schedule/bulk-action",
         headers=two_gyms["a"]["owner_headers"],
@@ -884,9 +861,7 @@ def test_owner_bulk_action_on_foreign_class(
     assert r.status_code == 404
 
 
-def test_owner_cannot_toggle_other_tenant_features(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_cannot_toggle_other_tenant_features(client: TestClient, two_gyms: dict) -> None:
     """Owner doesn't have the role for this endpoint regardless of
     tenant — gets 403, not 404. Same protection as any super_admin-only
     surface; the cross-tenant attack vector here is "owner of A
@@ -899,9 +874,7 @@ def test_owner_cannot_toggle_other_tenant_features(
     assert r.status_code == 403
 
 
-def test_owner_bulk_swap_to_foreign_coach_blocked(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_owner_bulk_swap_to_foreign_coach_blocked(client: TestClient, two_gyms: dict) -> None:
     """Substitute-pay path also enforces tenant scope: even with a
     valid pay rate in the body, the new coach has to be in the
     caller's tenant. Foreign coach → 404."""

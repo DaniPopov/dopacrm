@@ -15,7 +15,6 @@ import os
 from datetime import date, timedelta
 from uuid import uuid4
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
@@ -24,9 +23,7 @@ from app.core.security import create_access_token, hash_password
 
 
 def _sync_url() -> str:
-    url = os.environ.get(
-        "NEON_DATABASE_URL", "postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm"
-    )
+    url = os.environ.get("NEON_DATABASE_URL", "postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm")
     return url.replace("postgresql+asyncpg://", "postgresql://")
 
 
@@ -48,7 +45,9 @@ def _seed(*, schedule_enabled: bool = True) -> dict:
         plan_id = s.execute(
             text("SELECT id FROM saas_plans WHERE code = 'default' LIMIT 1")
         ).scalar_one()
-        features = '{"coaches": true, "schedule": true}' if schedule_enabled else '{"coaches": true}'
+        features = (
+            '{"coaches": true, "schedule": true}' if schedule_enabled else '{"coaches": true}'
+        )
         tenant_id = s.execute(
             text(
                 "INSERT INTO tenants (slug, name, saas_plan_id, status, features_enabled) "
@@ -64,9 +63,7 @@ def _seed(*, schedule_enabled: bool = True) -> dict:
             {"e": f"o-{uuid4().hex[:6]}@g.co", "p": hash_password("x"), "t": tenant_id},
         ).scalar_one()
         class_id = s.execute(
-            text(
-                "INSERT INTO classes (tenant_id, name) VALUES (:t, 'Boxing') RETURNING id"
-            ),
+            text("INSERT INTO classes (tenant_id, name) VALUES (:t, 'Boxing') RETURNING id"),
             {"t": tenant_id},
         ).scalar_one()
         coach_id = s.execute(
@@ -226,7 +223,7 @@ def test_cancel_session_marks_customized(client: TestClient) -> None:
 def test_swap_coach_sets_customized(client: TestClient) -> None:
     env = _seed()
     second = client.post(
-        f"/api/v1/coaches",
+        "/api/v1/coaches",
         headers=env["owner_headers"],
         json={"first_name": "Yoni", "last_name": "Levi"},
     ).json()
@@ -440,7 +437,7 @@ def test_bulk_swap_with_substitute_pay_creates_temp_link(
         f"/api/v1/classes/{env['class_id']}/coaches",
         headers=env["owner_headers"],
     ).json()
-    sub_links = [l for l in links if l["coach_id"] == sub_coach["id"]]
+    sub_links = [link for link in links if link["coach_id"] == sub_coach["id"]]
     assert len(sub_links) == 1
     assert sub_links[0]["pay_model"] == "per_session"
     assert sub_links[0]["pay_amount_cents"] == 4000
@@ -501,7 +498,7 @@ def test_bulk_swap_to_coach_with_existing_rate_does_not_create_link(
         f"/api/v1/classes/{env['class_id']}/coaches",
         headers=env["owner_headers"],
     ).json()
-    sub_links = [l for l in links if l["coach_id"] == sub_coach["id"]]
+    sub_links = [link for link in links if link["coach_id"] == sub_coach["id"]]
     assert len(sub_links) == 1
     assert sub_links[0]["role"] == "עוזר"
 

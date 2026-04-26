@@ -20,7 +20,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.adapters.storage.postgres.class_session.models import ClassSessionORM
@@ -166,9 +166,7 @@ class ClassSessionRepository:
                 )
             )
         if not include_cancelled:
-            stmt = stmt.where(
-                ClassSessionORM.status == SessionStatus.SCHEDULED.value
-            )
+            stmt = stmt.where(ClassSessionORM.status == SessionStatus.SCHEDULED.value)
         stmt = stmt.order_by(ClassSessionORM.starts_at)
         result = await self._session.execute(stmt)
         return [_to_domain(o) for o in result.scalars()]
@@ -193,11 +191,7 @@ class ClassSessionRepository:
                 ClassSessionORM.ends_at >= at - tolerance,
             )
             # Closest starts_at first.
-            .order_by(
-                func.abs(
-                    func.extract("epoch", ClassSessionORM.starts_at - at)
-                )
-            )
+            .order_by(func.abs(func.extract("epoch", ClassSessionORM.starts_at - at)))
             .limit(1)
         )
         result = await self._session.execute(stmt)
@@ -212,9 +206,7 @@ class ClassSessionRepository:
         if not fields:
             return await self.find_by_id(session_id)
         await self._session.execute(
-            update(ClassSessionORM)
-            .where(ClassSessionORM.id == session_id)
-            .values(**fields)
+            update(ClassSessionORM).where(ClassSessionORM.id == session_id).values(**fields)
         )
         await self._session.flush()
         return await self.find_by_id(session_id)
@@ -244,9 +236,7 @@ class ClassSessionRepository:
         )
         return [_to_domain(o) for o in result.scalars()]
 
-    async def latest_starts_at_for_template(
-        self, template_id: UUID
-    ) -> datetime | None:
+    async def latest_starts_at_for_template(self, template_id: UUID) -> datetime | None:
         """Horizon check for the beat job — what's the furthest-out
         materialized session for this template? None if nothing yet."""
         result = await self._session.execute(
@@ -300,9 +290,7 @@ class ClassSessionRepository:
             ClassSessionORM.starts_at < to_date,
         )
         if scheduled_only:
-            stmt = stmt.where(
-                ClassSessionORM.status == SessionStatus.SCHEDULED.value
-            )
+            stmt = stmt.where(ClassSessionORM.status == SessionStatus.SCHEDULED.value)
         stmt = stmt.order_by(ClassSessionORM.starts_at)
         result = await self._session.execute(stmt)
         return [_to_domain(o) for o in result.scalars()]

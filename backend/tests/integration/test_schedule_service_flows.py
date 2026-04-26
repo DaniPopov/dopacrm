@@ -16,7 +16,7 @@ service layer (no FastAPI test client).
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time
 from uuid import UUID, uuid4
 
 import pytest
@@ -40,7 +40,6 @@ from app.domain.entities.class_session import SessionStatus
 from app.domain.entities.user import Role
 from app.services.coach_service import CoachService
 from app.services.schedule_service import ScheduleService
-
 
 # ── shared fixtures ──────────────────────────────────────────────────
 
@@ -129,10 +128,10 @@ async def test_template_edit_updates_non_customized_future_sessions(
 ) -> None:
     """The core re-materialization promise: editing a template's
     coach updates future non-customized sessions in place."""
-    t, cls, c, owner_id = await _setup(tenant_repo, class_repo, coach_repo, default_plan_id, sess_repo._session)
-    new_coach = await coach_repo.create(
-        tenant_id=t.id, first_name="Yoni", last_name="Levi"
+    t, cls, c, owner_id = await _setup(
+        tenant_repo, class_repo, coach_repo, default_plan_id, sess_repo._session
     )
+    new_coach = await coach_repo.create(tenant_id=t.id, first_name="Yoni", last_name="Levi")
     caller = _caller(t.id, owner_id)
 
     tpl = await schedule_service.create_template(
@@ -165,10 +164,10 @@ async def test_template_edit_preserves_customized_sessions(
 ) -> None:
     """A session the owner manually edited (e.g. cancelled, swapped
     coach) must NOT be rewritten by template edits."""
-    t, cls, c, owner_id = await _setup(tenant_repo, class_repo, coach_repo, default_plan_id, sess_repo._session)
-    sub_coach = await coach_repo.create(
-        tenant_id=t.id, first_name="Sub", last_name="Coach"
+    t, cls, c, owner_id = await _setup(
+        tenant_repo, class_repo, coach_repo, default_plan_id, sess_repo._session
     )
+    sub_coach = await coach_repo.create(tenant_id=t.id, first_name="Sub", last_name="Coach")
     new_template_coach = await coach_repo.create(
         tenant_id=t.id, first_name="Template", last_name="Newhire"
     )
@@ -192,9 +191,7 @@ async def test_template_edit_preserves_customized_sessions(
     )
     # Cancel the second session.
     cancelled_id = sessions[1].id
-    await schedule_service.cancel_session(
-        caller=caller, session_id=cancelled_id, reason="test"
-    )
+    await schedule_service.cancel_session(caller=caller, session_id=cancelled_id, reason="test")
 
     # Edit template — change coach.
     await schedule_service.update_template(
@@ -213,9 +210,7 @@ async def test_template_edit_preserves_customized_sessions(
 
     # Untouched future sessions should pick up the new coach.
     remaining = await sess_repo.list_for_template_future(tpl.id, datetime.now(UTC))
-    untouched = [
-        s for s in remaining if s.id not in {customized_id, cancelled_id}
-    ]
+    untouched = [s for s in remaining if s.id not in {customized_id, cancelled_id}]
     assert len(untouched) > 0
     assert all(s.head_coach_id == new_template_coach.id for s in untouched)
 
@@ -225,10 +220,10 @@ async def test_template_deactivate_cancels_future_non_customized(
 ) -> None:
     """Deactivating a template should cancel future non-customized
     sessions so the calendar cleans up. Customized sessions stay as-is."""
-    t, cls, c, owner_id = await _setup(tenant_repo, class_repo, coach_repo, default_plan_id, sess_repo._session)
-    sub_coach = await coach_repo.create(
-        tenant_id=t.id, first_name="Sub", last_name="Coach"
+    t, cls, c, owner_id = await _setup(
+        tenant_repo, class_repo, coach_repo, default_plan_id, sess_repo._session
     )
+    sub_coach = await coach_repo.create(tenant_id=t.id, first_name="Sub", last_name="Coach")
     caller = _caller(t.id, owner_id)
 
     tpl = await schedule_service.create_template(
@@ -259,9 +254,7 @@ async def test_template_deactivate_cancels_future_non_customized(
     others = [s for s in remaining if s.id != customized_id]
     assert len(others) > 0
     assert all(s.status == SessionStatus.CANCELLED for s in others)
-    assert all(
-        s.cancellation_reason == "template deactivated" for s in others
-    )
+    assert all(s.cancellation_reason == "template deactivated" for s in others)
 
 
 # ── per_session pay math: Schedule-on branch ─────────────────────────
@@ -284,7 +277,9 @@ async def test_per_session_pay_uses_scheduled_session_count_when_schedule_on(
     Verifies a coach gets paid for sessions they were scheduled to
     teach even when no member showed up — the v1 approximation would
     have returned 0 for that case."""
-    t, cls, c, owner_id = await _setup(tenant_repo, class_repo, coach_repo, default_plan_id, sess_repo._session)
+    t, cls, c, owner_id = await _setup(
+        tenant_repo, class_repo, coach_repo, default_plan_id, sess_repo._session
+    )
     caller = _caller(t.id, owner_id)
 
     # Pay rate: ₪40 per session.
@@ -301,14 +296,14 @@ async def test_per_session_pay_uses_scheduled_session_count_when_schedule_on(
     )
 
     # Three sessions in May: 2 scheduled, 1 cancelled.
-    s1 = await sess_repo.create(
+    await sess_repo.create(
         tenant_id=t.id,
         class_id=cls.id,
         starts_at=datetime(2026, 5, 3, 15, 0, tzinfo=UTC),
         ends_at=datetime(2026, 5, 3, 16, 0, tzinfo=UTC),
         head_coach_id=c.id,
     )
-    s2 = await sess_repo.create(
+    await sess_repo.create(
         tenant_id=t.id,
         class_id=cls.id,
         starts_at=datetime(2026, 5, 10, 15, 0, tzinfo=UTC),
@@ -408,10 +403,10 @@ async def test_per_session_excludes_other_coachs_sessions(
     """A coach's earnings should only count sessions they were the
     head coach of. A session in the same class taught by someone else
     is invisible to their pay."""
-    t, cls, c, owner_id = await _setup(tenant_repo, class_repo, coach_repo, default_plan_id, sess_repo._session)
-    other = await coach_repo.create(
-        tenant_id=t.id, first_name="Yoni", last_name="Levi"
+    t, cls, c, owner_id = await _setup(
+        tenant_repo, class_repo, coach_repo, default_plan_id, sess_repo._session
     )
+    other = await coach_repo.create(tenant_id=t.id, first_name="Yoni", last_name="Levi")
     caller = _caller(t.id, owner_id)
 
     await link_repo.create(

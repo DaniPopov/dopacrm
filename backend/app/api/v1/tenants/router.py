@@ -281,7 +281,5 @@ async def update_tenant_features(
     service: TenantService = Depends(_get_service),
 ) -> TenantResponse:
     updates = body.to_update_dict()
-    tenant = await service.update_features(
-        caller=caller, tenant_id=tenant_id, updates=updates
-    )
+    tenant = await service.update_features(caller=caller, tenant_id=tenant_id, updates=updates)
     return _to_response(tenant)

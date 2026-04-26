@@ -72,10 +72,7 @@ class ClassSession(BaseModel):
         Used by the attendance attribution lookup — a ``scheduled``
         session with ``starts_at ≤ now ≤ ends_at`` is the happy case.
         """
-        return (
-            self.status == SessionStatus.SCHEDULED
-            and self.starts_at <= now <= self.ends_at
-        )
+        return self.status == SessionStatus.SCHEDULED and self.starts_at <= now <= self.ends_at
 
     def is_completed(self, now: datetime) -> bool:
         """True if a scheduled session has finished (no attendance allowed past its end

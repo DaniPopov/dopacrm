@@ -68,12 +68,8 @@ def session_timestamps(
 
     Returned timestamps are timezone-aware (tzinfo=UTC).
     """
-    local_start = datetime.combine(session_date, template.start_time).replace(
-        tzinfo=tenant_tz
-    )
-    local_end = datetime.combine(session_date, template.end_time).replace(
-        tzinfo=tenant_tz
-    )
+    local_start = datetime.combine(session_date, template.start_time).replace(tzinfo=tenant_tz)
+    local_end = datetime.combine(session_date, template.end_time).replace(tzinfo=tenant_tz)
     return local_start.astimezone(UTC), local_end.astimezone(UTC)
 
 

@@ -9,7 +9,6 @@ Coach / Subscription repos).
 
 from __future__ import annotations
 
-from datetime import date, time
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select, update
@@ -20,6 +19,7 @@ from app.adapters.storage.postgres.class_schedule_template.models import (
 from app.domain.entities.class_schedule_template import ClassScheduleTemplate
 
 if TYPE_CHECKING:
+    from datetime import date, time
     from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -78,9 +78,7 @@ class ClassScheduleTemplateRepository:
 
     async def find_by_id(self, template_id: UUID) -> ClassScheduleTemplate | None:
         result = await self._session.execute(
-            select(ClassScheduleTemplateORM).where(
-                ClassScheduleTemplateORM.id == template_id
-            )
+            select(ClassScheduleTemplateORM).where(ClassScheduleTemplateORM.id == template_id)
         )
         orm = result.scalar_one_or_none()
         return _to_domain(orm) if orm else None
@@ -107,15 +105,11 @@ class ClassScheduleTemplateRepository:
         """Platform-wide active templates — used by the beat job to
         extend horizons for every tenant."""
         result = await self._session.execute(
-            select(ClassScheduleTemplateORM).where(
-                ClassScheduleTemplateORM.is_active.is_(True)
-            )
+            select(ClassScheduleTemplateORM).where(ClassScheduleTemplateORM.is_active.is_(True))
         )
         return [_to_domain(o) for o in result.scalars()]
 
-    async def update(
-        self, template_id: UUID, **fields: Any
-    ) -> ClassScheduleTemplate | None:
+    async def update(self, template_id: UUID, **fields: Any) -> ClassScheduleTemplate | None:
         if not fields:
             return await self.find_by_id(template_id)
         await self._session.execute(

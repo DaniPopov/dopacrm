@@ -171,9 +171,7 @@ async def me(
     if user.tenant_id is not None:
         tenant = await TenantRepository(session).find_by_id(user.tenant_id)
         if tenant is not None:
-            features = {
-                k: bool(v) for k, v in (tenant.features_enabled or {}).items()
-            }
+            features = {k: bool(v) for k, v in (tenant.features_enabled or {}).items()}
 
     return UserResponse(
         id=user.id,

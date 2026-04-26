@@ -33,8 +33,6 @@ from app.adapters.storage.postgres.gym_class.repositories import GymClassReposit
 from app.adapters.storage.postgres.tenant.repositories import TenantRepository
 from app.core.feature_flags import is_feature_enabled
 from app.core.time import utcnow
-from app.domain.entities.class_coach import PayModel
-from app.domain.entities.class_schedule_template import ClassScheduleTemplate
 from app.domain.entities.class_session import ClassSession, SessionStatus
 from app.domain.entities.user import Role
 from app.domain.exceptions import (
@@ -57,6 +55,8 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from app.core.security import TokenPayload
+    from app.domain.entities.class_coach import PayModel
+    from app.domain.entities.class_schedule_template import ClassScheduleTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -191,7 +191,9 @@ class ScheduleService:
     ) -> ClassScheduleTemplate:
         tenant_id = await self._require_schedule_enabled(caller)
         self._require_owner(caller)
-        tpl = await self.get_template(caller=caller, template_id=template_id)
+        # get_template raises ClassScheduleTemplateNotFoundError (→ 404)
+        # if the template isn't in this tenant — pure tenant-scope guard.
+        await self.get_template(caller=caller, template_id=template_id)
 
         # Disallow mutating tenant_id / class_id via PATCH. Class
         # change = create new template + deactivate old.
@@ -306,9 +308,7 @@ class ScheduleService:
         )
         return sess
 
-    async def get_session(
-        self, *, caller: TokenPayload, session_id: _UUID
-    ) -> ClassSession:
+    async def get_session(self, *, caller: TokenPayload, session_id: _UUID) -> ClassSession:
         tenant_id = await self._require_schedule_enabled(caller)
         sess = await self._sess_repo.find_by_id(session_id)
         if sess is None or str(sess.tenant_id) != str(tenant_id):
@@ -357,9 +357,7 @@ class ScheduleService:
         self._require_owner(caller)
         sess = await self.get_session(caller=caller, session_id=session_id)
         if sess.status != SessionStatus.SCHEDULED:
-            raise SessionStatusTransitionError(
-                str(session_id), sess.status.value, "edit"
-            )
+            raise SessionStatusTransitionError(str(session_id), sess.status.value, "edit")
 
         fields: dict[str, Any] = {}
         if head_coach_id is not None:
@@ -421,9 +419,7 @@ class ScheduleService:
         self._require_owner(caller)
         sess = await self.get_session(caller=caller, session_id=session_id)
         if not sess.can_cancel():
-            raise SessionStatusTransitionError(
-                str(session_id), sess.status.value, "cancel"
-            )
+            raise SessionStatusTransitionError(str(session_id), sess.status.value, "cancel")
 
         now = utcnow()
         updated = await self._sess_repo.update(
@@ -481,9 +477,7 @@ class ScheduleService:
         self._require_owner(caller)
 
         if to_date < from_date:
-            raise InvalidBulkRangeError(
-                f"to_date ({to_date}) must be >= from_date ({from_date})"
-            )
+            raise InvalidBulkRangeError(f"to_date ({to_date}) must be >= from_date ({from_date})")
         if (to_date - from_date).days > 366:
             raise InvalidBulkRangeError("bulk range > 1 year is not allowed")
 
@@ -493,9 +487,7 @@ class ScheduleService:
 
         if action == "swap_coach":
             if new_coach_id is None:
-                raise InvalidBulkRangeError(
-                    "swap_coach requires new_coach_id"
-                )
+                raise InvalidBulkRangeError("swap_coach requires new_coach_id")
             await self._assert_coach_in_tenant(new_coach_id, tenant_id)
 
             # Substitute-pay logic. Check if the new coach already has
@@ -505,16 +497,13 @@ class ScheduleService:
                 tenant_id, new_coach_id, only_current=True
             )
             has_rate = any(
-                str(l.class_id) == str(class_id)
-                and l.starts_on <= to_date
-                and (l.ends_on is None or l.ends_on >= from_date)
-                for l in existing_links
+                str(link.class_id) == str(class_id)
+                and link.starts_on <= to_date
+                and (link.ends_on is None or link.ends_on >= from_date)
+                for link in existing_links
             )
             if not has_rate:
-                if (
-                    substitute_pay_model is None
-                    or substitute_pay_amount_cents is None
-                ):
+                if substitute_pay_model is None or substitute_pay_amount_cents is None:
                     raise InvalidBulkRangeError(
                         "SUBSTITUTE_PAY_REQUIRED: the new coach has no "
                         "pay rate for this class. Provide substitute_pay_model "
@@ -554,15 +543,11 @@ class ScheduleService:
                     },
                 )
         elif action != "cancel":
-            raise InvalidBulkRangeError(
-                f"unknown action {action!r}; use 'cancel' or 'swap_coach'"
-            )
+            raise InvalidBulkRangeError(f"unknown action {action!r}; use 'cancel' or 'swap_coach'")
 
         # Convert date range to UTC datetime boundaries (inclusive on both ends).
         from_dt = datetime.combine(from_date, time.min, tzinfo=UTC)
-        to_dt = datetime.combine(
-            to_date + timedelta(days=1), time.min, tzinfo=UTC
-        )
+        to_dt = datetime.combine(to_date + timedelta(days=1), time.min, tzinfo=UTC)
         targets = await self._sess_repo.list_in_range_for_class(
             tenant_id=tenant_id,
             class_id=class_id,
@@ -635,18 +620,14 @@ class ScheduleService:
 
     # ── Beat-job helper ──────────────────────────────────────────────
 
-    async def extend_horizon_for_template(
-        self, template: ClassScheduleTemplate
-    ) -> int:
+    async def extend_horizon_for_template(self, template: ClassScheduleTemplate) -> int:
         """Called by the nightly beat task. Returns the number of new
         sessions created."""
         return await self._materialize_horizon(template)
 
     # ── Private ──────────────────────────────────────────────────────
 
-    async def _materialize_horizon(
-        self, tpl: ClassScheduleTemplate
-    ) -> int:
+    async def _materialize_horizon(self, tpl: ClassScheduleTemplate) -> int:
         """Idempotent materialization up to today + DEFAULT_HORIZON_WEEKS.
         Returns count of new sessions actually inserted."""
         today = date.today()
@@ -699,16 +680,12 @@ class ScheduleService:
 
     # ── Cross-tenant helpers ─────────────────────────────────────────
 
-    async def _assert_class_in_tenant(
-        self, class_id: _UUID, tenant_id: _UUID
-    ) -> None:
+    async def _assert_class_in_tenant(self, class_id: _UUID, tenant_id: _UUID) -> None:
         cls = await self._class_repo.find_by_id(class_id)
         if cls is None or str(cls.tenant_id) != str(tenant_id):
             raise GymClassNotFoundError(str(class_id))
 
-    async def _assert_coach_in_tenant(
-        self, coach_id: _UUID, tenant_id: _UUID
-    ) -> None:
+    async def _assert_coach_in_tenant(self, coach_id: _UUID, tenant_id: _UUID) -> None:
         coach = await self._coach_repo.find_by_id(coach_id)
         if coach is None or str(coach.tenant_id) != str(tenant_id):
             raise CoachNotFoundError(str(coach_id))

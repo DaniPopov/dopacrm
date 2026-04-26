@@ -11,7 +11,6 @@ from pydantic import BaseModel, Field, field_validator
 from app.domain.entities.class_coach import WEEKDAYS, PayModel
 from app.domain.entities.class_session import SessionStatus
 
-
 # ── Templates ─────────────────────────────────────────────────────────
 
 

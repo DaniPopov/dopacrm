@@ -121,9 +121,7 @@ async def list_templates(
     caller: TokenPayload = Depends(get_current_user),
     service: ScheduleService = Depends(_get_service),
 ) -> list[TemplateResponse]:
-    rows = await service.list_templates(
-        caller=caller, class_id=class_id, only_active=only_active
-    )
+    rows = await service.list_templates(caller=caller, class_id=class_id, only_active=only_active)
     return [_to_template_response(t) for t in rows]
 
 
@@ -136,9 +134,7 @@ async def get_template(
     caller: TokenPayload = Depends(get_current_user),
     service: ScheduleService = Depends(_get_service),
 ) -> TemplateResponse:
-    return _to_template_response(
-        await service.get_template(caller=caller, template_id=template_id)
-    )
+    return _to_template_response(await service.get_template(caller=caller, template_id=template_id))
 
 
 @router.patch(
@@ -153,9 +149,7 @@ async def update_template(
     service: ScheduleService = Depends(_get_service),
 ) -> TemplateResponse:
     fields = body.model_dump(exclude_unset=True)
-    updated = await service.update_template(
-        caller=caller, template_id=template_id, **fields
-    )
+    updated = await service.update_template(caller=caller, template_id=template_id, **fields)
     return _to_template_response(updated)
 
 
@@ -233,9 +227,7 @@ async def get_session_endpoint(
     caller: TokenPayload = Depends(get_current_user),
     service: ScheduleService = Depends(_get_service),
 ) -> SessionResponse:
-    return _to_session_response(
-        await service.get_session(caller=caller, session_id=session_id)
-    )
+    return _to_session_response(await service.get_session(caller=caller, session_id=session_id))
 
 
 @router.patch(
@@ -272,9 +264,7 @@ async def cancel_session(
     caller: TokenPayload = Depends(get_current_user),
     service: ScheduleService = Depends(_get_service),
 ) -> SessionResponse:
-    s = await service.cancel_session(
-        caller=caller, session_id=session_id, reason=body.reason
-    )
+    s = await service.cancel_session(caller=caller, session_id=session_id, reason=body.reason)
     return _to_session_response(s)
 
 

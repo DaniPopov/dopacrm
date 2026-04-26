@@ -424,9 +424,7 @@ async def test_count_scheduled_for_coach_excludes_other_coach(
 ) -> None:
     """Same class, different coach → not counted."""
     t, cls, c = await _seed(tenant_repo, class_repo, coach_repo, default_plan_id)
-    other_coach = await coach_repo.create(
-        tenant_id=t.id, first_name="Yoni", last_name="Levi"
-    )
+    other_coach = await coach_repo.create(tenant_id=t.id, first_name="Yoni", last_name="Levi")
 
     await sess_repo.create(
         tenant_id=t.id,

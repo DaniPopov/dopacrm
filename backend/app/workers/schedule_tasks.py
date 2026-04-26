@@ -29,7 +29,6 @@ from app.adapters.storage.postgres.class_schedule_template.repositories import (
 from app.adapters.storage.postgres.database import async_session_factory
 from app.core.celery_app import celery_app
 from app.services.schedule_service import (
-    DEFAULT_HORIZON_WEEKS,
     ScheduleService,
 )
 

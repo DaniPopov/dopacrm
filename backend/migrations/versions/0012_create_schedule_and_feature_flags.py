@@ -58,9 +58,7 @@ def upgrade() -> None:
     )
     # Backfill existing tenants with coaches=true so the live Coaches
     # feature keeps working for gyms already using it.
-    op.execute(
-        "UPDATE tenants SET features_enabled = '{\"coaches\": true}'::jsonb"
-    )
+    op.execute("UPDATE tenants SET features_enabled = '{\"coaches\": true}'::jsonb")
 
     # ── 2. class_schedule_templates ────────────────────────────────
     op.create_table(
@@ -74,17 +72,13 @@ def upgrade() -> None:
         sa.Column(
             "tenant_id",
             postgresql.UUID(as_uuid=True),
-            sa.ForeignKey(
-                "tenants.id", name="fk_sched_templates_tenant_id", ondelete="CASCADE"
-            ),
+            sa.ForeignKey("tenants.id", name="fk_sched_templates_tenant_id", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column(
             "class_id",
             postgresql.UUID(as_uuid=True),
-            sa.ForeignKey(
-                "classes.id", name="fk_sched_templates_class_id", ondelete="CASCADE"
-            ),
+            sa.ForeignKey("classes.id", name="fk_sched_templates_class_id", ondelete="CASCADE"),
             nullable=False,
         ),
         # Which weekdays the template runs. Sunday-indexed 3-letter codes.
@@ -146,9 +140,7 @@ def upgrade() -> None:
         sa.CheckConstraint(
             "cardinality(weekdays) > 0", name="ck_sched_templates_weekdays_nonempty"
         ),
-        sa.CheckConstraint(
-            "end_time > start_time", name="ck_sched_templates_time_order"
-        ),
+        sa.CheckConstraint("end_time > start_time", name="ck_sched_templates_time_order"),
         sa.CheckConstraint(
             "ends_on IS NULL OR ends_on >= starts_on",
             name="ck_sched_templates_range_valid",
@@ -178,17 +170,13 @@ def upgrade() -> None:
         sa.Column(
             "tenant_id",
             postgresql.UUID(as_uuid=True),
-            sa.ForeignKey(
-                "tenants.id", name="fk_sessions_tenant_id", ondelete="CASCADE"
-            ),
+            sa.ForeignKey("tenants.id", name="fk_sessions_tenant_id", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column(
             "class_id",
             postgresql.UUID(as_uuid=True),
-            sa.ForeignKey(
-                "classes.id", name="fk_sessions_class_id", ondelete="RESTRICT"
-            ),
+            sa.ForeignKey("classes.id", name="fk_sessions_class_id", ondelete="RESTRICT"),
             nullable=False,
         ),
         # Back-pointer to the template. NULL = ad-hoc session.
@@ -240,9 +228,7 @@ def upgrade() -> None:
         sa.Column(
             "cancelled_by",
             postgresql.UUID(as_uuid=True),
-            sa.ForeignKey(
-                "users.id", name="fk_sessions_cancelled_by", ondelete="SET NULL"
-            ),
+            sa.ForeignKey("users.id", name="fk_sessions_cancelled_by", ondelete="SET NULL"),
             nullable=True,
         ),
         sa.Column("cancellation_reason", sa.Text(), nullable=True),
@@ -260,12 +246,8 @@ def upgrade() -> None:
             server_default=sa.func.now(),
             onupdate=sa.func.now(),
         ),
-        sa.CheckConstraint(
-            "status IN ('scheduled', 'cancelled')", name="ck_sessions_status"
-        ),
-        sa.CheckConstraint(
-            "ends_at > starts_at", name="ck_sessions_time_order"
-        ),
+        sa.CheckConstraint("status IN ('scheduled', 'cancelled')", name="ck_sessions_status"),
+        sa.CheckConstraint("ends_at > starts_at", name="ck_sessions_time_order"),
         # Shape: cancelled iff cancelled_at is set.
         sa.CheckConstraint(
             "(status = 'cancelled') = (cancelled_at IS NOT NULL)",
@@ -291,9 +273,7 @@ def upgrade() -> None:
         "ix_sessions_head_coach",
         "class_sessions",
         ["head_coach_id", "starts_at"],
-        postgresql_where=sa.text(
-            "status = 'scheduled' AND head_coach_id IS NOT NULL"
-        ),
+        postgresql_where=sa.text("status = 'scheduled' AND head_coach_id IS NOT NULL"),
     )
     # Materialization idempotency: one session per (template, starts_at).
     # Partial so ad-hoc sessions (template_id IS NULL) aren't constrained.
@@ -324,9 +304,7 @@ def upgrade() -> None:
         "ix_entries_session",
         "class_entries",
         ["session_id", sa.text("entered_at DESC")],
-        postgresql_where=sa.text(
-            "undone_at IS NULL AND session_id IS NOT NULL"
-        ),
+        postgresql_where=sa.text("undone_at IS NULL AND session_id IS NOT NULL"),
     )
 
 
@@ -342,9 +320,7 @@ def downgrade() -> None:
     op.drop_table("class_sessions")
 
     op.drop_index("ix_sched_templates_active", table_name="class_schedule_templates")
-    op.drop_index(
-        "ix_sched_templates_tenant_class", table_name="class_schedule_templates"
-    )
+    op.drop_index("ix_sched_templates_tenant_class", table_name="class_schedule_templates")
     op.drop_table("class_schedule_templates")
 
     op.drop_column("tenants", "features_enabled")

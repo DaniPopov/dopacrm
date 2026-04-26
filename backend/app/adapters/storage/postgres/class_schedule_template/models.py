@@ -38,16 +38,12 @@ class ClassScheduleTemplateORM(Base):
     )
     tenant_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey(
-            "tenants.id", name="fk_sched_templates_tenant_id", ondelete="CASCADE"
-        ),
+        ForeignKey("tenants.id", name="fk_sched_templates_tenant_id", ondelete="CASCADE"),
         nullable=False,
     )
     class_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey(
-            "classes.id", name="fk_sched_templates_class_id", ondelete="CASCADE"
-        ),
+        ForeignKey("classes.id", name="fk_sched_templates_class_id", ondelete="CASCADE"),
         nullable=False,
     )
 
@@ -78,9 +74,7 @@ class ClassScheduleTemplateORM(Base):
         Date, nullable=False, server_default=text("CURRENT_DATE")
     )
     ends_on: Mapped[date | None] = mapped_column(Date, nullable=True)
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -93,9 +87,7 @@ class ClassScheduleTemplateORM(Base):
     )
 
     __table_args__ = (
-        CheckConstraint(
-            "cardinality(weekdays) > 0", name="ck_sched_templates_weekdays_nonempty"
-        ),
+        CheckConstraint("cardinality(weekdays) > 0", name="ck_sched_templates_weekdays_nonempty"),
         CheckConstraint("end_time > start_time", name="ck_sched_templates_time_order"),
         CheckConstraint(
             "ends_on IS NULL OR ends_on >= starts_on",

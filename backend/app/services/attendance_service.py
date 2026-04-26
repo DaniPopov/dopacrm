@@ -436,9 +436,7 @@ class AttendanceService:
         # Branch 1: Schedule-based lookup (if tenant has Schedule on).
         tenant = await self._tenant_repo.find_by_id(tenant_id)
         if tenant is not None and is_feature_enabled(tenant, "schedule"):
-            sess = await self._session_repo.find_active_for_class(
-                tenant_id, class_id, at
-            )
+            sess = await self._session_repo.find_active_for_class(tenant_id, class_id, at)
             if sess is not None:
                 return sess.head_coach_id, sess.id, "session"
 
