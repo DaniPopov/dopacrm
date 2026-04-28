@@ -143,13 +143,13 @@ def _seed_tenant(session: Session, saas_plan_id) -> dict:
         ),
         {"t": tenant_id, "c": class_id, "k": coach_id},
     ).scalar_one()
-    # Enable Schedule for both tenants so the isolation probes can hit
-    # the schedule endpoints; without the flag we'd get 403 instead of
+    # Enable Schedule + Leads for both tenants so the isolation probes can hit
+    # those endpoints; without the flag we'd get 403 instead of
     # 404 and the test wouldn't exercise tenant scoping.
     session.execute(
         text(
             "UPDATE tenants SET features_enabled = "
-            '\'{"coaches": true, "schedule": true}\'::jsonb '
+            '\'{"coaches": true, "schedule": true, "leads": true}\'::jsonb '
             "WHERE id = :t"
         ),
         {"t": tenant_id},
@@ -174,6 +174,20 @@ def _seed_tenant(session: Session, saas_plan_id) -> dict:
         ),
         {"t": tenant_id, "c": class_id, "tpl": template_id, "k": coach_id},
     ).scalar_one()
+    lead_id = session.execute(
+        text(
+            "INSERT INTO leads (tenant_id, first_name, last_name, phone, source) "
+            "VALUES (:t, 'Lead', 'Person', :ph, 'walk_in') RETURNING id"
+        ),
+        {"t": tenant_id, "ph": f"05{uuid4().hex[:8]}"},
+    ).scalar_one()
+    activity_id = session.execute(
+        text(
+            "INSERT INTO lead_activities (tenant_id, lead_id, type, note) "
+            "VALUES (:t, :l, 'note', 'first contact') RETURNING id"
+        ),
+        {"t": tenant_id, "l": lead_id},
+    ).scalar_one()
     return {
         "tenant_id": str(tenant_id),
         "owner_id": str(owner_id),
@@ -188,6 +202,8 @@ def _seed_tenant(session: Session, saas_plan_id) -> dict:
         "class_coach_id": str(link_id),
         "template_id": str(template_id),
         "session_id": str(session_row_id),
+        "lead_id": str(lead_id),
+        "activity_id": str(activity_id),
     }
 
 
@@ -892,3 +908,144 @@ def test_owner_bulk_swap_to_foreign_coach_blocked(client: TestClient, two_gyms: 
         },
     )
     assert r.status_code == 404
+
+
+# ── Leads ──────────────────────────────────────────────────────────────
+
+
+def test_owner_cannot_read_foreign_lead(client: TestClient, two_gyms: dict) -> None:
+    r = client.get(
+        f"/api/v1/leads/{two_gyms['b']['lead_id']}",
+        headers=two_gyms["a"]["owner_headers"],
+    )
+    assert r.status_code == 404
+
+
+def test_sales_cannot_update_foreign_lead(client: TestClient, two_gyms: dict) -> None:
+    r = client.patch(
+        f"/api/v1/leads/{two_gyms['b']['lead_id']}",
+        headers=two_gyms["a"]["sales_headers"],
+        json={"notes": "hacked"},
+    )
+    assert r.status_code == 404
+
+
+def test_sales_cannot_set_status_on_foreign_lead(client: TestClient, two_gyms: dict) -> None:
+    r = client.post(
+        f"/api/v1/leads/{two_gyms['b']['lead_id']}/status",
+        headers=two_gyms["a"]["sales_headers"],
+        json={"new_status": "contacted"},
+    )
+    assert r.status_code == 404
+
+
+def test_sales_cannot_assign_foreign_user_to_own_lead(
+    client: TestClient, two_gyms: dict
+) -> None:
+    """A's sales tries to assign B's user to A's lead — assigned_to must
+    be a user in caller's tenant. 404 for the foreign user (not 422),
+    same posture as members."""
+    # First create a lead in A.
+    a_lead = client.post(
+        "/api/v1/leads",
+        headers=two_gyms["a"]["sales_headers"],
+        json={"first_name": "A", "last_name": "B", "phone": "+972-50-555-0001"},
+    ).json()
+    r = client.post(
+        f"/api/v1/leads/{a_lead['id']}/assign",
+        headers=two_gyms["a"]["sales_headers"],
+        json={"user_id": two_gyms["b"]["staff_id"]},
+    )
+    assert r.status_code == 404
+
+
+def test_sales_cannot_add_activity_to_foreign_lead(
+    client: TestClient, two_gyms: dict
+) -> None:
+    r = client.post(
+        f"/api/v1/leads/{two_gyms['b']['lead_id']}/activities",
+        headers=two_gyms["a"]["sales_headers"],
+        json={"type": "note", "note": "foreign mutation"},
+    )
+    assert r.status_code == 404
+
+
+def test_sales_cannot_list_activities_for_foreign_lead(
+    client: TestClient, two_gyms: dict
+) -> None:
+    r = client.get(
+        f"/api/v1/leads/{two_gyms['b']['lead_id']}/activities",
+        headers=two_gyms["a"]["sales_headers"],
+    )
+    assert r.status_code == 404
+
+
+def test_sales_cannot_convert_foreign_lead(client: TestClient, two_gyms: dict) -> None:
+    r = client.post(
+        f"/api/v1/leads/{two_gyms['b']['lead_id']}/convert",
+        headers=two_gyms["a"]["sales_headers"],
+        json={"plan_id": two_gyms["a"]["plan_id"], "payment_method": "cash"},
+    )
+    assert r.status_code == 404
+
+
+def test_convert_with_foreign_plan_blocked(client: TestClient, two_gyms: dict) -> None:
+    """A's sales converts A's lead but tries to enroll against B's plan
+    — must reject before any rows are written."""
+    a_lead = client.post(
+        "/api/v1/leads",
+        headers=two_gyms["a"]["sales_headers"],
+        json={"first_name": "A", "last_name": "B", "phone": "+972-50-555-0009"},
+    ).json()
+    r = client.post(
+        f"/api/v1/leads/{a_lead['id']}/convert",
+        headers=two_gyms["a"]["sales_headers"],
+        json={"plan_id": two_gyms["b"]["plan_id"], "payment_method": "cash"},
+    )
+    # Cross-tenant plan surfaces as 422 — the payload itself is the
+    # malformed cross-tenant link, matching the existing subscriptions
+    # cross-tenant probe semantics.
+    assert r.status_code == 422
+
+    # And the lead is unchanged.
+    after = client.get(
+        f"/api/v1/leads/{a_lead['id']}",
+        headers=two_gyms["a"]["sales_headers"],
+    ).json()
+    assert after["status"] == "new"
+
+
+def test_leads_list_scopes_to_caller_tenant(client: TestClient, two_gyms: dict) -> None:
+    """A's owner sees ONLY A's lead in the list — never B's."""
+    r = client.get("/api/v1/leads", headers=two_gyms["a"]["owner_headers"])
+    assert r.status_code == 200
+    ids = {ld["id"] for ld in r.json()}
+    assert two_gyms["a"]["lead_id"] in ids
+    assert two_gyms["b"]["lead_id"] not in ids
+
+
+def test_lost_reasons_scopes_to_caller_tenant(
+    client: TestClient, two_gyms: dict
+) -> None:
+    """B logs a lost reason. A's owner asking for autocomplete must NOT
+    see B's reason."""
+    # B marks its lead lost.
+    engine = create_engine(_sync_url())
+    with Session(engine) as s:
+        s.execute(
+            text(
+                "UPDATE leads SET status = 'lost', lost_reason = 'b-only-reason' "
+                "WHERE id = :l"
+            ),
+            {"l": two_gyms["b"]["lead_id"]},
+        )
+        s.commit()
+    engine.dispose()
+
+    r = client.get(
+        "/api/v1/leads/lost-reasons",
+        headers=two_gyms["a"]["owner_headers"],
+    )
+    assert r.status_code == 200
+    reasons = {row["reason"] for row in r.json()}
+    assert "b-only-reason" not in reasons

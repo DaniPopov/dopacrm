@@ -17,6 +17,8 @@ from app.adapters.storage.postgres.class_session.models import ClassSessionORM
 from app.adapters.storage.postgres.coach.models import CoachORM
 from app.adapters.storage.postgres.database import Base, async_session_factory, get_engine
 from app.adapters.storage.postgres.gym_class.models import GymClassORM
+from app.adapters.storage.postgres.lead.models import LeadORM
+from app.adapters.storage.postgres.lead_activity.models import LeadActivityORM
 from app.adapters.storage.postgres.member.models import MemberORM
 from app.adapters.storage.postgres.membership_plan.models import (
     MembershipPlanORM,
@@ -39,6 +41,8 @@ __all__ = [
     "ClassSessionORM",
     "CoachORM",
     "GymClassORM",
+    "LeadActivityORM",
+    "LeadORM",
     "MemberORM",
     "MembershipPlanORM",
     "PlanEntitlementORM",

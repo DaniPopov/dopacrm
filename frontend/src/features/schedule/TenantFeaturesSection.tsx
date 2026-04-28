@@ -17,6 +17,7 @@ import { useUpdateTenantFeatures } from "./hooks"
 const GATED_FEATURES = [
   { key: "coaches", label: "מאמנים + חישוב שכר" },
   { key: "schedule", label: "לוח שיעורים שבועי" },
+  { key: "leads", label: "לידים + פיפליין מכירות" },
 ] as const
 
 interface Props {

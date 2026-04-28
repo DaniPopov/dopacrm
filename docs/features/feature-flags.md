@@ -37,12 +37,13 @@ Same column, same `canAccess`, same call sites. Incremental unlock.
 |---|---|---|
 | `coaches`  | OFF | ON (backfilled) |
 | `schedule` | OFF | OFF (nothing to grandfather) |
+| `leads`    | OFF | OFF (nothing to grandfather) |
 
 ### Ungated features (always on)
 
 - `dashboard`, `tenants` (super_admin platform view), `members`,
   `classes`, `plans`, `attendance`, `users` (gym staff management),
-  `leads` (when it ships), `payments` (when it ships).
+  `payments` (when it ships).
 
 Rule of thumb: **a feature is gated if the gym can plausibly operate
 without it**. Members + Attendance + Plans are the CRM. Coaches,
@@ -67,7 +68,8 @@ UPDATE tenants SET features_enabled = '{"coaches": true}'::jsonb;
 ```json
 {
   "coaches":  true,
-  "schedule": false
+  "schedule": false,
+  "leads":    false
 }
 ```
 
@@ -101,10 +103,11 @@ from enum import StrEnum
 class GatedFeature(StrEnum):
     COACHES  = "coaches"
     SCHEDULE = "schedule"
+    LEADS    = "leads"
 
 # Features listed here are checked against tenant.features_enabled.
 # Everything NOT listed here is always on.
-GATED = {GatedFeature.COACHES, GatedFeature.SCHEDULE}
+GATED = {GatedFeature.COACHES, GatedFeature.SCHEDULE, GatedFeature.LEADS}
 
 
 def is_feature_enabled(tenant: Tenant, feature: str) -> bool:
@@ -192,7 +195,7 @@ super_admin settings panel can render the current state.
 ### `permissions.ts` evolves
 
 ```ts
-const GATED_FEATURES = new Set<Feature>(["coaches", "schedule"])
+const GATED_FEATURES = new Set<Feature>(["coaches", "schedule", "leads"])
 
 export function canAccess(
   user: User | null | undefined,
@@ -222,6 +225,7 @@ map comes from `auth-provider`, nothing else changes.
 ```
 feature="coaches"  → hidden when tenant has coaches OFF
 feature="schedule" → hidden when tenant has schedule OFF
+feature="leads"    → hidden when tenant has leads OFF
 ```
 
 ### Route guards
@@ -239,6 +243,7 @@ gated feature:
 ┌── תכונות ──────────────────────────┐
 │  ☑ מאמנים + חישוב שכר              │
 │  ☐ לוח שיעורים שבועי                │
+│  ☐ לידים + פיפליין                  │
 │                                     │
 │  [שמירה]                            │
 └─────────────────────────────────────┘
@@ -344,8 +349,9 @@ log via the global middleware.
 ## Related
 
 - [`coaches.md`](./coaches.md) — first gated feature
-- [`schedule.md`](./schedule.md) — second gated feature, shipping
+- [`schedule.md`](./schedule.md) — second gated feature, shipped
   alongside this mechanism
+- [`leads.md`](./leads.md) — third gated feature
 - [`roles.md`](./roles.md) — the Phase 4 dynamic roles spec that
   builds on top of this gate
 - [`../crm_logic.md`](../crm_logic.md) §12 permission layering —

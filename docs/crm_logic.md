@@ -295,6 +295,7 @@ same pattern: terminal states go red, reversible ones go amber.
 | Subscription | active, frozen, expired, CANCELLED, REPLACED | freeze ↔ unfreeze; renew from active|expired; change_plan → spawns new active, old → REPLACED; cancel terminal |
 | ClassEntry | recorded, UNDONE (via `undone_at`) | undo only within 24h; no re-enable |
 | Coach | active, frozen, CANCELLED | freeze ↔ unfreeze; cancel terminal |
+| Lead | new, contacted, trial, CONVERTED, lost | new→contacted→trial→converted (or any direct skip forward); lost reachable from any open state and reopens to contacted; converted is terminal and only reachable through the convert endpoint (which atomically writes Member + Subscription + status_change) |
 
 **Rule of thumb applied everywhere:**
 
@@ -417,7 +418,7 @@ Reads follow the same pattern except the role gate is usually weaker
 (any tenant user). Feature gate + tenant scope are **identical** for
 reads and writes.
 
-**Gated features today:** `coaches`, `schedule`.
+**Gated features today:** `coaches`, `schedule`, `leads`.
 **Ungated features today:** `members`, `classes`, `plans`,
 `subscriptions`, `attendance`, `users`, `tenants`.
 
@@ -432,4 +433,7 @@ reads and writes.
 - `features/feature-flags.md` — the mechanism §12 step 3 checks.
 - `features/schedule.md` — session-based attribution (§5) + updated
   `per_session` pay (§6).
+- `features/leads.md` — pipeline state machine (§7 row) + the
+  cross-feature convert transaction that writes Lead + Member +
+  Subscription + activity in one Postgres txn.
 - `features/*.md` — per-feature specs that lean on this doc.
