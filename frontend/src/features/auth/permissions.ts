@@ -76,7 +76,7 @@ export type Feature =
  * ``tenantFeatures[feature]`` is truthy. Ungated features (members,
  * attendance, etc.) ignore the tenantFeatures map.
  */
-export const GATED_FEATURES: Set<Feature> = new Set(["coaches", "schedule"])
+export const GATED_FEATURES: Set<Feature> = new Set(["coaches", "schedule", "leads"])
 
 /**
  * Baseline: what each role sees without any owner overrides.
@@ -103,10 +103,13 @@ const BASELINE: Record<Role, Feature[]> = {
   ],
   // Staff handles day-to-day ops — attendance is the highest-frequency
   // front-desk task. Members + classes context for the check-in flow.
-  staff: ["dashboard", "members", "classes", "attendance"],
+  // Leads gives staff read-only visibility (so they can spot a walk-in's
+  // lead history at check-in); the backend enforces read-only via
+  // ``_require_writer`` on any mutation.
+  staff: ["dashboard", "members", "classes", "attendance", "leads"],
   // Sales converts leads → members. Reads classes when enrolling; no
-  // attendance (check-in is a staff/operations task).
-  sales: ["dashboard", "members", "classes"],
+  // attendance (check-in is a staff/operations task). Full leads access.
+  sales: ["dashboard", "members", "classes", "leads"],
   // Coach (logged-in trainer) — read-only baseline. Sees only their
   // own classes + attendance rosters + earnings. All scoping is
   // enforced server-side; the frontend feature gates just control

@@ -484,6 +484,145 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List leads in the caller's tenant */
+        get: operations["list_leads_api_v1_leads_get"];
+        put?: never;
+        /** Create a lead (sales+) */
+        post: operations["create_lead_api_v1_leads_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leads/lost-reasons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Top lost reasons in the last N days (for autocomplete) */
+        get: operations["list_lost_reasons_api_v1_leads_lost_reasons_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leads/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pipeline counts + 30-day conversion rate */
+        get: operations["get_stats_api_v1_leads_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leads/{lead_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch a single lead */
+        get: operations["get_lead_api_v1_leads__lead_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update lead fields (sales+) */
+        patch: operations["update_lead_api_v1_leads__lead_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/leads/{lead_id}/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lead's activity timeline (newest first) */
+        get: operations["list_activities_api_v1_leads__lead_id__activities_get"];
+        put?: never;
+        /** Log an activity (sales+). status_change is system-only. */
+        post: operations["add_activity_api_v1_leads__lead_id__activities_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leads/{lead_id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Assign or unassign a lead (sales+) */
+        post: operations["assign_lead_api_v1_leads__lead_id__assign_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leads/{lead_id}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Convert a lead to a Member + Subscription (sales+) */
+        post: operations["convert_lead_api_v1_leads__lead_id__convert_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leads/{lead_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move a lead through the pipeline (sales+) */
+        post: operations["set_status_api_v1_leads__lead_id__status_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/members": {
         parameters: {
             query?: never;
@@ -1195,6 +1334,18 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * AddActivityRequest
+         * @description POST /api/v1/leads/{id}/activities — log a touchpoint.
+         *
+         *     ``type=status_change`` is system-only; clients sending it get 422.
+         *     Blank notes are rejected as 422 to keep the timeline useful.
+         */
+        AddActivityRequest: {
+            /** Note */
+            note: string;
+            type: components["schemas"]["LeadActivityType"];
+        };
+        /**
          * AssignCoachRequest
          * @description POST /api/v1/classes/{class_id}/coaches — attach a coach to a class.
          * @example {
@@ -1237,6 +1388,17 @@ export interface components {
              * @description Lowercase 3-letter codes ('sun'..'sat'). Empty = all days.
              */
             weekdays?: string[];
+        };
+        /**
+         * AssignLeadRequest
+         * @description POST /api/v1/leads/{id}/assign — set or clear the assignee.
+         */
+        AssignLeadRequest: {
+            /**
+             * User Id
+             * @description Pass null to unassign. Must be in the caller's tenant.
+             */
+            user_id?: string | null;
         };
         /**
          * BillingPeriod
@@ -1464,6 +1626,103 @@ export interface components {
          */
         CoachStatus: "active" | "frozen" | "cancelled";
         /**
+         * ConvertLeadRequest
+         * @description POST /api/v1/leads/{id}/convert — atomic Member + Subscription.
+         */
+        ConvertLeadRequest: {
+            /**
+             * Copy Notes To Member
+             * @description Copy lead.notes onto the new member.notes.
+             * @default true
+             */
+            copy_notes_to_member: boolean;
+            payment_method: components["schemas"]["PaymentMethod"];
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /**
+             * Start Date
+             * @description Subscription start date. Defaults to today; allowed up to 30 days back.
+             */
+            start_date?: string | null;
+        };
+        /**
+         * ConvertLeadResponse
+         * @description Full result of a successful convert — UI navigates to the
+         *     member's detail page after.
+         */
+        ConvertLeadResponse: {
+            lead: components["schemas"]["LeadResponse"];
+            member: components["schemas"]["ConvertedMemberSummary"];
+            subscription: components["schemas"]["ConvertedSubscriptionSummary"];
+        };
+        /** ConvertedMemberSummary */
+        ConvertedMemberSummary: {
+            /** Email */
+            email: string | null;
+            /** First Name */
+            first_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Join Date
+             * Format: date
+             */
+            join_date: string;
+            /** Last Name */
+            last_name: string;
+            /** Notes */
+            notes: string | null;
+            /** Phone */
+            phone: string;
+            status: components["schemas"]["MemberStatus"];
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+        };
+        /** ConvertedSubscriptionSummary */
+        ConvertedSubscriptionSummary: {
+            /** Currency */
+            currency: string;
+            /** Expires At */
+            expires_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Member Id
+             * Format: uuid
+             */
+            member_id: string;
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /** Price Cents */
+            price_cents: number;
+            /**
+             * Started At
+             * Format: date
+             */
+            started_at: string;
+            status: components["schemas"]["SubscriptionStatus"];
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+        };
+        /**
          * CreateAdHocSessionRequest
          * @description POST /api/v1/schedule/sessions — one-off session (owner+).
          */
@@ -1543,6 +1802,37 @@ export interface components {
              * @description Unique within tenant
              */
             name: string;
+        };
+        /**
+         * CreateLeadRequest
+         * @description POST /api/v1/leads — add a lead to the caller's tenant.
+         * @example {
+         *       "first_name": "Yael",
+         *       "last_name": "Cohen",
+         *       "notes": "Walked in asking about boxing.",
+         *       "phone": "+972-50-123-4567",
+         *       "source": "walk_in"
+         *     }
+         */
+        CreateLeadRequest: {
+            /** Assigned To */
+            assigned_to?: string | null;
+            /** Custom Fields */
+            custom_fields?: {
+                [key: string]: unknown;
+            } | null;
+            /** Email */
+            email?: string | null;
+            /** First Name */
+            first_name: string;
+            /** Last Name */
+            last_name: string;
+            /** Notes */
+            notes?: string | null;
+            /** Phone */
+            phone: string;
+            /** @default other */
+            source: components["schemas"]["LeadSource"];
         };
         /**
          * CreateMemberRequest
@@ -2082,6 +2372,112 @@ export interface components {
              */
             password: string;
         };
+        /** LeadActivityResponse */
+        LeadActivityResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Lead Id
+             * Format: uuid
+             */
+            lead_id: string;
+            /** Note */
+            note: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            type: components["schemas"]["LeadActivityType"];
+        };
+        /**
+         * LeadActivityType
+         * @description Activity type. ``status_change`` is system-only.
+         * @enum {string}
+         */
+        LeadActivityType: "call" | "email" | "note" | "meeting" | "status_change";
+        /** LeadResponse */
+        LeadResponse: {
+            /** Assigned To */
+            assigned_to: string | null;
+            /** Converted Member Id */
+            converted_member_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Custom Fields */
+            custom_fields: {
+                [key: string]: unknown;
+            };
+            /** Email */
+            email: string | null;
+            /** First Name */
+            first_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Last Name */
+            last_name: string;
+            /** Lost Reason */
+            lost_reason: string | null;
+            /** Notes */
+            notes: string | null;
+            /** Phone */
+            phone: string;
+            source: components["schemas"]["LeadSource"];
+            status: components["schemas"]["LeadStatus"];
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * LeadSource
+         * @description How the lead came in. Drives the 'where do members come from?' report.
+         * @enum {string}
+         */
+        LeadSource: "walk_in" | "website" | "referral" | "social_media" | "ad" | "other";
+        /**
+         * LeadStatsResponse
+         * @description GET /leads/stats — Kanban headers + dashboard widget.
+         */
+        LeadStatsResponse: {
+            /**
+             * Conversion Rate 30D
+             * @description Converted / created in the last 30 days. None when zero leads created.
+             */
+            conversion_rate_30d: number | null;
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * LeadStatus
+         * @description Pipeline status of a lead.
+         * @enum {string}
+         */
+        LeadStatus: "new" | "contacted" | "trial" | "converted" | "lost";
         /**
          * LoginRequest
          * @description POST /api/v1/auth/login
@@ -2098,6 +2494,16 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /**
+         * LostReasonRowResponse
+         * @description One row in the autocomplete dropdown.
+         */
+        LostReasonRowResponse: {
+            /** Count */
+            count: number;
+            /** Reason */
+            reason: string;
         };
         /**
          * MemberResponse
@@ -2471,6 +2877,19 @@ export interface components {
          * @enum {string}
          */
         SessionStatus: "scheduled" | "cancelled";
+        /**
+         * SetStatusRequest
+         * @description POST /api/v1/leads/{id}/status — pipeline transition.
+         *
+         *     ``new_status='converted'`` is rejected by the service (use the
+         *     convert endpoint). ``lost_reason`` is read only when
+         *     ``new_status='lost'`` (other transitions clear it).
+         */
+        SetStatusRequest: {
+            /** Lost Reason */
+            lost_reason?: string | null;
+            new_status: components["schemas"]["LeadStatus"];
+        };
         /**
          * SubscriptionEventResponse
          * @description Timeline entry as returned to the frontend.
@@ -2880,6 +3299,32 @@ export interface components {
             description?: string | null;
             /** Name */
             name?: string | null;
+        };
+        /**
+         * UpdateLeadRequest
+         * @description PATCH /api/v1/leads/{id} — partial update (sales+).
+         *
+         *     Status / lost_reason / converted_member_id are NOT mutable here —
+         *     they're driven by the dedicated endpoints that emit activity rows.
+         */
+        UpdateLeadRequest: {
+            /** Assigned To */
+            assigned_to?: string | null;
+            /** Custom Fields */
+            custom_fields?: {
+                [key: string]: unknown;
+            } | null;
+            /** Email */
+            email?: string | null;
+            /** First Name */
+            first_name?: string | null;
+            /** Last Name */
+            last_name?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Phone */
+            phone?: string | null;
+            source?: components["schemas"]["LeadSource"] | null;
         };
         /**
          * UpdateMemberRequest
@@ -4170,6 +4615,367 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CoachResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_leads_api_v1_leads_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["LeadStatus"][] | null;
+                source?: components["schemas"]["LeadSource"][] | null;
+                assigned_to?: string | null;
+                search?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_lead_api_v1_leads_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLeadRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_lost_reasons_api_v1_leads_lost_reasons_get: {
+        parameters: {
+            query?: {
+                days?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LostReasonRowResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stats_api_v1_leads_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadStatsResponse"];
+                };
+            };
+        };
+    };
+    get_lead_api_v1_leads__lead_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_lead_api_v1_leads__lead_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLeadRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_activities_api_v1_leads__lead_id__activities_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadActivityResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_activity_api_v1_leads__lead_id__activities_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddActivityRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadActivityResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assign_lead_api_v1_leads__lead_id__assign_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignLeadRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    convert_lead_api_v1_leads__lead_id__convert_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConvertLeadRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConvertLeadResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_status_api_v1_leads__lead_id__status_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadResponse"];
                 };
             };
             /** @description Validation Error */

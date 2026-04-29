@@ -33,6 +33,7 @@ class GatedFeature(StrEnum):
 
     COACHES = "coaches"
     SCHEDULE = "schedule"
+    LEADS = "leads"
 
 
 #: Set of gated feature names for fast lookup.

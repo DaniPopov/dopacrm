@@ -13,6 +13,8 @@ import PlanDetailPage from "@/features/plans/PlanDetailPage"
 import CheckInPage from "@/features/attendance/CheckInPage"
 import CoachListPage from "@/features/coaches/CoachListPage"
 import CoachDetailPage from "@/features/coaches/CoachDetailPage"
+import LeadDetailPage from "@/features/leads/LeadDetailPage"
+import LeadsPage from "@/features/leads/LeadsPage"
 import SchedulePage from "@/features/schedule/SchedulePage"
 import ProtectedRoute from "@/components/layout/ProtectedRoute"
 import RequireFeature from "@/components/layout/RequireFeature"
@@ -68,6 +70,13 @@ export default function App() {
               sessions read-only. Gated by tenant feature flag. */}
           <Route element={<RequireFeature feature="schedule" />}>
             <Route path="/schedule" element={<SchedulePage />} />
+          </Route>
+
+          {/* Gym-scoped: sales pipeline. Owner / sales full CRUD + convert.
+              Staff read-only. Coach blocked. Gated by tenant feature flag. */}
+          <Route element={<RequireFeature feature="leads" />}>
+            <Route path="/leads" element={<LeadsPage />} />
+            <Route path="/leads/:id" element={<LeadDetailPage />} />
           </Route>
         </Route>
       </Route>

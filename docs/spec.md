@@ -314,9 +314,9 @@ Recorded income events. DopaCRM **records** payments — it doesn't process card
 
 ### 3.8 Lead Management
 
-Prospective members moving through a pipeline.
+Prospective members moving through a sales pipeline. **Gated feature** — OFF by default for new tenants; super_admin flips it per gym. Some gyms run on word-of-mouth and have no use for a pipeline.
 
-**Stored in:** PostgreSQL (`leads` table)
+**Stored in:** PostgreSQL (`leads` table) + `lead_activities` table for the activity feed.
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -328,36 +328,31 @@ Prospective members moving through a pipeline.
 | phone | text | |
 | source | text | `walk_in`, `website`, `referral`, `social_media`, `ad`, `other` |
 | status | text | `new`, `contacted`, `trial`, `converted`, `lost` |
-| assigned_to | uuid | FK → `users`. Nullable |
+| assigned_to | uuid | FK → `users`. Nullable. Routing/reporting only — sales sees all leads in tenant. |
 | notes | text | Nullable |
+| lost_reason | text | Nullable. Set when status = `lost`. Free text with autocomplete from tenant's recent reasons. |
 | converted_member_id | uuid | FK → `members`. Set when status = `converted` |
+| custom_fields | jsonb | Reserved for per-tenant fields; no UI in v1 |
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 
-**Lead activity feed:** Postgres table `lead_activities` (revised from the original Mongo design — uniform shape, FKs to leads/users, queried WITH the lead). Columns: `id`, `tenant_id`, `lead_id`, `type`, `note`, `created_by`, `created_at`:
-```json
-{
-  "lead_id": "...",
-  "tenant_id": "...",
-  "type": "call",
-  "note": "Called, interested in monthly plan. Booked trial for Friday.",
-  "created_by": "user-uuid",
-  "created_at": "2026-04-10T10:30:00Z"
-}
-```
-
-Activity types: `call`, `email`, `note`, `status_change`, `trial_booked`, `trial_completed`.
+**Activity types (v1):** `call`, `email`, `note`, `meeting`, `status_change`. The first four are user-logged; `status_change` is auto-generated on every transition. Activities are append-only — no edit, no delete.
 
 **Pipeline stages:**
 ```
-new → contacted → trial → converted
-                       ↘ lost
+new → contacted → trial → converted   (terminal — must go through convert endpoint)
+                       ↘ lost          (reopen path → contacted)
 ```
 
 **Business rules:**
-- Converting a lead creates a `Member` and links via `converted_member_id`
-- Lost leads can be reopened (status back to `contacted`)
-- Lead source tracking for "where do our members come from?" reporting
+- Converting a lead is **atomic** — single endpoint creates a `Member` (auto-filled) + first `Subscription` (plan picker) + flips `lead.status='converted'` + writes `status_change` activity, all in one Postgres transaction.
+- Lost leads can be reopened (status back to `contacted`); historical lost reason is preserved in the activity row but the column is cleared.
+- Drag-to-converted is **not** available via simple status PATCH — the convert endpoint is the only path (it requires a plan).
+- Lead source tracking for "where do our members come from?" reporting.
+
+**Permissions:** owner / sales: full CRUD + convert. staff: read-only (so check-in staff can spot a walk-in's lead history). coach: no access. super_admin: platform.
+
+See [`docs/features/leads.md`](features/leads.md) for the full spec — entity, service rules, API, UI sketch, tests, migration plan.
 
 ---
 
@@ -652,15 +647,15 @@ See [`docs/frontend.md`](./frontend.md) for the full architecture and convention
 2. **Phase 2 — Core CRM** *(done)*: Members, Classes, Membership Plans, Subscriptions, Attendance (check-in)
 3. **Phase 3 — Operations** *(now)*:
    - Coaches & payroll *(shipped)*
-   - **Schedule + Feature Flags** *(in progress)* — weekly calendar, templates, materialized sessions, cancellation, substitutions; tenant-level feature gating
-   - Payments *(next)*
-   - Leads + Pipeline
+   - **Schedule + Feature Flags** *(shipped)* — weekly calendar, templates, materialized sessions, cancellation, substitutions; tenant-level feature gating
+   - **Leads + Pipeline** *(in progress)* — gated feature, OFF by default
+   - Payments
    - Dashboard with real metrics
 4. **Phase 4 — Flexibility**: Dynamic roles system (see `docs/features/roles.md`), owner-facing Settings page (flips feature flags + role grants), custom fields UI, private 1-on-1 workouts
 5. **Phase 5 — Integrations**: Stripe/payment processing, CSV import/export
 6. **Phase 6 — Advanced**: Trainer mobile app, marketing automation, customizable dashboards
 
-**Ordering within Phase 3.** Coaches *(shipped)* → **Schedule + Feature Flags** → Payments → Leads → Dashboard metrics. Schedule follows Coaches because it upgrades the weekday-based attribution to per-session truth (details in `docs/features/schedule.md` §"Attribution upgrade"). Feature Flags ship *with* Schedule because both Coaches and Schedule need tenant-level on/off — Coaches gets a backfill flag in the same migration. Payments is independent. Leads slots in whenever capacity allows. Dashboard is last because it's a consumer of every upstream feature's metrics.
+**Ordering within Phase 3.** Coaches *(shipped)* → **Schedule + Feature Flags** *(shipped)* → **Leads** *(in progress)* → Payments → Dashboard metrics. Schedule followed Coaches because it upgrades the weekday-based attribution to per-session truth (details in `docs/features/schedule.md` §"Attribution upgrade"). Feature Flags shipped *with* Schedule because both Coaches and Schedule need tenant-level on/off — Coaches got a backfill flag in the same migration. Leads precedes Payments because Leads has no dependency on Payments and the Dashboard wire-up at the end of the phase wants Leads metrics too. Dashboard is last because it's a consumer of every upstream feature's metrics.
 
 **Why Flexibility is Phase 4, not Phase 1:** The flexibility thesis (owner configures everything) is the product's core differentiator, but we can only design the permission grid after 2-3 real gym-scoped features exist to permission. Building it earlier means designing in the dark and rebuilding the grid as features land. **The Feature Flags mechanism shipping in Phase 3 is the first concrete piece of that vision** — tenant-level on/off, super_admin-controlled today, owner-controlled when the Settings page lands. In the meantime, the frontend's `permissions.canAccess(user, feature, tenantFeatures)` module uses a hardcoded baseline that will be swapped for backend-driven config — call sites won't change.
 

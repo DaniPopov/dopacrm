@@ -411,3 +411,41 @@ class InvalidBulkRangeError(AppError):
 
     def __init__(self, detail: str) -> None:
         super().__init__(detail, "SCHEDULE_INVALID_BULK_RANGE")
+
+
+# ── Leads ────────────────────────────────────────────────────────────────────
+class LeadNotFoundError(AppError):
+    """No lead matches the given id (or it's in another tenant)."""
+
+    def __init__(self, lead_id: str) -> None:
+        super().__init__(f"Lead not found: {lead_id}", "LEAD_NOT_FOUND")
+
+
+class InvalidLeadStatusTransitionError(AppError):
+    """Attempted a pipeline transition the state machine doesn't allow.
+
+    Examples: setting status back to ``new`` from ``contacted``, or
+    sending ``new_status='converted'`` to the simple status endpoint
+    (the convert endpoint is the only path to ``converted``).
+    """
+
+    def __init__(self, lead_id: str, current: str, attempted: str) -> None:
+        super().__init__(
+            f"Cannot transition lead {lead_id} from {current} to {attempted}",
+            "INVALID_LEAD_STATUS_TRANSITION",
+        )
+
+
+class LeadAlreadyConvertedError(AppError):
+    """Convert called on a lead that's already in the ``converted`` state.
+
+    Distinct from the transition error — this is a re-convert attempt on
+    a terminal state, surfaced with its own code so the UI can show a
+    "this lead was already converted" message with a link to the member.
+    """
+
+    def __init__(self, lead_id: str) -> None:
+        super().__init__(
+            f"Lead already converted: {lead_id}",
+            "LEAD_ALREADY_CONVERTED",
+        )

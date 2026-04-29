@@ -254,6 +254,43 @@ export function humanizeScheduleError(err: unknown): string {
 }
 
 /**
+ * Overrides for Leads API errors (CRUD + status + assign + convert + activities).
+ *
+ * Convert produces the most interesting error space — it can fail with
+ * MEMBER_ALREADY_EXISTS (phone collision), an invalid plan
+ * (PLAN_NOT_FOUND, SUBSCRIPTION_PLAN_TENANT_MISMATCH), or simply because
+ * the lead was already converted (LEAD_ALREADY_CONVERTED). Each gets
+ * its own Hebrew copy.
+ */
+export function humanizeLeadError(err: unknown): string {
+  if (err instanceof ApiError || (err instanceof Error && "status" in err)) {
+    const apiErr = err as ApiError
+    const status = apiErr.status
+    const msg = apiErr.message
+    if (status === 403 && msg.includes("FEATURE_DISABLED"))
+      return "תכונת לידים אינה זמינה לחדר כושר זה. פנו למנהל המערכת"
+    // PLAN_NOT_FOUND surfaces from convert when the picked plan id is
+    // gone; check it BEFORE the generic 404 fall-through so the operator
+    // sees "plan not found" instead of "lead not found."
+    if (status === 404 && msg.includes("PLAN_NOT_FOUND"))
+      return "המסלול לא נמצא"
+    if (status === 404) return "הליד לא נמצא"
+    if (status === 409 && msg.includes("LEAD_ALREADY_CONVERTED"))
+      return "הליד כבר הומר למנוי"
+    if (status === 409 && msg.includes("INVALID_LEAD_STATUS_TRANSITION"))
+      return "לא ניתן לבצע מעבר זה במצב הנוכחי של הליד"
+    // Convert-specific errors that bubble up from MemberService / SubscriptionService.
+    if (status === 409 && msg.includes("MEMBER_ALREADY_EXISTS"))
+      return "מנוי עם מספר טלפון זה כבר קיים. בדקו אם זה אותו אדם."
+    if (status === 422 && msg.includes("SUBSCRIPTION_PLAN_TENANT_MISMATCH"))
+      return "המסלול שנבחר אינו שייך לחדר כושר זה"
+    if (status === 422) return "הפרטים שהוזנו אינם תקינים, בדקו את הטופס"
+    return genericMessage(status)
+  }
+  return "אירעה שגיאה בליד"
+}
+
+/**
  * Overrides for Coaches API errors (CRUD + links + earnings).
  */
 export function humanizeCoachError(err: unknown): string {

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import {
   ApiError,
   humanizeClassError,
+  humanizeLeadError,
   humanizeLoginError,
   humanizeMemberError,
   humanizeTenantError,
@@ -162,5 +163,59 @@ describe("humanizeUploadError", () => {
 
   it("returns generic message for unknown errors", () => {
     expect(humanizeUploadError(null)).toBe("אירעה שגיאה בהעלאת הקובץ")
+  })
+})
+
+describe("humanizeLeadError", () => {
+  it("returns FEATURE_DISABLED message for 403 with that code", () => {
+    expect(humanizeLeadError(new ApiError("FEATURE_DISABLED", 403))).toBe(
+      "תכונת לידים אינה זמינה לחדר כושר זה. פנו למנהל המערכת",
+    )
+  })
+
+  it("returns 'lead not found' for 404", () => {
+    expect(humanizeLeadError(new ApiError("LEAD_NOT_FOUND", 404))).toBe(
+      "הליד לא נמצא",
+    )
+  })
+
+  it("returns 'already converted' for 409 LEAD_ALREADY_CONVERTED", () => {
+    expect(humanizeLeadError(new ApiError("LEAD_ALREADY_CONVERTED", 409))).toBe(
+      "הליד כבר הומר למנוי",
+    )
+  })
+
+  it("returns transition message for 409 INVALID_LEAD_STATUS_TRANSITION", () => {
+    expect(
+      humanizeLeadError(new ApiError("INVALID_LEAD_STATUS_TRANSITION", 409)),
+    ).toBe("לא ניתן לבצע מעבר זה במצב הנוכחי של הליד")
+  })
+
+  it("returns phone collision message for 409 MEMBER_ALREADY_EXISTS (convert)", () => {
+    expect(humanizeLeadError(new ApiError("MEMBER_ALREADY_EXISTS", 409))).toBe(
+      "מנוי עם מספר טלפון זה כבר קיים. בדקו אם זה אותו אדם.",
+    )
+  })
+
+  it("returns plan-tenant-mismatch message for 422 SUBSCRIPTION_PLAN_TENANT_MISMATCH", () => {
+    expect(
+      humanizeLeadError(new ApiError("SUBSCRIPTION_PLAN_TENANT_MISMATCH", 422)),
+    ).toBe("המסלול שנבחר אינו שייך לחדר כושר זה")
+  })
+
+  it("returns plan-not-found message for 404 PLAN_NOT_FOUND", () => {
+    expect(humanizeLeadError(new ApiError("PLAN_NOT_FOUND", 404))).toBe(
+      "המסלול לא נמצא",
+    )
+  })
+
+  it("returns generic 422 message for unhandled validation errors", () => {
+    expect(humanizeLeadError(new ApiError("x", 422))).toBe(
+      "הפרטים שהוזנו אינם תקינים, בדקו את הטופס",
+    )
+  })
+
+  it("returns generic message for non-ApiError", () => {
+    expect(humanizeLeadError(null)).toBe("אירעה שגיאה בליד")
   })
 })

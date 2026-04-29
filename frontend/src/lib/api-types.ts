@@ -106,6 +106,22 @@ export type EarningsBreakdown = Schemas["EarningsBreakdownResponse"]
 export type EarningsLinkRow = Schemas["EarningsLinkRowResponse"]
 export type ReassignCoachRequest = Schemas["ReassignCoachRequest"]
 
+// Leads
+export type Lead = Schemas["LeadResponse"]
+export type LeadStatus = Schemas["LeadStatus"]
+export type LeadSource = Schemas["LeadSource"]
+export type LeadActivity = Schemas["LeadActivityResponse"]
+export type LeadActivityType = Schemas["LeadActivityType"]
+export type CreateLeadRequest = Schemas["CreateLeadRequest"]
+export type UpdateLeadRequest = Schemas["UpdateLeadRequest"]
+export type SetLeadStatusRequest = Schemas["SetStatusRequest"]
+export type AssignLeadRequest = Schemas["AssignLeadRequest"]
+export type ConvertLeadRequest = Schemas["ConvertLeadRequest"]
+export type ConvertLeadResponse = Schemas["ConvertLeadResponse"]
+export type AddActivityRequest = Schemas["AddActivityRequest"]
+export type LeadStats = Schemas["LeadStatsResponse"]
+export type LostReasonRow = Schemas["LostReasonRowResponse"]
+
 // Uploads
 export type UploadResponse = Schemas["UploadResponse"]
 

@@ -52,7 +52,11 @@ describe("canAccess — baseline", () => {
     expect(canAccess(u, "dashboard")).toBe(true)
     expect(canAccess(u, "members")).toBe(true)
     expect(canAccess(u, "classes")).toBe(true)
+    // Leads is in sales' baseline but gated — visibility requires the
+    // tenant flag. With no flag map (default empty), it's hidden.
     expect(canAccess(u, "leads")).toBe(false)
+    // With the flag enabled, sales sees leads.
+    expect(canAccess(u, "leads", undefined, { leads: true })).toBe(true)
     expect(canAccess(u, "settings")).toBe(false)
   })
 
@@ -85,6 +89,10 @@ describe("canAccess — baseline", () => {
     // Schedule same.
     expect(canAccess(u, "schedule", undefined, {})).toBe(false)
     expect(canAccess(u, "schedule", undefined, { schedule: true })).toBe(true)
+    // Leads same — owner does NOT see it without the tenant flag.
+    expect(canAccess(u, "leads", undefined, {})).toBe(false)
+    expect(canAccess(u, "leads", undefined, { leads: false })).toBe(false)
+    expect(canAccess(u, "leads", undefined, { leads: true })).toBe(true)
     // Ungated members ignores tenantFeatures.
     expect(canAccess(u, "members", undefined, {})).toBe(true)
   })
@@ -105,7 +113,8 @@ describe("canAccess — tenant overrides", () => {
 
   it("grants overridden features to sales", () => {
     const u = makeUser("sales")
-    expect(canAccess(u, "leads", overrides)).toBe(true)
+    // leads is gated — visibility needs the tenant flag too.
+    expect(canAccess(u, "leads", overrides, { leads: true })).toBe(true)
     expect(canAccess(u, "members", overrides)).toBe(true)
     expect(canAccess(u, "payments", overrides)).toBe(false)
   })
@@ -113,6 +122,8 @@ describe("canAccess — tenant overrides", () => {
   it("does not apply staff overrides to sales or vice versa", () => {
     const staff = makeUser("staff")
     const sales = makeUser("sales")
+    // staff has leads in BASELINE now (read-only access) but the gate
+    // still blocks visibility without the tenant flag.
     expect(canAccess(staff, "leads", overrides)).toBe(false)
     expect(canAccess(sales, "payments", overrides)).toBe(false)
   })
