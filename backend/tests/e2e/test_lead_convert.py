@@ -29,9 +29,7 @@ from app.core.security import create_access_token, hash_password
 
 
 def _sync_url() -> str:
-    url = os.environ.get(
-        "NEON_DATABASE_URL", "postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm"
-    )
+    url = os.environ.get("NEON_DATABASE_URL", "postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm")
     return url.replace("postgresql+asyncpg://", "postgresql://")
 
 
@@ -270,9 +268,7 @@ def test_phone_collision_rolls_back_everything(client: TestClient) -> None:
     assert _count("lead_activities", tenant_id=env["tenant_id"]) == activities_before
 
     # Lead still in 'new' with no member linkage.
-    after = client.get(
-        f"/api/v1/leads/{lead['id']}", headers=env["sales_headers"]
-    ).json()
+    after = client.get(f"/api/v1/leads/{lead['id']}", headers=env["sales_headers"]).json()
     assert after["status"] == "new"
     assert after["converted_member_id"] is None
 
@@ -301,9 +297,7 @@ def test_inactive_plan_rolls_back(client: TestClient) -> None:
     assert r.status_code == 409
 
     assert _count("members", tenant_id=env["tenant_id"]) == members_before
-    after = client.get(
-        f"/api/v1/leads/{lead['id']}", headers=env["sales_headers"]
-    ).json()
+    after = client.get(f"/api/v1/leads/{lead['id']}", headers=env["sales_headers"]).json()
     assert after["status"] == "new"
 
 

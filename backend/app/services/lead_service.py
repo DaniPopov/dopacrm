@@ -377,9 +377,7 @@ class LeadService:
         await self._require_leads_enabled(caller)
         self._require_any_role(caller)
         await self.get(caller=caller, lead_id=lead_id)
-        return await self._activity_repo.list_for_lead(
-            lead_id, limit=limit, offset=offset
-        )
+        return await self._activity_repo.list_for_lead(lead_id, limit=limit, offset=offset)
 
     # ── Lost reasons / stats ────────────────────────────────────────
 
@@ -472,9 +470,7 @@ class LeadService:
         if str(plan.tenant_id) != str(tenant_id):
             raise SubscriptionPlanMismatchError()
         if not plan.is_active:
-            raise InvalidSubscriptionStateTransitionError(
-                current="inactive", action="subscribe to"
-            )
+            raise InvalidSubscriptionStateTransitionError(current="inactive", action="subscribe to")
 
         try:
             # 1. Member — direct repo write (no commit). Auto-fills the
@@ -495,9 +491,7 @@ class LeadService:
             #    snapshot price + currency from the plan, resolve
             #    expires_at from plan type / duration, ACTIVE status.
             resolved_start = start_date or date.today()
-            resolved_expires = self._resolve_expires_at(
-                plan=plan, started_at=resolved_start
-            )
+            resolved_expires = self._resolve_expires_at(plan=plan, started_at=resolved_start)
             subscription = await self._sub_repo.create(
                 tenant_id=tenant_id,
                 member_id=member.id,
@@ -534,10 +528,7 @@ class LeadService:
                 tenant_id=tenant_id,
                 lead_id=lead_id,
                 type=LeadActivityType.STATUS_CHANGE,
-                note=(
-                    f"{lead.status.value} → converted; "
-                    f"member={member.id}; plan={plan_id}"
-                ),
+                note=(f"{lead.status.value} → converted; member={member.id}; plan={plan_id}"),
                 created_by=self._caller_uuid(caller),
             )
 
@@ -566,9 +557,7 @@ class LeadService:
                 "plan_id": str(plan_id),
             },
         )
-        return ConvertResult(
-            lead=updated_lead, member=member, subscription=subscription
-        )
+        return ConvertResult(lead=updated_lead, member=member, subscription=subscription)
 
     # ── Cross-resource helpers ──────────────────────────────────────
 

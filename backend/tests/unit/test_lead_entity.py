@@ -96,9 +96,7 @@ def test_is_open_false_for_terminal_states() -> None:
         (LeadStatus.LOST, LeadStatus.LOST, False),
     ],
 )
-def test_can_transition_to_matrix(
-    current: LeadStatus, target: LeadStatus, expected: bool
-) -> None:
+def test_can_transition_to_matrix(current: LeadStatus, target: LeadStatus, expected: bool) -> None:
     lead = _make_lead(current)
     if current == LeadStatus.CONVERTED:
         # Converted leads must carry a member id; build a real one.

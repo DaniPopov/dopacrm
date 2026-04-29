@@ -74,9 +74,7 @@ async def test_create_lead_defaults(repo, tenant_repo, default_plan_id) -> None:
 
 async def test_find_by_id(repo, tenant_repo, default_plan_id) -> None:
     t = await _mk_tenant(tenant_repo, default_plan_id)
-    created = await repo.create(
-        tenant_id=t.id, first_name="A", last_name="B", phone="+1"
-    )
+    created = await repo.create(tenant_id=t.id, first_name="A", last_name="B", phone="+1")
     found = await repo.find_by_id(created.id)
     assert found is not None
     assert found.id == created.id
@@ -88,9 +86,7 @@ async def test_find_by_id_returns_none_for_missing(repo) -> None:
 
 async def test_update_partial(repo, tenant_repo, default_plan_id) -> None:
     t = await _mk_tenant(tenant_repo, default_plan_id)
-    lead = await repo.create(
-        tenant_id=t.id, first_name="A", last_name="B", phone="+1"
-    )
+    lead = await repo.create(tenant_id=t.id, first_name="A", last_name="B", phone="+1")
     updated = await repo.update(lead.id, notes="follow up tuesday")
     assert updated is not None
     assert updated.notes == "follow up tuesday"
@@ -100,9 +96,7 @@ async def test_update_partial(repo, tenant_repo, default_plan_id) -> None:
 
 async def test_update_status_accepts_enum_or_string(repo, tenant_repo, default_plan_id) -> None:
     t = await _mk_tenant(tenant_repo, default_plan_id)
-    lead = await repo.create(
-        tenant_id=t.id, first_name="A", last_name="B", phone="+1"
-    )
+    lead = await repo.create(tenant_id=t.id, first_name="A", last_name="B", phone="+1")
     # Enum form
     out1 = await repo.update(lead.id, status=LeadStatus.CONTACTED)
     assert out1 is not None and out1.status == LeadStatus.CONTACTED
@@ -142,9 +136,7 @@ async def test_list_filters_by_source(repo, tenant_repo, default_plan_id) -> Non
     assert {ld.first_name for ld in walk_ins} == {"A"}
 
 
-async def test_list_search_matches_name_phone_email(
-    repo, tenant_repo, default_plan_id
-) -> None:
+async def test_list_search_matches_name_phone_email(repo, tenant_repo, default_plan_id) -> None:
     t = await _mk_tenant(tenant_repo, default_plan_id)
     await repo.create(
         tenant_id=t.id, first_name="Yael", last_name="Cohen", phone="+972-50-111-1111"
@@ -167,9 +159,7 @@ async def test_list_search_matches_name_phone_email(
     assert len(by_email) == 1
 
 
-async def test_list_filters_cross_tenant_isolation(
-    repo, tenant_repo, default_plan_id
-) -> None:
+async def test_list_filters_cross_tenant_isolation(repo, tenant_repo, default_plan_id) -> None:
     t1 = await _mk_tenant(tenant_repo, default_plan_id)
     t2 = await _mk_tenant(tenant_repo, default_plan_id)
     await repo.create(tenant_id=t1.id, first_name="A", last_name="A", phone="+1")
@@ -218,14 +208,10 @@ async def test_top_lost_reasons_collapses_case_insensitively(
     t = await _mk_tenant(tenant_repo, default_plan_id)
     # Three "too expensive"s in different cases + one "wrong location".
     for variant in ("Too Expensive", "too expensive", "TOO EXPENSIVE"):
-        ld = await repo.create(
-            tenant_id=t.id, first_name="A", last_name="A", phone=str(uuid4())
-        )
+        ld = await repo.create(tenant_id=t.id, first_name="A", last_name="A", phone=str(uuid4()))
         await repo.update(ld.id, status=LeadStatus.LOST, lost_reason=variant)
 
-    ld = await repo.create(
-        tenant_id=t.id, first_name="B", last_name="B", phone=str(uuid4())
-    )
+    ld = await repo.create(tenant_id=t.id, first_name="B", last_name="B", phone=str(uuid4()))
     await repo.update(ld.id, status=LeadStatus.LOST, lost_reason="wrong location")
 
     since = datetime.now(UTC) - timedelta(days=30)
@@ -238,9 +224,7 @@ async def test_top_lost_reasons_collapses_case_insensitively(
     assert rows[1].count == 1
 
 
-async def test_top_lost_reasons_ignores_blank_and_null(
-    repo, tenant_repo, default_plan_id
-) -> None:
+async def test_top_lost_reasons_ignores_blank_and_null(repo, tenant_repo, default_plan_id) -> None:
     t = await _mk_tenant(tenant_repo, default_plan_id)
     # NULL lost_reason
     a = await repo.create(tenant_id=t.id, first_name="A", last_name="A", phone="+1")
@@ -261,9 +245,7 @@ async def test_activity_create_and_list(
     session, repo, activity_repo, tenant_repo, default_plan_id
 ) -> None:
     t = await _mk_tenant(tenant_repo, default_plan_id)
-    lead = await repo.create(
-        tenant_id=t.id, first_name="A", last_name="A", phone="+1"
-    )
+    lead = await repo.create(tenant_id=t.id, first_name="A", last_name="A", phone="+1")
 
     a1 = await activity_repo.create(
         tenant_id=t.id,
@@ -296,12 +278,8 @@ async def test_activity_list_isolated_per_lead(
     a = await repo.create(tenant_id=t.id, first_name="A", last_name="A", phone="+1")
     b = await repo.create(tenant_id=t.id, first_name="B", last_name="B", phone="+2")
 
-    await activity_repo.create(
-        tenant_id=t.id, lead_id=a.id, type=LeadActivityType.NOTE, note="A"
-    )
-    await activity_repo.create(
-        tenant_id=t.id, lead_id=b.id, type=LeadActivityType.NOTE, note="B"
-    )
+    await activity_repo.create(tenant_id=t.id, lead_id=a.id, type=LeadActivityType.NOTE, note="A")
+    await activity_repo.create(tenant_id=t.id, lead_id=b.id, type=LeadActivityType.NOTE, note="B")
 
     a_rows = await activity_repo.list_for_lead(a.id)
     b_rows = await activity_repo.list_for_lead(b.id)

@@ -939,9 +939,7 @@ def test_sales_cannot_set_status_on_foreign_lead(client: TestClient, two_gyms: d
     assert r.status_code == 404
 
 
-def test_sales_cannot_assign_foreign_user_to_own_lead(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_sales_cannot_assign_foreign_user_to_own_lead(client: TestClient, two_gyms: dict) -> None:
     """A's sales tries to assign B's user to A's lead — assigned_to must
     be a user in caller's tenant. 404 for the foreign user (not 422),
     same posture as members."""
@@ -959,9 +957,7 @@ def test_sales_cannot_assign_foreign_user_to_own_lead(
     assert r.status_code == 404
 
 
-def test_sales_cannot_add_activity_to_foreign_lead(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_sales_cannot_add_activity_to_foreign_lead(client: TestClient, two_gyms: dict) -> None:
     r = client.post(
         f"/api/v1/leads/{two_gyms['b']['lead_id']}/activities",
         headers=two_gyms["a"]["sales_headers"],
@@ -970,9 +966,7 @@ def test_sales_cannot_add_activity_to_foreign_lead(
     assert r.status_code == 404
 
 
-def test_sales_cannot_list_activities_for_foreign_lead(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_sales_cannot_list_activities_for_foreign_lead(client: TestClient, two_gyms: dict) -> None:
     r = client.get(
         f"/api/v1/leads/{two_gyms['b']['lead_id']}/activities",
         headers=two_gyms["a"]["sales_headers"],
@@ -1024,19 +1018,14 @@ def test_leads_list_scopes_to_caller_tenant(client: TestClient, two_gyms: dict) 
     assert two_gyms["b"]["lead_id"] not in ids
 
 
-def test_lost_reasons_scopes_to_caller_tenant(
-    client: TestClient, two_gyms: dict
-) -> None:
+def test_lost_reasons_scopes_to_caller_tenant(client: TestClient, two_gyms: dict) -> None:
     """B logs a lost reason. A's owner asking for autocomplete must NOT
     see B's reason."""
     # B marks its lead lost.
     engine = create_engine(_sync_url())
     with Session(engine) as s:
         s.execute(
-            text(
-                "UPDATE leads SET status = 'lost', lost_reason = 'b-only-reason' "
-                "WHERE id = :l"
-            ),
+            text("UPDATE leads SET status = 'lost', lost_reason = 'b-only-reason' WHERE id = :l"),
             {"l": two_gyms["b"]["lead_id"]},
         )
         s.commit()

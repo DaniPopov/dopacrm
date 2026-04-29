@@ -223,8 +223,7 @@ def upgrade() -> None:
     # ``is_feature_enabled`` returns False on missing key (fail-closed),
     # so this backfill is mainly for visibility in the super_admin UI.
     op.execute(
-        "UPDATE tenants "
-        "SET features_enabled = features_enabled || '{\"leads\": false}'::jsonb"
+        "UPDATE tenants SET features_enabled = features_enabled || '{\"leads\": false}'::jsonb"
     )
 
 

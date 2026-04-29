@@ -307,9 +307,7 @@ async def list_activities(
     caller: TokenPayload = Depends(get_current_user),
     service: LeadService = Depends(_get_service),
 ) -> list[LeadActivityResponse]:
-    rows = await service.list_activities(
-        caller=caller, lead_id=lead_id, limit=limit, offset=offset
-    )
+    rows = await service.list_activities(caller=caller, lead_id=lead_id, limit=limit, offset=offset)
     return [_to_activity_response(r) for r in rows]
 
 

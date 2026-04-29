@@ -172,9 +172,7 @@ class LeadRepository:
             fields["source"] = fields["source"].value
         if not fields:
             return await self.find_by_id(lead_id)
-        await self._session.execute(
-            update(LeadORM).where(LeadORM.id == lead_id).values(**fields)
-        )
+        await self._session.execute(update(LeadORM).where(LeadORM.id == lead_id).values(**fields))
         await self._session.flush()
         return await self.find_by_id(lead_id)
 

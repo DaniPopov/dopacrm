@@ -30,9 +30,7 @@ from app.core.security import create_access_token, hash_password
 
 
 def _sync_url() -> str:
-    url = os.environ.get(
-        "NEON_DATABASE_URL", "postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm"
-    )
+    url = os.environ.get("NEON_DATABASE_URL", "postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm")
     return url.replace("postgresql+asyncpg://", "postgresql://")
 
 
@@ -189,8 +187,7 @@ def test_feature_off_blocks_every_endpoint_and_writes_nothing(
         ).scalar_one()
         # NOW flip the flag OFF — every API call below should 403.
         s.execute(
-            text("UPDATE tenants SET features_enabled = '{\"leads\": false}'::jsonb "
-                 "WHERE id = :t"),
+            text("UPDATE tenants SET features_enabled = '{\"leads\": false}'::jsonb WHERE id = :t"),
             {"t": tenant_id},
         )
         s.commit()
@@ -510,9 +507,7 @@ def test_lost_then_reopen_clears_lost_reason(client: TestClient) -> None:
         f"/api/v1/leads/{lead['id']}/activities",
         headers=env["owner_headers"],
     ).json()
-    lost_activity = next(
-        a for a in activities if "lost" in a["note"] and "reason" in a["note"]
-    )
+    lost_activity = next(a for a in activities if "lost" in a["note"] and "reason" in a["note"])
     assert "too expensive" in lost_activity["note"]
 
 
