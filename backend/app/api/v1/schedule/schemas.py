@@ -201,10 +201,18 @@ class UpdateTenantFeaturesRequest(BaseModel):
 
     Partial merge into ``tenants.features_enabled``. Keys not listed
     are left unchanged; explicit False disables a feature.
+
+    One field per gated feature — adding a new gated feature requires
+    adding a field here AND in ``GatedFeature`` (``app/core/feature_flags.py``).
+    Pydantic silently drops unknown fields, so a missing field would
+    make the toggle a silent no-op (save succeeds, flag never flips) —
+    which is exactly what happened when leads shipped without updating
+    this schema.
     """
 
     coaches: bool | None = None
     schedule: bool | None = None
+    leads: bool | None = None
 
     def to_update_dict(self) -> dict[str, bool]:
         out: dict[str, bool] = {}
@@ -212,6 +220,8 @@ class UpdateTenantFeaturesRequest(BaseModel):
             out["coaches"] = self.coaches
         if self.schedule is not None:
             out["schedule"] = self.schedule
+        if self.leads is not None:
+            out["leads"] = self.leads
         return out
 
 

@@ -529,3 +529,31 @@ def test_owner_cannot_toggle_features(client: TestClient) -> None:
         json={"schedule": False},
     )
     assert r.status_code == 403
+
+
+def test_super_admin_can_toggle_leads_flag(client: TestClient) -> None:
+    """Regression: every gated feature must be a typed field on
+    ``UpdateTenantFeaturesRequest``. Pydantic silently drops unknown
+    fields, so a missing field makes the toggle a silent no-op (save
+    succeeds, flag never flips) — which is what shipped on the first
+    Leads PR. This test fails fast if a future gated feature isn't
+    wired into the schema."""
+    env = _seed(schedule_enabled=False)
+    sa = _seed_super_admin()
+
+    r = client.patch(
+        f"/api/v1/tenants/{env['tenant_id']}/features",
+        headers=sa["super_admin_headers"],
+        json={"leads": True},
+    )
+    assert r.status_code == 200
+    assert r.json()["features_enabled"]["leads"] is True
+
+    # Flip back off — explicit False must also persist.
+    r2 = client.patch(
+        f"/api/v1/tenants/{env['tenant_id']}/features",
+        headers=sa["super_admin_headers"],
+        json={"leads": False},
+    )
+    assert r2.status_code == 200
+    assert r2.json()["features_enabled"]["leads"] is False

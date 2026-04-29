@@ -3433,10 +3433,19 @@ export interface components {
          *
          *     Partial merge into ``tenants.features_enabled``. Keys not listed
          *     are left unchanged; explicit False disables a feature.
+         *
+         *     One field per gated feature — adding a new gated feature requires
+         *     adding a field here AND in ``GatedFeature`` (``app/core/feature_flags.py``).
+         *     Pydantic silently drops unknown fields, so a missing field would
+         *     make the toggle a silent no-op (save succeeds, flag never flips) —
+         *     which is exactly what happened when leads shipped without updating
+         *     this schema.
          */
         UpdateTenantFeaturesRequest: {
             /** Coaches */
             coaches?: boolean | null;
+            /** Leads */
+            leads?: boolean | null;
             /** Schedule */
             schedule?: boolean | null;
         };
