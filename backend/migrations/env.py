@@ -1,7 +1,7 @@
 """Alembic environment.
 
 Wired to the project's Settings — pulls the database URL from
-``NEON_DIRECT_URL`` (or falls back to ``NEON_DATABASE_URL`` if direct isn't
+``DATABASE_DIRECT_URL`` (or falls back to ``DATABASE_URL`` if direct isn't
 set, which is the case for local Postgres where pooled and direct are
 identical).
 
@@ -30,7 +30,7 @@ config = context.config
 
 # Set the database URL from app settings (overrides alembic.ini).
 _settings = get_settings()
-_db_url = _settings.NEON_DIRECT_URL or _settings.NEON_DATABASE_URL
+_db_url = _settings.DATABASE_DIRECT_URL or _settings.DATABASE_URL
 # asyncpg wants the +asyncpg dialect prefix.
 if _db_url.startswith("postgresql://"):
     _db_url = "postgresql+asyncpg://" + _db_url[len("postgresql://") :]

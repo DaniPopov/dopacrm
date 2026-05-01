@@ -11,7 +11,7 @@ _TEST_ENV = {
     "APP_ENV": "development",
     "MONGODB_URI": "mongodb://localhost:27017",
     "MONGODB_DATABASE": "test",
-    "NEON_DATABASE_URL": "postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm",
+    "DATABASE_URL": "postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm",
     "REDIS_URL": "redis://localhost:6379/0",
     "RABBITMQ_URL": "amqp://guest:guest@localhost:5672//",
     "AWS_ACCESS_KEY_ID": "test-not-real",

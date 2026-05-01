@@ -761,7 +761,7 @@ Structlog events:
 | `schedule.horizon_extended` | tenant_id, template_id, sessions_created | Nightly beat job |
 | `attendance.coach_attributed` | (existing, `method` field now includes `session`) | Every check-in |
 
-Grafana panels (follow-up, data is present):
+Dashboard widgets / CloudWatch Logs Insights queries (follow-up, the data is already in the logs):
 
 - Calendar density: sessions per tenant per week
 - Cancellation rate: cancelled / total

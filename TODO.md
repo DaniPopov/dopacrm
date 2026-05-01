@@ -26,7 +26,7 @@
   - [ ] Frontend: prevent editing/deleting system roles (owner/super_admin)
 - [ ] Custom fields UI for members (owner adds/renames fields in `members.custom_fields`)
 - [ ] Custom attrs UI for membership plans (owner edits `membership_plans.custom_attrs`)
-- [ ] Per-tenant dashboard widget layout (v2 — MongoDB `user_dashboard_configs`)
+- [ ] Per-tenant dashboard widget layout (v2 — Postgres `user_dashboard_configs` table with JSONB layout)
 
 ### Mobile (deferred — see `docs/mobile-setup.md`)
 - [ ] Decide trigger: 4-6 weeks after web CRM in prod, based on real-customer feedback

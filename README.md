@@ -21,14 +21,13 @@ Multi-tenant SaaS CRM built for gyms and fitness studios. Manage members, track 
 |-------|-----------|
 | API | FastAPI (Python 3.13) |
 | Task Queue | RabbitMQ + Celery |
-| Databases | MongoDB (config, activity logs) + PostgreSQL (tenants, users, members, plans, payments) + Redis (cache, rate limits, JWT blacklist) |
+| Databases | PostgreSQL (every entity — tenants, users, members, plans, subscriptions, payments, leads, attendance, coaches, schedule) + Redis (cache, rate limits, JWT blacklist) |
 | Frontend | React 19 + TypeScript + Vite + TanStack Query + shadcn/ui |
 | Type sharing | OpenAPI codegen (FastAPI → `openapi-typescript` → frontend types) — no hand-written DTOs |
 | Storage | AWS S3 (logos, uploads) — env-based folder prefixes |
 | Auth | JWT (HS256, 8h) in HttpOnly cookie + Redis jti blacklist on logout |
-| Infrastructure | Docker Compose (dev), AWS (prod) |
-| Logging | structlog (JSON) → Loki + Promtail → Grafana |
-| Observability | Sentry (errors), Flower (Celery), CloudWatch |
+| Infrastructure | Docker Compose (dev), self-hosted Postgres on prod VPS (RDS migration when scale demands) |
+| Logging | structlog (JSON) → stdout. Production: Sentry (errors) + CloudWatch (logs) + UptimeRobot (`/health`). Flower for Celery in both envs. |
 
 ## Architecture
 
@@ -62,7 +61,7 @@ Modular monolith with **4-layer hexagonal architecture** — one codebase with c
 - **Docker Desktop** — [download](https://www.docker.com/products/docker-desktop/)
 - **uv** — `curl -LsSf https://astral.sh/uv/install.sh | sh`
 - **Make** — pre-installed on macOS / Linux
-- **TablePlus** (optional) — [download](https://tableplus.com) — GUI for Postgres, MongoDB, Redis
+- **TablePlus** (optional) — [download](https://tableplus.com) — GUI for Postgres + Redis
 
 ## Setup (first time)
 
@@ -76,15 +75,15 @@ uv sync
 
 # 3. Copy env template and fill in values
 cp .env.example .env.dev
-# Edit .env.dev with your real values (MongoDB, AWS, Langfuse, etc.)
+# Edit .env.dev with your real values (APP_SECRET_KEY, AWS keys)
 
 # 4. Build the backend image
 make build-dev
 
-# 5. Start the full dev stack (12 containers)
+# 5. Start the full dev stack (8 services)
 make up-dev
-# First run pulls ~1.5 GB of images (mongo, postgres, redis, rabbitmq, etc.)
-# Healthchecks ensure services start in the right order (~30s)
+# First run pulls ~600 MB of images (postgres, redis, rabbitmq, flower, ...).
+# Healthchecks ensure services start in the right order (~20s).
 
 # 6. Apply database migrations (creates tenants, users, saas_plans, refresh_tokens, ...)
 make migrate-up-dev
@@ -127,16 +126,14 @@ After `make up-dev`, these are available:
 | **Backend API** | http://localhost:8000 | — |
 | **Swagger docs** | http://localhost:8000/docs | — |
 | **ReDoc** | http://localhost:8000/redoc | — |
-| **Mongo Express** | http://localhost:8081 | no auth in dev |
 | **RabbitMQ Management** | http://localhost:15672 | `guest` / `guest` |
 | **Flower (Celery UI)** | http://localhost:5555 | no auth in dev |
-| **Grafana** | http://localhost:3000 | anonymous admin |
 
 Run `make urls-dev` to see this list with raw connection ports.
 
 ## Connecting with TablePlus
 
-[TablePlus](https://tableplus.com) can connect to Postgres, MongoDB, and Redis from one app.
+[TablePlus](https://tableplus.com) can connect to Postgres and Redis from one app.
 
 ### Postgres
 
@@ -149,19 +146,7 @@ Run `make urls-dev` to see this list with raw connection ports.
 | Database | `dopacrm` |
 | SSL mode | PREFERRED |
 
-After `make migrate-up-dev` you'll see: `tenants`, `users`, `saas_plans`, `refresh_tokens`, `alembic_version`.
-
-### MongoDB
-
-| Field | Value |
-|-------|-------|
-| Host | `127.0.0.1` |
-| Port | `27017` |
-| User | `root` |
-| Password | `root` |
-| Auth Database | `admin` |
-
-Or use **Mongo Express** at http://localhost:8081 for a web UI.
+After `make migrate-up-dev` you'll see all the entity tables: `tenants`, `users`, `members`, `subscriptions`, `payments`, `leads`, ... see the data split in [`CLAUDE.md`](CLAUDE.md#data-split) for the full list.
 
 ### Redis
 
@@ -174,28 +159,9 @@ Or use **Mongo Express** at http://localhost:8081 for a web UI.
 
 ## Dashboards guide
 
-### Grafana (logs) — http://localhost:3000
+### Backend logs
 
-Grafana queries Loki for structured logs from all containers.
-
-1. Open http://localhost:3000
-2. Click **Explore** (compass icon, left sidebar)
-3. Select **Loki** datasource
-4. Try these queries:
-
-```logql
-# All backend logs
-{container="dopacrm-backend"}
-
-# Only completed requests
-{container="dopacrm-backend"} | json | event="request_completed"
-
-# Errors from any service
-{project="dopacrm"} | json | level="error"
-
-# Slow requests (>100ms)
-{container="dopacrm-backend"} | json | http_duration_ms > 100
-```
+For dev, just `make logs-backend-dev` (or `docker logs -f dopacrm-backend`). For prod, structured JSON logs ship to CloudWatch + errors to Sentry — see [`CLAUDE.md`](CLAUDE.md) observability section.
 
 ### RabbitMQ Management — http://localhost:15672
 
@@ -214,10 +180,6 @@ Login: `guest` / `guest`
 | **Tasks** | History of every task — state, args, duration, traceback on failure. |
 | **Workers** | Which workers are online, what queues they listen on. |
 | **Dashboard** | Active/succeeded/failed counters, task rate chart. |
-
-### Mongo Express — http://localhost:8081
-
-Web UI for browsing MongoDB collections. Click a database name → click a collection → see documents. Useful for inspecting tenant configs and conversation data.
 
 ## Make Targets
 
@@ -273,9 +235,8 @@ make migrate-up-dev
 - `frontend/src/` — React app (feature-based, 77 tests)
 - `frontend/src/lib/api-schema.ts` — **auto-generated** from backend OpenAPI (do not edit)
 - `frontend/src/lib/api-types.ts` — clean type aliases consumed by feature code
-- `docker/` — Loki, Promtail, Grafana config files (compose-mounted)
 - `pyproject.toml` — Python project config (root)
-- `docker-compose.dev.yml` — Local dev orchestration (12 containers)
+- `docker-compose.dev.yml` — Local dev orchestration (8 services)
 - `docs/` — Architecture, standards, per-feature specs
 - `.github/workflows/ci.yml` — CI: ruff, pytest, gitleaks, pip-audit, npm audit, OpenAPI drift, docker-build
 - `.pre-commit-config.yaml` — Pre-commit hooks
@@ -396,6 +357,3 @@ make up-dev
 make migrate-up-dev
 ```
 
-### Mongo healthcheck noise
-
-Mongo logs connection metadata on every healthcheck. We use `--quiet` + 30s interval to minimize this. Some noise is expected — use `make logs-backend-dev` instead of `make logs-dev` to filter it out.

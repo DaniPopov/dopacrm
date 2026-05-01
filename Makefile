@@ -15,7 +15,7 @@ export SEED_PASSWORD
         test-backend-all-dev test-frontend test-all-dev
 
 # Services available in docker-compose.dev.yml
-SERVICES := backend frontend worker mongo postgres redis rabbitmq flower loki promtail grafana
+SERVICES := backend frontend worker postgres redis rabbitmq flower
 # Services that have a Dockerfile and can be built
 BUILDABLE := backend frontend
 

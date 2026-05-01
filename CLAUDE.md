@@ -18,12 +18,12 @@
 
 - **API:** FastAPI (Python 3.13+, async) with JWT via PyJWT
 - **Queue:** RabbitMQ + Celery workers
-- **Databases:** PostgreSQL (transactional entities), MongoDB (config, activity logs, audit), Redis (cache, rate limits, token blacklist)
+- **Databases:** PostgreSQL (every entity — tenants, users, members, plans, subscriptions, payments, leads, attendance, coaches, schedule), Redis (cache, rate limits, token blacklist)
 - **Auth:** argon2 password hashing, JWT access tokens (HS256, 8h) stored in HttpOnly cookie. Logout blacklists the token's jti in Redis. Dual support — cookie (frontend) + Bearer header (Swagger/API clients).
 - **Storage:** AWS S3 for logos and uploads. Env-based folder prefixes (`dev/`, `staging/`, `prod/`). Private bucket, served via presigned URLs.
 - **Frontend:** React 19 + TypeScript + Vite + TanStack Query + shadcn/ui, Hebrew RTL, feature-based architecture
-- **Infrastructure:** Docker Compose (dev), AWS (prod)
-- **Observability:** structlog (JSON), Loki + Promtail (logs), Grafana (dashboards), Sentry, Flower, CloudWatch
+- **Infrastructure:** Docker Compose (dev — 8 services), self-hosted Postgres on the prod VPS (RDS migration when scale demands it)
+- **Observability:** structlog (JSON, ships to stdout). Production: Sentry for application errors + CloudWatch for infra logs + UptimeRobot for `/health`. Dev: ``docker logs -f backend`` is enough; Loki/Grafana were removed (see 2026-04 cleanup). Flower covers Celery in both environments.
 
 ## Key Patterns
 
@@ -33,14 +33,12 @@
 - Domain is **pure** — Pydantic entities + business rules. Zero external dependencies.
 - Adapters are **isolated** — repos translate ORM ↔ domain entities at the boundary.
 - Failed tasks go to dead letter queue — never silently disappear
-- **Postgres-first for every new feature.** MongoDB is provisioned in the stack but currently unused — the original design reserved it for `tenant_configs`, activity logs, audit trails, etc., but Postgres JSONB handles every case we've hit cleanly with full FK integrity, transactions, and easier GROUP BY reporting. Don't add new Mongo collections without a specific use case that Postgres can't handle (genuinely-free-shape webhook archives, massive append-only event streams — neither of which we have yet). If those never materialize, Mongo gets removed from the stack in a future cleanup.
-- **When we'll revisit Mongo:** most likely candidate is activity/audit logs once write volume puts real pressure on the main DB. Until we measure that pressure (not guess at it), logs stay in Postgres for transactional guarantees with the action they describe — an audit log that can be dropped isn't really an audit log. Outbox pattern to make Mongo writes atomic is more infrastructure than just writing to Postgres.
-- Flexibility within Postgres entities uses **JSONB columns** (`members.custom_fields`, `membership_plans.custom_attrs`). Structured, queryable concepts (class passes, attendance, entitlements) get real tables.
+- **Postgres-only.** Every entity (tenants, users, members, plans, subscriptions, payments, leads, lead_activities, attendance, coaches, class_schedule, ...) lives in Postgres with full FK integrity + transactions + easy GROUP BY reporting. Mongo was provisioned originally for tenant_configs / activity logs / audit but never had a single client; removed in 2026-04. If a future need genuinely calls for free-shape document storage (webhook archives, massive append-only event streams), reconsider then — not preemptively.
+- Flexibility within Postgres entities uses **JSONB columns** (`members.custom_fields`, `membership_plans.custom_attrs`, `tenants.features_enabled`). Structured, queryable concepts (class passes, attendance, entitlements, payments) get real tables.
 
 ## Data Split
 
-- **PostgreSQL (default for everything):** `tenants`, `users`, `saas_plans`, `members`, `membership_plans`, `subscriptions`, `payments`, `leads`, `classes`, `plan_entitlements`, `refresh_tokens` — plus JSONB columns for per-member custom fields and per-plan custom attrs.
-- **MongoDB (provisioned, unused):** originally intended for `tenant_configs`, activity logs, audit trails, integration payloads. None of these are live. New features default to Postgres.
+- **PostgreSQL (every entity):** `tenants`, `users`, `saas_plans`, `members`, `membership_plans`, `plan_entitlements`, `subscriptions`, `subscription_events`, `payments`, `leads`, `lead_activities`, `classes`, `class_entries`, `coaches`, `class_coaches`, `class_schedule_templates`, `class_sessions`, `refresh_tokens`. Per-member / per-plan / per-tenant flexibility via JSONB columns.
 - **Redis:** rate limits, JWT blacklist, cache.
 
 ## Roles
@@ -61,13 +59,12 @@ Today `staff`/`sales` are enum literals for speed. The real model is dynamic —
 dopacrm/                         # Repository root
 ├── pyproject.toml               # Python project (deps, ruff, pytest, hatchling)
 ├── Makefile                     # make up-dev / build-dev / migrate-up-dev / ...
-├── docker-compose.dev.yml       # Local dev (12 containers, t3.medium resource limits)
+├── docker-compose.dev.yml       # Local dev (8 services, t3.medium resource limits)
 ├── alembic.ini                  # Alembic config (Postgres migrations)
 ├── .env.example                 # Env var template (committed)
 ├── .env.dev                     # Local dev env (gitignored)
 ├── .pre-commit-config.yaml      # ruff + gitleaks + basic hooks
 ├── .github/workflows/ci.yml     # ruff, pytest, gitleaks, pip-audit, docker-build
-├── docker/                      # Compose-mounted configs (Loki, Promtail, Grafana)
 │
 └── backend/
     ├── Dockerfile               # python:3.13-slim + uv, non-root user

@@ -1,6 +1,14 @@
 # Resource limits mimic a t3.medium EC2 instance (2 vCPU, 4 GB RAM).
-# Total container budget: ~2.7 GB / 2.0 vCPU (leaves ~1.3 GB for OS + Docker).
+# Total container budget: ~1.7 GB / 1.6 vCPU (leaves ~2.3 GB for OS + Docker).
 # If a service OOMs here, it will OOM in prod too — fix it before deploying.
+#
+# Stack composition (post-2026-04 cleanup):
+# - Mongo + mongo-express removed: never had a real client (Postgres carries
+#   every entity including activity logs). Saved ~576 MB RAM, 2 containers.
+# - Loki + Promtail + Grafana removed: dev observability tax outweighs the
+#   value for a solo-dev workflow. Production goes straight to CloudWatch +
+#   Sentry; dev uses ``docker logs -f backend``. Saved ~384 MB, 3 containers.
+# Total reduction: 5 services, ~960 MB, fewer surprises on `make up-dev`.
 
 services:
   # ── App ──────────────────────────────────────────────────────────────────────
@@ -21,8 +29,6 @@ services:
       - ./backend/migrations:/workspace/backend/migrations
       - ./alembic.ini:/workspace/alembic.ini:ro
     depends_on:
-      mongo:
-        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:
@@ -96,27 +102,6 @@ services:
     restart: unless-stopped
 
   # ── Datastores ───────────────────────────────────────────────────────────────
-  mongo:
-    image: mongo:7
-    container_name: dopacrm-mongo
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo-data:/data/db
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: root
-    command: ["mongod", "--quiet", "--bind_ip_all"]
-    healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-      interval: 5m
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    mem_limit: 512m
-    cpus: 0.3
-    restart: unless-stopped
-
   postgres:
     image: postgres:17-alpine
     container_name: dopacrm-postgres
@@ -177,23 +162,6 @@ services:
     restart: unless-stopped
 
   # ── UIs ──────────────────────────────────────────────────────────────────────
-  mongo-express:
-    image: mongo-express:1
-    container_name: dopacrm-mongo-express
-    ports:
-      - "8081:8081"
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: root
-      ME_CONFIG_MONGODB_ADMINPASSWORD: root
-      ME_CONFIG_MONGODB_URL: mongodb://root:root@mongo:27017/?authSource=admin
-      ME_CONFIG_BASICAUTH: "false"
-    depends_on:
-      mongo:
-        condition: service_healthy
-    mem_limit: 64m
-    cpus: 0.05
-    restart: unless-stopped
-
   flower:
     image: mher/flower:2.0
     container_name: dopacrm-flower
@@ -213,68 +181,7 @@ services:
     cpus: 0.1
     restart: unless-stopped
 
-  # ── Observability (logs) ─────────────────────────────────────────────────────
-  loki:
-    image: grafana/loki:3.2.0
-    container_name: dopacrm-loki
-    ports:
-      - "3100:3100"
-    volumes:
-      - ./docker/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
-      - loki-data:/loki
-    command: -config.file=/etc/loki/loki-config.yml
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:3100/ready || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
-    mem_limit: 192m
-    cpus: 0.1
-    restart: unless-stopped
-
-  promtail:
-    image: grafana/promtail:3.2.0
-    container_name: dopacrm-promtail
-    volumes:
-      - ./docker/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - promtail-data:/tmp
-    command: -config.file=/etc/promtail/promtail-config.yml
-    depends_on:
-      loki:
-        condition: service_healthy
-    mem_limit: 64m
-    cpus: 0.05
-    restart: unless-stopped
-
-  grafana:
-    image: grafana/grafana:11.2.0
-    container_name: dopacrm-grafana
-    ports:
-      - "3000:3000"
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
-      GF_AUTH_ANONYMOUS_ENABLED: "true"
-      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
-      GF_LOG_LEVEL: warn
-      GF_ANALYTICS_REPORTING_ENABLED: "false"
-    depends_on:
-      loki:
-        condition: service_healthy
-    mem_limit: 128m
-    cpus: 0.1
-    restart: unless-stopped
-
 volumes:
-  mongo-data:
   postgres-data:
   redis-data:
   rabbitmq-data:
-  loki-data:
-  promtail-data:
-  grafana-data:

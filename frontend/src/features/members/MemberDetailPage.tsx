@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom"
 import { humanizeMemberError } from "@/lib/api-errors"
 import MemberQrButton from "@/features/attendance/MemberQrButton"
+import { PaymentsSection } from "@/features/payments/PaymentsSection"
 import MemberSubscriptionSection from "@/features/subscriptions/MemberSubscriptionSection"
 import MemberForm, { type MemberFormValues } from "./MemberForm"
 import { useMember, useUpdateMember } from "./hooks"
@@ -102,6 +103,10 @@ export default function MemberDetailPage() {
 
         {/* Subscriptions — current + timeline + history + actions */}
         <MemberSubscriptionSection memberId={member.id} />
+
+        {/* Payments — collected money for this member, with the
+            prominent "+ Record Payment" button next to the active sub. */}
+        <PaymentsSection memberId={member.id} />
       </div>
     </div>
   )

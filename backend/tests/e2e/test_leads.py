@@ -30,7 +30,7 @@ from app.core.security import create_access_token, hash_password
 
 
 def _sync_url() -> str:
-    url = os.environ.get("NEON_DATABASE_URL", "postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm")
+    url = os.environ.get("DATABASE_URL", "postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm")
     return url.replace("postgresql+asyncpg://", "postgresql://")
 
 

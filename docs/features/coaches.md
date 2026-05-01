@@ -677,7 +677,7 @@ Permissions added to `features/auth/permissions.ts`:
 
 ## Observability
 
-Structured log events (structlog → Loki → Grafana):
+Structured log events (structlog JSON → stdout → CloudWatch Logs in prod):
 
 | Event | Fields | When |
 |---|---|---|

@@ -3,7 +3,7 @@
 Uses the dev Postgres container (make up-dev). Each test gets a fresh
 session. Tables are cleaned after each test via DELETE.
 
-Reads NEON_DATABASE_URL directly from env so you don't need ALL env vars
+Reads DATABASE_URL directly from env so you don't need ALL env vars
 (MongoDB, AWS, etc.) set just to run DB tests.
 """
 
@@ -21,7 +21,7 @@ _DEFAULT_DB_URL = "postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm"
 
 
 def _get_db_url() -> str:
-    url = os.getenv("NEON_DATABASE_URL", _DEFAULT_DB_URL)
+    url = os.getenv("DATABASE_URL", _DEFAULT_DB_URL)
     if url.startswith("postgresql://"):
         url = "postgresql+asyncpg://" + url[len("postgresql://") :]
     return url

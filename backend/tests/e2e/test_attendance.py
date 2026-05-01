@@ -26,7 +26,7 @@ from app.core.security import create_access_token, hash_password
 
 def _sync_url() -> str:
     url = os.environ.get(
-        "NEON_DATABASE_URL",
+        "DATABASE_URL",
         "postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm",
     )
     return url.replace("postgresql+asyncpg://", "postgresql://")
@@ -500,6 +500,142 @@ def test_member_summary_empty_when_no_live_sub(client: TestClient, gym_setup: di
         headers=gym_setup["staff_headers"],
     )
     assert r.status_code == 200
+    assert r.json() == []
+
+
+def test_member_summary_with_wildcard_unlimited_plan(client: TestClient) -> None:
+    """The "מנוי פתוח" (open / all-access) pattern.
+
+    A plan with a single wildcard entitlement (class_id=NULL,
+    quantity=NULL, reset_period='unlimited') means: any class, no
+    quota, no reset. The summary endpoint must return one row that
+    the check-in UI treats as "passes — go ahead".
+
+    Reproduces the gap that hit a real tenant: their open plan had no
+    plan_entitlements row at all, so summary returned [] and the UI
+    showed "no active subscription" even though one existed.
+    """
+    engine = create_engine(_sync_url())
+    with Session(engine) as session:
+        plan_id = session.execute(
+            text("SELECT id FROM saas_plans WHERE code = 'default' LIMIT 1")
+        ).scalar_one()
+        tenant_id = session.execute(
+            text(
+                "INSERT INTO tenants (slug, name, saas_plan_id, status) "
+                "VALUES (:s, 'Open Gym', :p, 'active') RETURNING id"
+            ),
+            {"s": f"t-{uuid4().hex[:8]}", "p": plan_id},
+        ).scalar_one()
+        owner_id = session.execute(
+            text(
+                "INSERT INTO users (email, password_hash, role, tenant_id, is_active) "
+                "VALUES (:e, :p, 'owner', :t, true) RETURNING id"
+            ),
+            {"e": f"o-{uuid4().hex[:6]}@g.co", "p": hash_password("x"), "t": tenant_id},
+        ).scalar_one()
+        member_id = session.execute(
+            text(
+                "INSERT INTO members (tenant_id, first_name, last_name, phone) "
+                "VALUES (:t, 'M', 'X', :ph) RETURNING id"
+            ),
+            {"t": tenant_id, "ph": f"05{uuid4().hex[:8]}"},
+        ).scalar_one()
+        # The "open" plan — recurring, 80,000 cents.
+        open_plan_id = session.execute(
+            text(
+                "INSERT INTO membership_plans "
+                "(tenant_id, name, type, price_cents, currency, billing_period, is_active) "
+                "VALUES (:t, 'מנוי פתוח', 'recurring', 80000, 'ILS', 'monthly', true) "
+                "RETURNING id"
+            ),
+            {"t": tenant_id},
+        ).scalar_one()
+        # The single wildcard unlimited entitlement = "any class, never resets".
+        session.execute(
+            text(
+                "INSERT INTO plan_entitlements (plan_id, class_id, quantity, reset_period) "
+                "VALUES (:p, NULL, NULL, 'unlimited')"
+            ),
+            {"p": open_plan_id},
+        )
+        session.execute(
+            text(
+                "INSERT INTO subscriptions "
+                "(tenant_id, member_id, plan_id, status, price_cents, currency, started_at) "
+                "VALUES (:t, :m, :p, 'active', 80000, 'ILS', :s)"
+            ),
+            {"t": tenant_id, "m": member_id, "p": open_plan_id, "s": date.today()},
+        )
+        # A class to probe the quota check against.
+        any_class_id = session.execute(
+            text("INSERT INTO classes (tenant_id, name) VALUES (:t, 'Boxing') RETURNING id"),
+            {"t": tenant_id},
+        ).scalar_one()
+        session.commit()
+    engine.dispose()
+
+    secret = os.environ["APP_SECRET_KEY"]
+    headers = _auth_headers(owner_id, "owner", tenant_id, secret)
+
+    # Summary returns exactly one row — the wildcard entitlement.
+    r = client.get(f"/api/v1/attendance/members/{member_id}/summary", headers=headers)
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) == 1, f"open plan should produce exactly one summary row, got {rows}"
+    summary = rows[0]
+    # Wildcard entitlement: no specific class, no cap, never resets.
+    assert summary["class_id"] is None
+    assert summary["quantity"] is None
+    assert summary["reset_period"] == "unlimited"
+    # Allowed = True (no quota to exceed).
+    assert summary["allowed"] is True
+
+    # Quota-check on a brand-new class the plan has never seen → still allowed
+    # because the wildcard covers it.
+    r2 = client.get(
+        f"/api/v1/attendance/quota-check?member_id={member_id}&class_id={any_class_id}",
+        headers=headers,
+    )
+    assert r2.status_code == 200
+    assert r2.json()["allowed"] is True
+
+
+def test_member_summary_empty_for_sub_with_no_entitlements_documents_ux_gap(
+    client: TestClient, gym_setup: dict
+) -> None:
+    """**Documents a known UX gap.**
+
+    When a member has an active subscription on a plan that has ZERO
+    rows in ``plan_entitlements`` (e.g. the owner created the plan but
+    forgot to add classes), ``GET /attendance/members/:id/summary``
+    returns ``[]`` — the same shape as "member has no live sub at all".
+    The frontend can't tell the two cases apart and shows "no active
+    subscription", which is confusing because the sub IS active; the
+    plan just grants access to nothing.
+
+    A future PR should differentiate the two states (shape change on
+    the response — see follow-up). This test pins the current
+    behavior so we don't regress accidentally; update it when the
+    response shape evolves.
+    """
+    # Strip the seeded yoga entitlement, leaving the active sub but
+    # with zero entitlements behind it.
+    engine = create_engine(_sync_url())
+    with Session(engine) as session:
+        session.execute(
+            text("DELETE FROM plan_entitlements WHERE plan_id = :p"),
+            {"p": gym_setup["plan_id"]},
+        )
+        session.commit()
+    engine.dispose()
+
+    r = client.get(
+        f"/api/v1/attendance/members/{gym_setup['member_id']}/summary",
+        headers=gym_setup["staff_headers"],
+    )
+    assert r.status_code == 200
+    # Same shape as the "no sub at all" case — the bug we're documenting.
     assert r.json() == []
 
 

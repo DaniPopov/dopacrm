@@ -20,9 +20,12 @@ from app.api.v1.members.schemas import (
     MemberResponse,
     UpdateMemberRequest,
 )
+from app.api.v1.payments.schemas import PaymentResponse
 from app.core.security import TokenPayload
 from app.domain.entities.member import Member, MemberStatus
+from app.domain.entities.payment import Payment
 from app.services.member_service import MemberService
+from app.services.payment_service import PaymentService
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -184,3 +187,43 @@ async def cancel_member(
 ) -> MemberResponse:
     member = await service.cancel(caller=caller, member_id=member_id)
     return _to_response(member)
+
+
+def _get_payment_service(session: AsyncSession = Depends(get_session)) -> PaymentService:
+    return PaymentService(session)
+
+
+def _to_payment_response(p: Payment) -> PaymentResponse:
+    return PaymentResponse(
+        id=p.id,
+        tenant_id=p.tenant_id,
+        member_id=p.member_id,
+        subscription_id=p.subscription_id,
+        amount_cents=p.amount_cents,
+        currency=p.currency,
+        payment_method=p.payment_method,
+        paid_at=p.paid_at,
+        notes=p.notes,
+        refund_of_payment_id=p.refund_of_payment_id,
+        external_ref=p.external_ref,
+        recorded_by=p.recorded_by,
+        created_at=p.created_at,
+    )
+
+
+@router.get(
+    "/{member_id}/payments",
+    response_model=list[PaymentResponse],
+    summary="List payments for one member (newest first)",
+    description=(
+        "Convenience endpoint — same as ``GET /payments?member_id={id}`` but "
+        "lives next to the member detail page that consumes it."
+    ),
+)
+async def list_member_payments(
+    member_id: UUID,
+    caller: TokenPayload = Depends(get_current_user),
+    service: PaymentService = Depends(_get_payment_service),
+) -> list[PaymentResponse]:
+    payments = await service.list_for_member(caller=caller, member_id=member_id)
+    return [_to_payment_response(p) for p in payments]

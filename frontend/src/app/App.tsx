@@ -15,6 +15,7 @@ import CoachListPage from "@/features/coaches/CoachListPage"
 import CoachDetailPage from "@/features/coaches/CoachDetailPage"
 import LeadDetailPage from "@/features/leads/LeadDetailPage"
 import LeadsPage from "@/features/leads/LeadsPage"
+import PaymentsPage from "@/features/payments/PaymentsPage"
 import SchedulePage from "@/features/schedule/SchedulePage"
 import ProtectedRoute from "@/components/layout/ProtectedRoute"
 import RequireFeature from "@/components/layout/RequireFeature"
@@ -77,6 +78,12 @@ export default function App() {
           <Route element={<RequireFeature feature="leads" />}>
             <Route path="/leads" element={<LeadsPage />} />
             <Route path="/leads/:id" element={<LeadDetailPage />} />
+          </Route>
+
+          {/* Gym-scoped: payments ledger. Basic feature (always on).
+              Staff+ records, owner+ refunds, coach blocked. */}
+          <Route element={<RequireFeature feature="payments" />}>
+            <Route path="/payments" element={<PaymentsPage />} />
           </Route>
         </Route>
       </Route>
