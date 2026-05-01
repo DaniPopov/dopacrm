@@ -291,6 +291,36 @@ export function humanizeLeadError(err: unknown): string {
 }
 
 /**
+ * Overrides for Payments API errors (record / refund / list / dashboard).
+ *
+ * Refund is the most error-rich path:
+ *   - 409 PAYMENT_REFUND_EXCEEDS_ORIGINAL → user typed too much; show how
+ *     much is actually refundable
+ *   - 409 PAYMENT_ALREADY_FULLY_REFUNDED → nothing left to refund;
+ *     UI should hide the button rather than show this
+ *   - 422 PAYMENT_AMOUNT_INVALID → covers zero / negative / future
+ *     paid_at / backdate-without-flag / refund-of-refund
+ */
+export function humanizePaymentError(err: unknown): string {
+  if (err instanceof ApiError || (err instanceof Error && "status" in err)) {
+    const apiErr = err as ApiError
+    const status = apiErr.status
+    const msg = apiErr.message
+    if (status === 403) return "אין לכם הרשאה לפעולה זו"
+    if (status === 404) return "התשלום לא נמצא"
+    if (status === 409 && msg.includes("PAYMENT_REFUND_EXCEEDS_ORIGINAL"))
+      return "סכום ההחזר גדול מהיתרה הניתנת להחזר"
+    if (status === 409 && msg.includes("PAYMENT_ALREADY_FULLY_REFUNDED"))
+      return "התשלום כבר הוחזר במלואו"
+    if (status === 422 && msg.includes("PAYMENT_AMOUNT_INVALID"))
+      return "סכום או תאריך התשלום אינם תקינים"
+    if (status === 422) return "הפרטים שהוזנו אינם תקינים, בדקו את הטופס"
+    return genericMessage(status)
+  }
+  return "אירעה שגיאה בתשלום"
+}
+
+/**
  * Overrides for Coaches API errors (CRUD + links + earnings).
  */
 export function humanizeCoachError(err: unknown): string {

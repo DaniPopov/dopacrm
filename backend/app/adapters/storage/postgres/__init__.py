@@ -24,6 +24,7 @@ from app.adapters.storage.postgres.membership_plan.models import (
     MembershipPlanORM,
     PlanEntitlementORM,
 )
+from app.adapters.storage.postgres.payment.models import PaymentORM
 from app.adapters.storage.postgres.refresh_token.models import RefreshTokenORM
 from app.adapters.storage.postgres.saas_plan.models import SaasPlanORM
 from app.adapters.storage.postgres.subscription.models import (
@@ -45,6 +46,7 @@ __all__ = [
     "LeadORM",
     "MemberORM",
     "MembershipPlanORM",
+    "PaymentORM",
     "PlanEntitlementORM",
     "RefreshTokenORM",
     "SaasPlanORM",

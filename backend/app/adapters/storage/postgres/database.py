@@ -35,13 +35,13 @@ class Base(DeclarativeBase):
 
 @lru_cache
 def get_engine() -> AsyncEngine:
-    """Return a cached AsyncEngine bound to NEON_DATABASE_URL.
+    """Return a cached AsyncEngine bound to DATABASE_URL.
 
     asyncpg ignores the ``postgresql://`` scheme and wants
     ``postgresql+asyncpg://`` — we rewrite the scheme automatically.
     """
     settings = get_settings()
-    url = settings.NEON_DATABASE_URL
+    url = settings.DATABASE_URL
     if url.startswith("postgresql://"):
         url = "postgresql+asyncpg://" + url[len("postgresql://") :]
     return create_async_engine(

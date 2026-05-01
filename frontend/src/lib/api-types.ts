@@ -122,6 +122,14 @@ export type AddActivityRequest = Schemas["AddActivityRequest"]
 export type LeadStats = Schemas["LeadStatsResponse"]
 export type LostReasonRow = Schemas["LostReasonRowResponse"]
 
+// Payments
+export type Payment = Schemas["PaymentResponse"]
+export type RecordPaymentRequest = Schemas["RecordPaymentRequest"]
+export type RefundPaymentRequest = Schemas["RefundPaymentRequest"]
+export type RevenueSummary = Schemas["RevenueSummaryResponse"]
+export type RangeRevenue = Schemas["RangeRevenueResponse"]
+export type PlanRevenueRow = Schemas["PlanRevenueRowResponse"]
+
 // Uploads
 export type UploadResponse = Schemas["UploadResponse"]
 

@@ -43,8 +43,24 @@ describe("canAccess — baseline", () => {
     expect(canAccess(u, "dashboard")).toBe(true)
     expect(canAccess(u, "members")).toBe(true)
     expect(canAccess(u, "classes")).toBe(true)
-    expect(canAccess(u, "payments")).toBe(false)
+    // Payments — basic feature (not gated). Staff records walk-in
+    // payments; refund button is hidden for them at the UI layer +
+    // backend rejects for owner-only protection.
+    expect(canAccess(u, "payments")).toBe(true)
     expect(canAccess(u, "settings")).toBe(false)
+  })
+
+  it("payments is basic — visible to owner / sales / staff regardless of tenantFeatures", () => {
+    // Not gated, so empty tenantFeatures map shouldn't hide it.
+    expect(canAccess(makeUser("owner"), "payments", undefined, {})).toBe(true)
+    expect(canAccess(makeUser("sales"), "payments", undefined, {})).toBe(true)
+    expect(canAccess(makeUser("staff"), "payments", undefined, {})).toBe(true)
+    // Coach blocked.
+    expect(canAccess(makeUser("coach"), "payments", undefined, {})).toBe(false)
+    // super_admin baseline doesn't include payments — platform role.
+    expect(canAccess(makeUser("super_admin"), "payments", undefined, {})).toBe(
+      false,
+    )
   })
 
   it("sales sees dashboard + members + classes at baseline", () => {
@@ -116,7 +132,9 @@ describe("canAccess — tenant overrides", () => {
     // leads is gated — visibility needs the tenant flag too.
     expect(canAccess(u, "leads", overrides, { leads: true })).toBe(true)
     expect(canAccess(u, "members", overrides)).toBe(true)
-    expect(canAccess(u, "payments", overrides)).toBe(false)
+    // payments is now in sales BASELINE — it's basic, not an override
+    // grant. Sales sees it regardless of override config.
+    expect(canAccess(u, "payments", overrides)).toBe(true)
   })
 
   it("does not apply staff overrides to sales or vice versa", () => {
@@ -125,7 +143,9 @@ describe("canAccess — tenant overrides", () => {
     // staff has leads in BASELINE now (read-only access) but the gate
     // still blocks visibility without the tenant flag.
     expect(canAccess(staff, "leads", overrides)).toBe(false)
-    expect(canAccess(sales, "payments", overrides)).toBe(false)
+    // ``settings`` isn't in sales' baseline AND isn't in their
+    // overrides — confirms the cross-role contamination guard works.
+    expect(canAccess(sales, "settings", overrides)).toBe(false)
   })
 
   it("owner baseline is not affected by overrides", () => {
@@ -143,24 +163,30 @@ describe("canAccess — tenant overrides", () => {
 
 describe("accessibleFeatures", () => {
   it("returns baseline for roles with no overrides", () => {
-    // Staff baseline includes attendance (front-desk check-in).
+    // Staff baseline: front-desk + leads (read-only) + payments (record).
+    // Leads is gated — accessibleFeatures filters it out when no
+    // tenantFeatures map is supplied.
     expect(accessibleFeatures(makeUser("staff"))).toEqual([
       "dashboard",
       "members",
       "classes",
       "attendance",
+      "payments",
     ])
-    // Sales does NOT — check-in is an operations task.
+    // Sales: pipeline + members + payments (records the convert flow's
+    // first payment). No attendance — that's an operations task.
     expect(accessibleFeatures(makeUser("sales"))).toEqual([
       "dashboard",
       "members",
       "classes",
+      "payments",
     ])
   })
 
   it("merges baseline and overrides for staff", () => {
+    // Adding ``reports`` via the override on top of the baseline.
     const features = accessibleFeatures(makeUser("staff"), {
-      staff: ["payments"],
+      staff: ["reports"],
       sales: [],
     })
     expect(features).toEqual([
@@ -169,6 +195,7 @@ describe("accessibleFeatures", () => {
       "classes",
       "attendance",
       "payments",
+      "reports",
     ])
   })
 

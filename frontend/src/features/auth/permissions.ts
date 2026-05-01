@@ -105,11 +105,13 @@ const BASELINE: Record<Role, Feature[]> = {
   // front-desk task. Members + classes context for the check-in flow.
   // Leads gives staff read-only visibility (so they can spot a walk-in's
   // lead history at check-in); the backend enforces read-only via
-  // ``_require_writer`` on any mutation.
-  staff: ["dashboard", "members", "classes", "attendance", "leads"],
+  // ``_require_writer`` on any mutation. Payments — staff records
+  // walk-in cash + card charges; backend gates the refund button to owner+.
+  staff: ["dashboard", "members", "classes", "attendance", "leads", "payments"],
   // Sales converts leads → members. Reads classes when enrolling; no
   // attendance (check-in is a staff/operations task). Full leads access.
-  sales: ["dashboard", "members", "classes", "leads"],
+  // Payments — sales records the convert-flow's first payment.
+  sales: ["dashboard", "members", "classes", "leads", "payments"],
   // Coach (logged-in trainer) — read-only baseline. Sees only their
   // own classes + attendance rosters + earnings. All scoping is
   // enforced server-side; the frontend feature gates just control

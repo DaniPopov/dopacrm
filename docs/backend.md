@@ -11,13 +11,12 @@
 | Language | Python 3.13+ |
 | Framework | FastAPI (async) |
 | ORM | SQLAlchemy 2.x (async) |
-| Primary DB | PostgreSQL 17 |
-| Secondary DB | MongoDB 7 (config, activity logs) |
-| Cache | Redis 7 |
+| Database | PostgreSQL 17 (every entity) |
+| Cache | Redis 7 (rate limit, JWT blacklist, cache) |
 | Queue | RabbitMQ + Celery |
 | Migrations | Alembic |
 | Auth | argon2 (passwords) + PyJWT (HS256 tokens) |
-| Logging | structlog → Loki → Grafana |
+| Logging | structlog (JSON) → stdout. Prod: Sentry + CloudWatch. |
 | Package manager | uv |
 | Linter/formatter | ruff |
 | Type checker | mypy |
@@ -36,7 +35,7 @@
 ├──────────────────────────────────────────────┤
 │  Layer 3 — Domain     (entities, rules)      │  Pure Python, no I/O
 ├──────────────────────────────────────────────┤
-│  Layer 4 — Adapters   (repos, DB)            │  Postgres / Mongo behind interfaces
+│  Layer 4 — Adapters   (repos, DB)            │  Postgres / Redis / S3 behind interfaces
 └──────────────────────────────────────────────┘
 ```
 
@@ -44,7 +43,7 @@
 
 `API → Services → Domain ← Adapters`
 
-- Domain imports nothing. No FastAPI, no SQLAlchemy, no Mongo.
+- Domain imports nothing. No FastAPI, no SQLAlchemy, no AWS SDK.
 - Services import Domain + Repository interfaces. Never import FastAPI or ORM.
 - API imports Services + Pydantic schemas. Never imports repositories.
 - Adapters import Domain entities (to map to/from ORM). Never import services or API.
@@ -56,7 +55,7 @@
 | **API** | FastAPI, Pydantic request/response schemas, dependencies | Parse HTTP, validate input, call service, format response |
 | **Service** | Domain entities, repository interfaces, `TokenPayload` | Permission checks, business rules, transaction management (`commit`) |
 | **Domain** | Standard library only, Pydantic BaseModel | Entities, value objects, enums, pure business logic, custom exceptions |
-| **Adapter** | SQLAlchemy ORM, MongoDB driver, domain entities | Translate ORM ↔ domain entities, SQL queries, handle `IntegrityError` |
+| **Adapter** | SQLAlchemy ORM, Redis client, S3 client, domain entities | Translate ORM ↔ domain entities, SQL queries, handle `IntegrityError` |
 
 ---
 

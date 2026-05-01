@@ -11,12 +11,8 @@ assets-agent/
 │   ├── Dockerfile              # python:3.13-slim + uv
 │   ├── app/                    # Application code (importable as `app.*`)
 │   ├── tests/                  # All tests (pytest)
-│   ├── migrations/             # Alembic migrations (Neon/Postgres only)
+│   ├── migrations/             # Alembic migrations (Postgres)
 │   └── scripts/                # One-off scripts (seed data, manual ops)
-├── docker/                     # Compose-mounted config files (NOT in backend image)
-│   ├── loki/loki-config.yml
-│   ├── promtail/promtail-config.yml
-│   └── grafana/provisioning/datasources/loki.yml
 ├── docs/                       # Documentation
 │   ├── notion_copy.md          # Full project spec from Notion
 │   └── standards/              # Coding & architecture standards
@@ -28,7 +24,7 @@ assets-agent/
 ├── .github/                    # GitHub Actions CI/CD
 │   └── workflows/
 │       └── ci.yml              # ruff, pytest, gitleaks, pip-audit, docker-build
-├── docker-compose.dev.yml      # Local dev orchestration (full stack + observability)
+├── docker-compose.dev.yml      # Local dev orchestration (8 services)
 ├── Makefile                    # make up-dev / build-dev / down-dev / logs-dev / urls-dev / ...
 ├── pyproject.toml              # Python project config (deps, ruff, pytest, hatchling)
 ├── uv.lock                     # Reproducible dep lock — committed
@@ -82,7 +78,7 @@ backend/app/
 │
 ├── services/                   # LAYER 2: ORCHESTRATION
 │   ├── __init__.py
-│   ├── config_manager.py       # MongoDB + Secrets Manager + Redis cache
+│   ├── config_manager.py       # Postgres + Secrets Manager + Redis cache
 │   ├── agent_service.py        # LangGraph agent orchestration
 │   ├── conversation_service.py # Session lifecycle management
 │   ├── profile_service.py      # Resident identification + verification
@@ -125,12 +121,7 @@ backend/app/
     │   │       ├── __init__.py
     │   │       ├── models.py        # RefreshTokenORM
     │   │       └── repositories.py  # RefreshTokenRepository
-    │   ├── mongodb/             # same per-entity-folder layout
-    │   │   ├── __init__.py
-    │   │   ├── client.py       # Motor client + db instance
-    │   │   ├── company_config/
-    │   │   │   ├── models.py
-    │   │   │   └── repositories.py
+    │   └── (every adapter is Postgres — Mongo was removed in 2026-04)
     │   │   ├── conversation/
     │   │   │   ├── models.py
     │   │   │   └── repositories.py
@@ -222,7 +213,7 @@ backend/migrations/
 └── README
 ```
 
-Only for Neon (Postgres). MongoDB collections are schemaless — no migrations needed.
+Postgres-only stack (every entity has an Alembic migration in `backend/migrations/versions/`).
 
 ---
 

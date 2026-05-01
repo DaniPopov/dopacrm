@@ -5,6 +5,7 @@ import {
   humanizeLeadError,
   humanizeLoginError,
   humanizeMemberError,
+  humanizePaymentError,
   humanizeTenantError,
   humanizeUploadError,
 } from "./api-errors"
@@ -217,5 +218,47 @@ describe("humanizeLeadError", () => {
 
   it("returns generic message for non-ApiError", () => {
     expect(humanizeLeadError(null)).toBe("אירעה שגיאה בליד")
+  })
+})
+
+describe("humanizePaymentError", () => {
+  it("returns 403 message for forbidden", () => {
+    expect(humanizePaymentError(new ApiError("x", 403))).toBe(
+      "אין לכם הרשאה לפעולה זו",
+    )
+  })
+
+  it("returns 'payment not found' for 404", () => {
+    expect(humanizePaymentError(new ApiError("PAYMENT_NOT_FOUND", 404))).toBe(
+      "התשלום לא נמצא",
+    )
+  })
+
+  it("returns refund-exceeds message for 409 PAYMENT_REFUND_EXCEEDS_ORIGINAL", () => {
+    expect(
+      humanizePaymentError(new ApiError("PAYMENT_REFUND_EXCEEDS_ORIGINAL", 409)),
+    ).toBe("סכום ההחזר גדול מהיתרה הניתנת להחזר")
+  })
+
+  it("returns already-fully-refunded message for 409 PAYMENT_ALREADY_FULLY_REFUNDED", () => {
+    expect(
+      humanizePaymentError(new ApiError("PAYMENT_ALREADY_FULLY_REFUNDED", 409)),
+    ).toBe("התשלום כבר הוחזר במלואו")
+  })
+
+  it("returns amount-invalid message for 422 PAYMENT_AMOUNT_INVALID", () => {
+    expect(
+      humanizePaymentError(new ApiError("PAYMENT_AMOUNT_INVALID", 422)),
+    ).toBe("סכום או תאריך התשלום אינם תקינים")
+  })
+
+  it("returns generic 422 message for unhandled validation errors", () => {
+    expect(humanizePaymentError(new ApiError("x", 422))).toBe(
+      "הפרטים שהוזנו אינם תקינים, בדקו את הטופס",
+    )
+  })
+
+  it("returns generic message for non-ApiError", () => {
+    expect(humanizePaymentError(null)).toBe("אירעה שגיאה בתשלום")
   })
 })

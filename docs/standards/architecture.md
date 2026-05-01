@@ -27,7 +27,7 @@ api → services → domain ← adapters
 | `domain/` | nothing | `api`, `services`, `adapters` |
 | `adapters/` | `domain` | `api`, `services` |
 
-**The critical implication:** `domain/` has zero dependencies on infrastructure. It doesn't know MongoDB exists. It doesn't know what WhatsApp is. It only knows pure Python and Pydantic.
+**The critical implication:** `domain/` has zero dependencies on infrastructure. It doesn't know SQLAlchemy exists. It doesn't know what S3 is. It only knows pure Python and Pydantic.
 
 ---
 
@@ -186,10 +186,9 @@ domain/agent/
 
 **What goes here:**
 
-- Database clients and queries (MongoDB, Postgres, Redis)
-- External API clients (WhatsApp Cloud API, Priority ERP)
+- Database clients and queries (Postgres via SQLAlchemy, Redis)
 - Cloud service clients (S3, Secrets Manager)
-- Data mappers — convert raw DB documents / API responses to domain entities
+- Data mappers — convert ORM rows / API responses to domain entities
 
 **What does NOT go here:**
 
@@ -205,18 +204,19 @@ domain/agent/
 - Adapters translate infrastructure errors into domain exceptions
 
 ```python
-# app/adapters/storage/mongodb/config_repo.py
+# app/adapters/storage/postgres/payment/repositories.py
 
-class ConfigRepository:
-    def __init__(self, db: AsyncIOMotorDatabase):
-        self._collection = db["company_config"]
+class PaymentRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
 
-    async def find_by_company_id(self, company_id: str) -> CompanyConfig | None:
-        """Adapter — talks to MongoDB, returns domain entity."""
-        doc = await self._collection.find_one({"company_id": company_id})
-        if not doc:
-            return None
-        return CompanyConfig.model_validate(doc)
+    async def find_by_id(self, payment_id: UUID) -> Payment | None:
+        """Adapter — talks to Postgres, returns domain entity."""
+        result = await self._session.execute(
+            select(PaymentORM).where(PaymentORM.id == payment_id)
+        )
+        orm = result.scalar_one_or_none()
+        return _to_domain(orm) if orm else None
 ```
 
 ---
@@ -234,7 +234,7 @@ domain/entities/announcement.py  → Pydantic model
 **Step 2 — Adapter.** Add persistence:
 
 ```
-adapters/storage/mongodb/announcement_repo.py  → CRUD operations
+adapters/storage/postgres/announcement/repositories.py  → CRUD operations
 ```
 
 **Step 3 — Service.** Orchestrate the use case:
@@ -258,20 +258,13 @@ Always build from the inside out: **domain → adapter → service → api**.
 Services and adapters are wired together at startup, not inside each other.
 
 ```python
-# app/main.py or app/bootstrap.py
+# app/api/v1/payments/router.py — services + adapters wired per request
 
-# Create adapters
-mongodb = MongoDBClient(settings.MONGODB_URI)
-config_repo = ConfigRepository(mongodb.db)
-secrets = SecretsManagerClient(settings.AWS_REGION)
-redis = RedisClient(settings.REDIS_URL)
-
-# Create services (inject adapters)
-config_manager = ConfigManager(config_repo, secrets, redis)
-agent_service = AgentService(config_manager, erp_adapter, whatsapp_adapter)
-
-# Wire into FastAPI
-app.dependency_overrides[get_config_manager] = lambda: config_manager
+def _get_service(session: AsyncSession = Depends(get_session)) -> PaymentService:
+    """FastAPI builds a fresh PaymentService per request, injecting an
+    AsyncSession from the connection pool. The service constructs its
+    own repositories from that session — no manual DI container."""
+    return PaymentService(session)
 ```
 
 This makes testing trivial — swap real adapters with fakes.

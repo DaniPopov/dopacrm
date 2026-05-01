@@ -344,6 +344,6 @@ Why staged: the permissions system is load-bearing for security. A broken deploy
 
 1. **Sub-permissions within a feature?** Do we need "can view members but not delete"? Starting simple with flat feature grants. If real usage demands it, upgrade to `{feature, actions: ['read', 'write', 'delete']}`.
 2. **Role hierarchies?** Can a role inherit from another ("Manager = Staff + payments + reports")? Probably not v1 — flat list is easier to reason about.
-3. **Audit trail?** Should role changes be logged in `activity_logs`? Yes — owners will want to see "who changed the staff role and when". Mongo activity log, standard pattern.
+3. **Audit trail?** Should role changes be logged? Yes — owners will want to see "who changed the staff role and when". Same pattern as `lead_activities` — append-only Postgres table tied to the resource being audited.
 4. **Multi-role users?** Can one user have two roles? No — keeps the `users.role_id` FK simple. If a real use case emerges, revisit.
 5. **Role templates across tenants?** Could platform offer "common role packs" (e.g., "Gym with 5+ staff" preset)? Nice-to-have, not v1.

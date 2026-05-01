@@ -17,7 +17,7 @@
 | Pydantic models | `PascalCase` | `CompanyConfig` |
 | Type aliases | `PascalCase` | `CompanyId = str` |
 | Private (internal) | `_leading_underscore` | `_parse_webhook_body()` |
-| Environment vars | `UPPER_SNAKE` | `MONGODB_URI` |
+| Environment vars | `UPPER_SNAKE` | `DATABASE_URL` |
 
 **Booleans** — prefix with `is_`, `has_`, `can_`, `should_`:
 
@@ -137,11 +137,11 @@ def is_session_expired(conversation: Conversation) -> bool:
 async def resolve_config(company_id: str) -> ResolvedConfig:
     """Load company config with all secrets resolved.
 
-    Checks Redis cache first, falls back to MongoDB + Secrets Manager.
+    Checks Redis cache first, falls back to Postgres + Secrets Manager.
     Caches the resolved result for 5 minutes.
 
     Args:
-        company_id: UUID of the company from Neon.
+        company_id: UUID of the company from Postgres.
 
     Returns:
         Fully resolved config with real secret values (no _ref pointers).
@@ -215,7 +215,7 @@ async def get_company_config(company_id: str):
 
 - All data structures that cross layer boundaries = Pydantic models
 - Define in `app/domain/entities/`
-- Use `model_config` for MongoDB/JSON compatibility:
+- Use `model_config` for ORM / JSON compatibility:
 
 ```python
 from pydantic import BaseModel, Field
@@ -292,9 +292,7 @@ the class is actually used.
 |------|----------------------|
 | `app/adapters/cloud/s3_client.py` | `boto3` |
 | `app/adapters/cloud/secrets_client.py` | `boto3` |
-| `app/adapters/storage/mongodb/database.py` | `motor` / `pymongo` |
 | `app/adapters/storage/postgres/database.py` | `sqlalchemy`, `sqlalchemy.ext.asyncio` |
-| `app/domain/agent/nodes.py` | `langchain_anthropic`, `langgraph` |
 | `app/main.py` lifespan | `sentry_sdk` (only if `SENTRY_DSN` is set) |
 
 ### Where NOT to apply it

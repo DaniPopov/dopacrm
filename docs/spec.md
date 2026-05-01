@@ -479,17 +479,17 @@ All core business entities: `tenants`, `saas_plans`, `users`, `members`, `member
 
 JSONB columns for per-entity flexibility: `membership_plans.custom_attrs`, `members.custom_fields`, `coaches.custom_attrs`, `tenants.features_enabled`.
 
-### MongoDB — provisioned but currently unused
+### MongoDB — removed (2026-04-30)
 
-The original design reserved Mongo for `tenant_configs`, activity logs, audit trails, lead activities, integration payloads. **As of 2026-04-16, none of these are live.** Every case we've hit is better served by Postgres with either a real table or a JSONB column — FK integrity, transactions, and GROUP BY reporting all matter more than schema-less flexibility at our scale.
+Originally reserved for `tenant_configs`, activity logs, audit trails, lead activities, integration payloads. None of those needs ever materialized — every case we hit was better served by Postgres with either a real table (`lead_activities`, `subscription_events`, etc.) or a JSONB column (`tenants.features_enabled`, `members.custom_fields`). Mongo never had a single client and was removed from the stack in 2026-04 alongside the Loki/Promtail/Grafana removal.
 
-**Default for new features: Postgres.** Don't add Mongo collections unless a use case genuinely requires it (truly free-shape third-party webhook archives, massive append-only event streams). Apply this rubric:
+**Default for new features: Postgres.** Apply this rubric:
 
 - Data FKs into Postgres entities? → Postgres.
 - Shape is mostly uniform? → Postgres.
 - Ingestion rate is modest (single-digit thousands / day)? → Postgres handles it.
 
-If Mongo stays empty through Phases 2-3, it gets removed from the stack in a later cleanup.
+If a future use case genuinely demands free-shape document storage at scale (huge webhook archives, append-only event firehose), reintroduce Mongo or evaluate alternatives at that point — not preemptively.
 
 ### Redis
 

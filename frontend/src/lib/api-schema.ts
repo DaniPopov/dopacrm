@@ -484,6 +484,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard/revenue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Revenue summary — this month, last month, MoM, by-plan, by-method, ARPM */
+        get: operations["revenue_summary_api_v1_dashboard_revenue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/leads": {
         parameters: {
             query?: never;
@@ -705,6 +722,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/members/{member_id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List payments for one member (newest first)
+         * @description Convenience endpoint — same as ``GET /payments?member_id={id}`` but lives next to the member detail page that consumes it.
+         */
+        get: operations["list_member_payments_api_v1_members__member_id__payments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/members/{member_id}/unfreeze": {
         parameters: {
             query?: never;
@@ -719,6 +756,58 @@ export interface paths {
          * @description Returns a frozen member to active status.
          */
         post: operations["unfreeze_member_api_v1_members__member_id__unfreeze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List payments in the caller's tenant */
+        get: operations["list_payments_api_v1_payments_get"];
+        put?: never;
+        /** Record a payment (staff+) */
+        post: operations["record_payment_api_v1_payments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/{payment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch a single payment */
+        get: operations["get_payment_api_v1_payments__payment_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/{payment_id}/refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refund a payment (owner+) — appends a negative-amount row */
+        post: operations["refund_payment_api_v1_payments__payment_id__refund_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2607,6 +2696,49 @@ export interface components {
          * @enum {string}
          */
         PaymentMethod: "cash" | "credit_card" | "standing_order" | "other";
+        /** PaymentResponse */
+        PaymentResponse: {
+            /** Amount Cents */
+            amount_cents: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Currency */
+            currency: string;
+            /** External Ref */
+            external_ref: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Member Id
+             * Format: uuid
+             */
+            member_id: string;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Paid At
+             * Format: date
+             */
+            paid_at: string;
+            payment_method: components["schemas"]["PaymentMethod"];
+            /** Recorded By */
+            recorded_by: string | null;
+            /** Refund Of Payment Id */
+            refund_of_payment_id: string | null;
+            /** Subscription Id */
+            subscription_id: string | null;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+        };
         /**
          * PlanResponse
          * @description Plan as returned to the frontend, with entitlements eager-loaded.
@@ -2676,6 +2808,16 @@ export interface components {
              */
             updated_at: string;
         };
+        /** PlanRevenueRowResponse */
+        PlanRevenueRowResponse: {
+            /** Cents */
+            cents: number;
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+        };
         /**
          * PlanType
          * @description Recurring billing vs one-shot purchase.
@@ -2729,6 +2871,24 @@ export interface components {
             used?: number | null;
         };
         /**
+         * RangeRevenueResponse
+         * @description One bucket — this month, last month, etc.
+         */
+        RangeRevenueResponse: {
+            /** Cents */
+            cents: number;
+            /**
+             * Paid From
+             * Format: date
+             */
+            paid_from: string;
+            /**
+             * Paid To
+             * Format: date
+             */
+            paid_to: string;
+        };
+        /**
          * ReassignCoachRequest
          * @description POST /api/v1/attendance/{id}/reassign-coach — owner correction.
          */
@@ -2768,6 +2928,70 @@ export interface components {
             override_reason?: string | null;
         };
         /**
+         * RecordPaymentRequest
+         * @description POST /api/v1/payments — record a collected payment (staff+).
+         * @example {
+         *       "amount_cents": 25000,
+         *       "member_id": "...",
+         *       "notes": "April monthly fee",
+         *       "paid_at": "2026-04-30",
+         *       "payment_method": "cash",
+         *       "subscription_id": "..."
+         *     }
+         */
+        RecordPaymentRequest: {
+            /**
+             * Amount Cents
+             * @description Positive integer (cents).
+             */
+            amount_cents: number;
+            /**
+             * Backdate
+             * @description Set True to allow paid_at more than 30 days in the past. Small friction against typos.
+             * @default false
+             */
+            backdate: boolean;
+            /**
+             * External Ref
+             * @description Reserved for Phase 5 processor integrations.
+             */
+            external_ref?: string | null;
+            /**
+             * Member Id
+             * Format: uuid
+             */
+            member_id: string;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Paid At
+             * @description Defaults to today. Future dates rejected.
+             */
+            paid_at?: string | null;
+            payment_method: components["schemas"]["PaymentMethod"];
+            /**
+             * Subscription Id
+             * @description Optional. If set, must belong to the same member. Drop-ins / one-off payments leave this null.
+             */
+            subscription_id?: string | null;
+        };
+        /**
+         * RefundPaymentRequest
+         * @description POST /api/v1/payments/{id}/refund — record a refund (owner+).
+         *
+         *     ``amount_cents`` is positive (the system flips the sign on insert).
+         *     Omit for full refund of the remaining refundable amount.
+         */
+        RefundPaymentRequest: {
+            /**
+             * Amount Cents
+             * @description Positive cents. Omit to refund the remaining amount in full.
+             */
+            amount_cents?: number | null;
+            /** Reason */
+            reason?: string | null;
+        };
+        /**
          * RenewSubscriptionRequest
          * @description POST /api/v1/subscriptions/{id}/renew
          *
@@ -2799,6 +3023,29 @@ export interface components {
          * @enum {string}
          */
         ResetPeriod: "weekly" | "monthly" | "billing_period" | "never" | "unlimited";
+        /**
+         * RevenueSummaryResponse
+         * @description GET /api/v1/dashboard/revenue — drives the GymDashboard widgets.
+         */
+        RevenueSummaryResponse: {
+            /** Arpm Cents */
+            arpm_cents: number;
+            /** By Method */
+            by_method: {
+                [key: string]: number;
+            };
+            /** By Plan */
+            by_plan: components["schemas"]["PlanRevenueRowResponse"][];
+            /** Currency */
+            currency: string;
+            last_month: components["schemas"]["RangeRevenueResponse"];
+            /**
+             * Mom Pct
+             * @description Month-over-month change. None when last_month is zero (avoids divide-by-zero on a tenant's first month).
+             */
+            mom_pct: number | null;
+            this_month: components["schemas"]["RangeRevenueResponse"];
+        };
         /**
          * Role
          * @description User role hierarchy.
@@ -4637,6 +4884,26 @@ export interface operations {
             };
         };
     };
+    revenue_summary_api_v1_dashboard_revenue_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevenueSummaryResponse"];
+                };
+            };
+        };
+    };
     list_leads_api_v1_leads_get: {
         parameters: {
             query?: {
@@ -5199,6 +5466,37 @@ export interface operations {
             };
         };
     };
+    list_member_payments_api_v1_members__member_id__payments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                member_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     unfreeze_member_api_v1_members__member_id__unfreeze_post: {
         parameters: {
             query?: never;
@@ -5217,6 +5515,143 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MemberResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_payments_api_v1_payments_get: {
+        parameters: {
+            query?: {
+                member_id?: string | null;
+                subscription_id?: string | null;
+                paid_from?: string | null;
+                paid_to?: string | null;
+                method?: components["schemas"]["PaymentMethod"] | null;
+                include_refunds?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_payment_api_v1_payments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordPaymentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_payment_api_v1_payments__payment_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refund_payment_api_v1_payments__payment_id__refund_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefundPaymentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponse"];
                 };
             };
             /** @description Validation Error */

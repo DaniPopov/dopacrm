@@ -39,7 +39,7 @@ from app.core.security import create_access_token, hash_password
 
 
 def _sync_url() -> str:
-    url = os.environ.get("NEON_DATABASE_URL", "postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm")
+    url = os.environ.get("DATABASE_URL", "postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm")
     return url.replace("postgresql+asyncpg://", "postgresql://")
 
 
@@ -1038,3 +1038,141 @@ def test_lost_reasons_scopes_to_caller_tenant(client: TestClient, two_gyms: dict
     assert r.status_code == 200
     reasons = {row["reason"] for row in r.json()}
     assert "b-only-reason" not in reasons
+
+
+# ── Payments ──────────────────────────────────────────────────────────
+
+
+def test_staff_cannot_record_payment_for_foreign_member(client: TestClient, two_gyms: dict) -> None:
+    """A's staff sets ``member_id`` to B's member — service rejects with 404."""
+    r = client.post(
+        "/api/v1/payments",
+        headers=two_gyms["a"]["staff_headers"],
+        json={
+            "member_id": two_gyms["b"]["member_id"],
+            "amount_cents": 1000,
+            "payment_method": "cash",
+        },
+    )
+    assert r.status_code == 404
+
+
+def test_staff_cannot_record_with_foreign_subscription(client: TestClient, two_gyms: dict) -> None:
+    """A's staff sends A's member but B's sub_id — sub-tenant check rejects."""
+    r = client.post(
+        "/api/v1/payments",
+        headers=two_gyms["a"]["staff_headers"],
+        json={
+            "member_id": two_gyms["a"]["member_id"],
+            "amount_cents": 1000,
+            "payment_method": "cash",
+            "subscription_id": two_gyms["b"]["sub_id"],
+        },
+    )
+    assert r.status_code == 404
+
+
+def test_owner_cannot_read_foreign_payment(client: TestClient, two_gyms: dict) -> None:
+    """B records a payment, A's owner tries to fetch it → 404."""
+    engine = create_engine(_sync_url())
+    with Session(engine) as s:
+        b_payment_id = s.execute(
+            text(
+                "INSERT INTO payments "
+                "(tenant_id, member_id, amount_cents, currency, payment_method, paid_at) "
+                "VALUES (:t, :m, 1000, 'ILS', 'cash', :d) RETURNING id"
+            ),
+            {"t": two_gyms["b"]["tenant_id"], "m": two_gyms["b"]["member_id"], "d": date.today()},
+        ).scalar_one()
+        s.commit()
+    engine.dispose()
+
+    r = client.get(
+        f"/api/v1/payments/{b_payment_id}",
+        headers=two_gyms["a"]["owner_headers"],
+    )
+    assert r.status_code == 404
+
+
+def test_owner_cannot_refund_foreign_payment(client: TestClient, two_gyms: dict) -> None:
+    """A's owner tries to refund B's payment — 404 for the foreign id."""
+    engine = create_engine(_sync_url())
+    with Session(engine) as s:
+        b_payment_id = s.execute(
+            text(
+                "INSERT INTO payments "
+                "(tenant_id, member_id, amount_cents, currency, payment_method, paid_at) "
+                "VALUES (:t, :m, 1000, 'ILS', 'cash', :d) RETURNING id"
+            ),
+            {"t": two_gyms["b"]["tenant_id"], "m": two_gyms["b"]["member_id"], "d": date.today()},
+        ).scalar_one()
+        s.commit()
+    engine.dispose()
+
+    r = client.post(
+        f"/api/v1/payments/{b_payment_id}/refund",
+        headers=two_gyms["a"]["owner_headers"],
+        json={},
+    )
+    assert r.status_code == 404
+
+
+def test_payments_list_scopes_to_caller_tenant(client: TestClient, two_gyms: dict) -> None:
+    """A's owner sees only A's payments — never B's."""
+    engine = create_engine(_sync_url())
+    with Session(engine) as s:
+        for tenant_key in ("a", "b"):
+            s.execute(
+                text(
+                    "INSERT INTO payments "
+                    "(tenant_id, member_id, amount_cents, currency, payment_method, paid_at) "
+                    "VALUES (:t, :m, 1000, 'ILS', 'cash', :d)"
+                ),
+                {
+                    "t": two_gyms[tenant_key]["tenant_id"],
+                    "m": two_gyms[tenant_key]["member_id"],
+                    "d": date.today(),
+                },
+            )
+        s.commit()
+    engine.dispose()
+
+    r = client.get("/api/v1/payments", headers=two_gyms["a"]["owner_headers"])
+    assert r.status_code == 200
+    rows = r.json()
+    assert all(p["tenant_id"] == two_gyms["a"]["tenant_id"] for p in rows)
+
+
+def test_dashboard_revenue_scopes_to_caller_tenant(client: TestClient, two_gyms: dict) -> None:
+    """B has 50000 in revenue this month; A's owner asks for /revenue
+    and sees ONLY their own (which is 0)."""
+    engine = create_engine(_sync_url())
+    with Session(engine) as s:
+        s.execute(
+            text(
+                "INSERT INTO payments "
+                "(tenant_id, member_id, amount_cents, currency, payment_method, paid_at) "
+                "VALUES (:t, :m, 50000, 'ILS', 'cash', :d)"
+            ),
+            {
+                "t": two_gyms["b"]["tenant_id"],
+                "m": two_gyms["b"]["member_id"],
+                "d": date.today(),
+            },
+        )
+        s.commit()
+    engine.dispose()
+
+    r = client.get("/api/v1/dashboard/revenue", headers=two_gyms["a"]["owner_headers"])
+    assert r.status_code == 200
+    assert r.json()["this_month"]["cents"] == 0
+
+
+def test_member_payments_endpoint_rejects_foreign_member(
+    client: TestClient, two_gyms: dict
+) -> None:
+    r = client.get(
+        f"/api/v1/members/{two_gyms['b']['member_id']}/payments",
+        headers=two_gyms["a"]["owner_headers"],
+    )
+    assert r.status_code == 404

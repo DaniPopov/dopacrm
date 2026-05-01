@@ -77,9 +77,9 @@ List every method with a one-line description:
 
 ### Database model
 
-File: ``adapters/storage/postgres/{entity}/models.py`` (or mongodb)
+File: ``adapters/storage/postgres/{entity}/models.py``
 
-Table/collection name, key columns, constraints, indexes.
+Table name, key columns, constraints, indexes.
 
 ### Repository methods
 

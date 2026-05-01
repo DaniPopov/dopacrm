@@ -78,7 +78,7 @@ jobs:
       # E2E tests sign JWTs with this — must be set before the app boots.
       APP_SECRET_KEY: ci-test-secret-key-32-bytes-long-xx
       # Real services — sidecars above.
-      NEON_DATABASE_URL: postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm
+      DATABASE_URL: postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm
       REDIS_URL: redis://127.0.0.1:6379/0
       # Required by Settings but not actually hit by integration/E2E tests.
       # Dummy values keep Pydantic happy without spinning up Mongo/RabbitMQ.

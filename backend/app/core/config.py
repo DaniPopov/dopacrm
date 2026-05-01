@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables.
 
     Required vars must be set or the app refuses to start (no silent defaults).
-    Per-tenant secrets live in MongoDB / AWS Secrets Manager — never as env vars.
+    Per-tenant secrets live in AWS Secrets Manager — never as env vars.
     Source of truth: docs/standards/env.md
     """
 
@@ -35,13 +35,21 @@ class Settings(BaseSettings):
         description="JWT signing key — minimum 32 characters",
     )
 
-    # ── MongoDB ───────────────────────────────────────────────────────────────
-    MONGODB_URI: str = Field(..., description="MongoDB connection string")
-    MONGODB_DATABASE: str = Field(..., min_length=1, description="MongoDB database name")
-
-    # ── Neon (Postgres) ───────────────────────────────────────────────────────
-    NEON_DATABASE_URL: str = Field(..., description="Pooled Postgres connection string")
-    NEON_DIRECT_URL: str = Field(default="", description="Direct (non-pooled) URL, migrations")
+    # ── Postgres ──────────────────────────────────────────────────────────────
+    DATABASE_URL: str = Field(
+        ...,
+        description=(
+            "Postgres connection string (asyncpg driver). Self-hosted in dev "
+            "and prod — see docs/standards/env.md."
+        ),
+    )
+    DATABASE_DIRECT_URL: str = Field(
+        default="",
+        description=(
+            "Direct (non-pooled) URL used by Alembic migrations. Empty falls "
+            "back to DATABASE_URL — fine for self-hosted setups."
+        ),
+    )
 
     # ── Redis ─────────────────────────────────────────────────────────────────
     REDIS_URL: str = Field(..., description="Redis connection string")
@@ -50,7 +58,10 @@ class Settings(BaseSettings):
     RABBITMQ_URL: str = Field(..., description="RabbitMQ AMQP connection string")
 
     # ── AWS ───────────────────────────────────────────────────────────────────
-    AWS_REGION: str = Field(default="us-east-1", description="AWS region")
+    AWS_REGION: str = Field(
+        default="il-central-1",
+        description="AWS region — defaults to Israel (Tel Aviv) for IL-based gyms",
+    )
     AWS_ACCESS_KEY_ID: SecretStr = Field(..., description="IAM access key")
     AWS_SECRET_ACCESS_KEY: SecretStr = Field(..., description="IAM secret key")
     AWS_S3_BUCKET: str = Field(..., min_length=1, description="S3 bucket for uploads")

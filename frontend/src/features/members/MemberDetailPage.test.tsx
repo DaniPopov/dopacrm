@@ -42,6 +42,12 @@ vi.mock("@/features/subscriptions/MemberSubscriptionSection", () => ({
   default: () => null,
 }))
 
+// Same reason for the payments section — it pulls auth + react-query +
+// the live-subscription hook. Has its own tests; stubbed here.
+vi.mock("@/features/payments/PaymentsSection", () => ({
+  PaymentsSection: () => null,
+}))
+
 import { useMember, useUpdateMember } from "./hooks"
 const mockUseMember = vi.mocked(useMember)
 const mockUseUpdateMember = vi.mocked(useUpdateMember)

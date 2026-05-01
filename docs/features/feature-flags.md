@@ -262,11 +262,12 @@ Single structlog event — the gate is stable once set:
 |---|---|---|
 | `tenant.features_changed` | tenant_id, changed_by, before, after, diff | Super_admin flips a flag |
 
-Loki query to audit all feature changes across the platform:
+CloudWatch Logs Insights query to audit all feature changes across the platform:
 
 ```
-{app="dopacrm"} |= "tenant.features_changed"
-  | line_format "{{.changed_by}} → {{.tenant_id}}: {{.diff}}"
+fields @timestamp, changed_by, tenant_id, diff
+| filter event = "tenant.features_changed"
+| sort @timestamp desc
 ```
 
 No per-call log for `is_feature_enabled` — it's a hot-path function

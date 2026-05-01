@@ -449,3 +449,52 @@ class LeadAlreadyConvertedError(AppError):
             f"Lead already converted: {lead_id}",
             "LEAD_ALREADY_CONVERTED",
         )
+
+
+# ── Payments ─────────────────────────────────────────────────────────────────
+class PaymentNotFoundError(AppError):
+    """No payment matches the given id (or it's in another tenant)."""
+
+    def __init__(self, payment_id: str) -> None:
+        super().__init__(f"Payment not found: {payment_id}", "PAYMENT_NOT_FOUND")
+
+
+class PaymentAmountInvalidError(AppError):
+    """Amount fails the shape rules (zero, or future-dated, or sign mismatch).
+
+    The DB CHECK enforces non-zero too, but the service catches the case
+    earlier with a typed code so the UI can show "סכום חייב להיות חיובי"
+    instead of a generic 422.
+    """
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(f"Invalid payment amount: {reason}", "PAYMENT_AMOUNT_INVALID")
+
+
+class PaymentRefundExceedsOriginalError(AppError):
+    """Refund attempt would push cumulative refunds past the original amount.
+
+    Returned as 409 — the request is structurally valid but the math
+    rejects it. The UI shows "סכום ההחזר גדול מהיתרה הניתנת להחזר"
+    and re-fetches the remaining-refundable display.
+    """
+
+    def __init__(self, payment_id: str, requested: int, remaining: int) -> None:
+        super().__init__(
+            f"Refund of {requested} exceeds remaining {remaining} on payment {payment_id}",
+            "PAYMENT_REFUND_EXCEEDS_ORIGINAL",
+        )
+
+
+class PaymentAlreadyFullyRefundedError(AppError):
+    """Distinct from "exceeds" — the original is already at zero remaining.
+
+    Surfaced with its own code so the UI can hide the refund button
+    rather than show an error message.
+    """
+
+    def __init__(self, payment_id: str) -> None:
+        super().__init__(
+            f"Payment already fully refunded: {payment_id}",
+            "PAYMENT_ALREADY_FULLY_REFUNDED",
+        )

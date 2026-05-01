@@ -160,7 +160,7 @@ v1: just don't allow past the window.
 **Owner audit trail — by design, not afterthought:**
 - Every undo emits a `structlog` event with
   `{event: "attendance.undo", tenant_id, entry_id, undone_by,
-  hours_since_entry, reason}`. Visible in Loki/Grafana for the owner.
+  hours_since_entry, reason}`. Surfaced via CloudWatch Logs Insights / Sentry for owner audit.
 - List endpoint supports `include_undone=true&undone_by_staff=true` for
   the owner's "mistakes this week" view.
 - Dashboard widget (future milestone): "5 entries undone by staff this
@@ -523,7 +523,7 @@ Attendance is the **highest-frequency write** in the CRM — every active
 member hits it 3–5 times a week. If the quota math is wrong or a slow
 query sneaks in, it'll be the first place we feel it.
 
-**Structured log events** (structlog → Loki → Grafana):
+**Structured log events** (structlog JSON → stdout → CloudWatch Logs in prod):
 
 | Event | Fields | When |
 |---|---|---|
@@ -539,7 +539,7 @@ later):
 - Counter: `attendance_undos_total{tenant, within_window}`
 - Histogram: `attendance_quota_check_duration_ms{tenant}` — watch the 99p.
 
-**Grafana panels** (future, unblocked by these events):
+**Dashboard widgets** (future product feature, unblocked by these events):
 
 - "Today's check-ins" — count of `attendance.recorded` events in the last 24h.
 - "Undo rate" — `undones / recorded * 100%` — expect < 2%. Spike = training issue.

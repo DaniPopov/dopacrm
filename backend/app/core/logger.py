@@ -1,8 +1,8 @@
 """Structured logging setup using structlog.
 
-JSON output by default — Promtail picks it up from Docker stdout and ships
-to Loki. Set APP_LOG_FORMAT=console for human-readable colored output during
-local non-Docker development.
+JSON output by default — production ships container stdout to CloudWatch
+Logs (and errors to Sentry). Set APP_LOG_FORMAT=console for human-readable
+colored output during local non-Docker development.
 
 Field schema (consistent across every log line):
 
@@ -95,7 +95,7 @@ def setup_logging() -> None:
 
     Idempotent — safe to call multiple times. Reads APP_LOG_LEVEL and
     APP_LOG_FORMAT from env (json | console). Defaults to JSON so log
-    aggregators (Loki, CloudWatch, etc.) can parse fields directly.
+    aggregators (CloudWatch, Sentry, Datadog, etc.) parse fields directly.
     """
     global _configured
     if _configured:

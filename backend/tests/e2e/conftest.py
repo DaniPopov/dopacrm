@@ -26,8 +26,42 @@ _DEFAULT_DB_URL = "postgresql://dopacrm:dopacrm@127.0.0.1:5432/dopacrm"
 
 
 def _get_sync_url() -> str:
-    url = os.environ.get("NEON_DATABASE_URL", _DEFAULT_DB_URL)
+    url = os.environ.get("DATABASE_URL", _DEFAULT_DB_URL)
     return url.replace("postgresql+asyncpg://", "postgresql://")
+
+
+def _assert_safe_to_truncate(url: str) -> None:
+    """Refuse to TRUNCATE a non-test database.
+
+    The ``_clean_db`` fixture wipes every table on every test. Pointing
+    it at the dev database (or worse, prod) is destructive. This guard
+    fails loudly if the URL doesn't look like a local test target.
+
+    Allowed: ``localhost`` / ``127.0.0.1`` host. Anything else demands
+    an explicit opt-in via ``DOPACRM_TEST_DB_CONFIRM=1`` so a developer
+    has to think twice before wiring tests to a remote DB.
+
+    Real incident this guard prevents: 2026-04-30, the e2e suite was
+    run against the manually-curated dev DB and CASCADE-truncated all
+    tenants/members/payments. Fast assertion + clear error message
+    beats a Slack apology.
+    """
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    safe_hosts = {"localhost", "127.0.0.1", "::1", "postgres"}
+
+    if host in safe_hosts:
+        return
+    if os.environ.get("DOPACRM_TEST_DB_CONFIRM") == "1":
+        return
+
+    raise RuntimeError(
+        f"Refusing to TRUNCATE database at {host!r} — only localhost/127.0.0.1 "
+        f"are auto-allowed. Set DOPACRM_TEST_DB_CONFIRM=1 to override "
+        f"(double-check you're not pointed at production first)."
+    )
 
 
 @pytest.fixture
